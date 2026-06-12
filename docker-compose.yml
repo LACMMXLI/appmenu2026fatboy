@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fatboy-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: cacl691015
+      POSTGRES_DB: fatboy_menu
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - 5432
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: fatboy-backend
+    restart: always
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:cacl691015@postgres:5432/fatboy_menu
+      BASE_DATA_DIR: ../../base
+      ADMIN_CATALOG_KEY: FatboyAdmin-2026
+    depends_on:
+      - postgres
+    expose:
+      - 3000
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: fatboy-frontend
+    restart: always
+    ports:
+      - "8371:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
