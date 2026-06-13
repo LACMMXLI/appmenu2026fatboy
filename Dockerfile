@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS deps
+FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 
 RUN apt-get update \
@@ -21,7 +21,7 @@ FROM build AS production-deps
 RUN npm prune --omit=dev \
   && npm cache clean --force
 
-FROM node:22-bookworm-slim AS runner
+FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8372
