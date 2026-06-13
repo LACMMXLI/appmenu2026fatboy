@@ -23,8 +23,8 @@ const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'ima
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
-  private readonly bucket = process.env.MINIO_BUCKET || 'menu-fatboy';
-  private readonly publicUrl = process.env.MINIO_PUBLIC_URL?.replace(/\/$/, '') || '';
+  private readonly bucket = process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'menu-fatboy';
+  private readonly publicUrl = (process.env.S3_PUBLIC_URL || process.env.MINIO_PUBLIC_URL || `https://storage.fatboymexicali.com/${this.bucket}`)?.replace(/\/$/, '') || '';
   private client?: Client;
 
   async replaceProductImage(target: ProductImageTarget, file: UploadedImageFile) {
@@ -160,9 +160,9 @@ export class StorageService {
   private getClient() {
     if (this.client) return this.client;
 
-    const endpoint = process.env.MINIO_ENDPOINT?.trim();
-    const accessKey = process.env.MINIO_ACCESS_KEY?.trim();
-    const secretKey = process.env.MINIO_SECRET_KEY?.trim();
+    const endpoint = (process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT)?.trim();
+    const accessKey = (process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY)?.trim();
+    const secretKey = (process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY)?.trim();
 
     if (!endpoint || !accessKey || !secretKey) {
       throw new InternalServerErrorException('No se pudo conectar a MinIO: faltan variables de entorno.');
@@ -170,10 +170,21 @@ export class StorageService {
 
     const normalizedEndpoint = endpoint.replace(/^https?:\/\//, '').replace(/\/+$/, '');
 
+    const portValue = process.env.S3_PORT || process.env.MINIO_PORT;
+    let port = portValue ? Number(portValue) : 9000;
+
+    // If endpoint contains a port (e.g. host:port), extract it
+    const portMatch = normalizedEndpoint.match(/:(\d+)$/);
+    let cleanEndpoint = normalizedEndpoint;
+    if (portMatch) {
+      port = Number(portMatch[1]);
+      cleanEndpoint = normalizedEndpoint.replace(/:(\d+)$/, '');
+    }
+
     this.client = new Client({
-      endPoint: normalizedEndpoint,
-      port: Number(process.env.MINIO_PORT || 9000),
-      useSSL: process.env.MINIO_USE_SSL === 'true',
+      endPoint: cleanEndpoint,
+      port,
+      useSSL: process.env.S3_USE_SSL === 'true' || process.env.MINIO_USE_SSL === 'true',
       accessKey,
       secretKey,
     });
@@ -187,8 +198,8 @@ export class StorageService {
     try {
       exists = await this.getClient().bucketExists(this.bucket);
     } catch (error: any) {
-      const endpoint = process.env.MINIO_ENDPOINT || 'Desconocido';
-      const port = process.env.MINIO_PORT || '9000';
+      const endpoint = process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'Desconocido';
+      const port = process.env.S3_PORT || process.env.MINIO_PORT || '9000';
       console.error(`[StorageService] Error conectando a MinIO en ${endpoint}:${port}:`, error);
       throw new InternalServerErrorException(`No se pudo conectar a MinIO en ${endpoint}:${port}. Verifica que el hostname sea resoluble desde este contenedor. Detalles: ${error?.message}`);
     }
