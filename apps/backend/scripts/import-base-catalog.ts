@@ -8,6 +8,7 @@ import { PrismaClient, type CatalogStatus } from '@prisma/client';
 type CsvRecord = Record<string, string | undefined>;
 
 const baseDataDir = resolve(process.cwd(), process.env.BASE_DATA_DIR ?? '../../base');
+const importOnlyIfEmpty = process.argv.includes('--if-empty');
 
 const files = {
   branches: 'branches_rows.csv',
@@ -30,6 +31,18 @@ if (!process.env.DATABASE_URL) {
 const prisma = new PrismaClient();
 
 try {
+  let shouldImport = true;
+
+  if (importOnlyIfEmpty) {
+    const productsCount = await prisma.product.count();
+
+    if (productsCount > 0) {
+      console.log(`Catálogo existente detectado (${productsCount} productos). Se omite importación base.`);
+      shouldImport = false;
+    }
+  }
+
+  if (shouldImport) {
   const [branches, categories, products] = await Promise.all([
     readCsv(files.branches),
     readCsv(files.categories),
@@ -113,6 +126,7 @@ try {
   console.log(`Sucursales: ${branches.length}`);
   console.log(`Categorías: ${categories.length}`);
   console.log(`Productos: ${products.length}`);
+  }
 } finally {
   await prisma.$disconnect();
 }

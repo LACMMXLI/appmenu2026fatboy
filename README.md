@@ -31,3 +31,5 @@ Para cargar los CSV de `base/`:
 2. Ajusta `DATABASE_URL`.
 3. Ejecuta `npm run prisma:migrate`.
 4. Ejecuta `npm run import:base`.
+
+En Docker/Coolify, el backend ejecuta `prisma migrate deploy` al iniciar y carga el catálogo base solo cuando la tabla `products` está vacía.

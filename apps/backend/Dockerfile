@@ -22,4 +22,4 @@ COPY --from=builder /app/apps/backend/scripts ./apps/backend/scripts
 COPY base/ ./base/
 WORKDIR /app/apps/backend
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/scripts/import-base-catalog.js --if-empty && node dist/src/main.js"]
