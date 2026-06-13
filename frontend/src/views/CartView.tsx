@@ -139,7 +139,7 @@ export function CartView({ onNavigate }: CartViewProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pt-[42px] pb-[42px] px-3">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden pt-[42px] pb-[42px] px-3">
       <header className="flex items-center justify-between mb-4 pb-1 border-b border-white/5 animate-fade-in-up stagger-1">
         <button onClick={() => onNavigate('home')} className="p-1.5 -ml-1 text-white hover:bg-surface rounded-full transition-colors">
           <ArrowLeft size={18} />
@@ -151,22 +151,22 @@ export function CartView({ onNavigate }: CartViewProps) {
       </header>
 
       {/* Items List */}
-      <div className="flex flex-col gap-6 mb-8 w-full">
+      <div className="flex flex-col gap-6 mb-8 w-full min-w-0">
         {items.map((item, i) => {
           let itemTotal = item.price;
           item.extras?.forEach(ext => itemTotal += ext.price);
 
           return (
-            <div key={item.cartId} className="flex gap-4 items-start animate-fade-in-up" style={{ animationDelay: `${0.1 * (i + 2)}s` }}>
-              <div className="w-[80px] h-[80px] rounded-xl bg-surface overflow-hidden shrink-0 shadow-md">
+            <div key={item.cartId} className="flex w-full min-w-0 gap-3 items-start animate-fade-in-up" style={{ animationDelay: `${0.1 * (i + 2)}s` }}>
+              <div className="w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-xl bg-surface overflow-hidden shrink-0 shadow-md">
                 <img src={item.img} alt={item.title} className="w-full h-full object-cover" />
               </div>
-              <div className="flex-1 flex flex-col justify-between py-1 min-h-[80px]">
-                <div>
-                  <h3 className="font-bold text-sm leading-tight text-white mb-1">{item.title}</h3>
-                  {item.meatPrep && <p className="text-xs text-gray-400">{item.meatPrep}</p>}
-                  {item.removals && item.removals.length > 0 && <p className="text-xs text-primary">{item.removals.join(', ')}</p>}
-                  {item.extras && item.extras.length > 0 && <p className="text-xs text-accent">+{item.extras.map(e => e.name).join(', ')}</p>}
+              <div className="min-w-0 flex-1 flex flex-col justify-between py-1 min-h-[72px] sm:min-h-[80px] overflow-hidden">
+                <div className="min-w-0 overflow-hidden">
+                  <h3 className="font-bold text-sm leading-tight text-white mb-1 break-words">{item.title}</h3>
+                  {item.meatPrep && <p className="text-xs text-gray-400 break-words">{item.meatPrep}</p>}
+                  {item.removals && item.removals.length > 0 && <p className="text-xs text-primary break-words">{item.removals.join(', ')}</p>}
+                  {item.extras && item.extras.length > 0 && <p className="text-xs text-accent break-words">+{item.extras.map(e => e.name).join(', ')}</p>}
                   <span className="font-display text-xl text-accent tracking-wide block mt-1">${itemTotal}</span>
                 </div>
               </div>
@@ -228,7 +228,7 @@ export function CartView({ onNavigate }: CartViewProps) {
           </label>
           
           {redeemPointsChecked && (
-            <div className="mt-3 flex items-center gap-4">
+            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
               <span className="text-xs text-gray-400 font-bold uppercase">PUNTOS A USAR:</span>
               <div className="flex items-center justify-between border border-outline rounded-xl h-10 px-1 w-[120px] bg-background">
                 <button 
@@ -286,14 +286,14 @@ export function CartView({ onNavigate }: CartViewProps) {
       <div className="w-full mb-8 animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">TUS DATOS</h3>
         {isAuthenticated && customer ? (
-          <div className="bg-surface border border-outline/30 rounded-xl p-4">
-            <div className="flex justify-between items-center py-2 border-b border-outline/10">
-              <span className="text-gray-400 text-sm">Nombre</span>
-              <span className="text-sm font-semibold text-white">{customer.name}</span>
+          <div className="bg-surface border border-outline/30 rounded-xl p-4 min-w-0">
+            <div className="flex min-w-0 justify-between gap-3 items-center py-2 border-b border-outline/10">
+              <span className="text-gray-400 text-sm shrink-0">Nombre</span>
+              <span className="min-w-0 text-right text-sm font-semibold text-white break-words">{customer.name}</span>
             </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-gray-400 text-sm">Teléfono</span>
-              <span className="text-sm font-semibold text-white">{customer.phone}</span>
+            <div className="flex min-w-0 justify-between gap-3 items-center py-2">
+              <span className="text-gray-400 text-sm shrink-0">Teléfono</span>
+              <span className="min-w-0 text-right text-sm font-semibold text-white break-words">{customer.phone}</span>
             </div>
           </div>
         ) : (

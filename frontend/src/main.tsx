@@ -15,3 +15,10 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .catch((error) => console.error('Error registering service worker:', error));
+  });
+}

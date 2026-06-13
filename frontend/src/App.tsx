@@ -18,6 +18,7 @@ import { BranchOrdersView } from './views/BranchOrdersView';
 import { GoogleReviewView } from './views/GoogleReviewView';
 import { TopBar, BottomNav } from './components/layout/Navigation';
 import { GoogleReviewPrompt } from './components/layout/GoogleReviewPrompt';
+import { AppSplash } from './components/layout/AppSplash';
 import { useUser } from './context/UserContext';
 import { getSystemSettings, type Product } from './lib/api';
 import { GOOGLE_REVIEW_ROUTE, getGoogleReviewCooldown, isGoogleReviewRoutePath } from './lib/googleReviews';
@@ -44,10 +45,22 @@ export default function App() {
   const [pendingAuthView, setPendingAuthView] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('fatboy-app-splash-shown'));
 
   // Google Review prompt state & config URL
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+
+  useEffect(() => {
+    if (!showSplash) return;
+
+    const timer = window.setTimeout(() => {
+      sessionStorage.setItem('fatboy-app-splash-shown', 'true');
+      setShowSplash(false);
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [showSplash]);
 
   useEffect(() => {
     getSystemSettings()
@@ -215,6 +228,10 @@ export default function App() {
           <BottomNav currentView={currentView} onNavigate={navigate} />
         </motion.div>
       )}
+
+      <AnimatePresence>
+        {showSplash && <AppSplash />}
+      </AnimatePresence>
     </div>
   );
 

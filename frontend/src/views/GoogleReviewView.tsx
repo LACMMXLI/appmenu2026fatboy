@@ -168,7 +168,7 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
           {!isCooldownActive && !isDone && !isRedirecting && (
             <>
               <h2 className="text-lg font-bold text-gray-900 leading-tight mb-1">
-                ¿Qué te pareció Fatboy Smash Burgers?
+                ¿Qué te pareció Fatboy Restaurant?
               </h2>
               <p className="text-xs text-gray-500 mb-5 max-w-[280px]">
                 Tu opinión es muy importante para nosotros. Califícanos con estrellas.
@@ -263,7 +263,7 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
               <CheckCircle size={44} className="text-[#34A853] mb-3" />
               <h3 className="text-md font-bold text-gray-900 mb-1">¡Gracias por tu calificación!</h3>
               <p className="text-xs text-gray-500 max-w-[240px] mb-6">
-                Tus opiniones y sugerencias nos ayudan a preparar las mejores burgers smash para ti.
+                Tus opiniones y sugerencias nos ayudan a preparar las mejores burgers para ti.
               </p>
               <Button 
                 onClick={() => onNavigate('home')} 
