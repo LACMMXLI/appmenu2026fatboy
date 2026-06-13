@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ArrowLeft } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 
 interface AuthViewProps {
@@ -34,8 +35,14 @@ export function AuthView({ onNavigate, onLogin }: AuthViewProps) {
   };
 
   return (
-    <div className="h-full flex flex-col px-6 py-8 pt-16 bg-background w-full max-w-md mx-auto relative overflow-y-auto">
-      <div className="flex-1 flex flex-col items-center justify-center z-10 pb-8">
+    <div className="h-full flex flex-col bg-background w-full max-w-md mx-auto relative overflow-hidden">
+      <header className="px-6 py-4 flex items-center relative h-16 w-full shrink-0">
+        <button onClick={() => onNavigate('home')} className="absolute left-6 text-white hover:text-gray-300 transition-colors p-2 -ml-2 rounded-full hover:bg-surface">
+          <ArrowLeft size={24} />
+        </button>
+      </header>
+
+      <div className="flex-1 flex flex-col items-center px-6 py-4 overflow-y-auto pb-8">
         <img 
           src="/images/logo.png" 
           alt="FATBOY" 
