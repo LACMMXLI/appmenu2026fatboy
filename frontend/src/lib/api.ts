@@ -10,6 +10,9 @@ export interface Branch {
   id: string;
   name: string;
   phone: string | null;
+  address: string | null;
+  hours: string | null;
+  mapsUrl: string | null;
 }
 
 export interface Category {

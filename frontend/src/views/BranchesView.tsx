@@ -46,6 +46,8 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
   }, []);
 
   const current = branches.find(b => b.id === activeBranch) || branches[0];
+  const phoneHref = current?.phone ? `tel:${current.phone.replace(/[^\d+]/g, '')}` : '';
+  const mapsHref = current?.mapsUrl || (current?.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(current.address)}` : '');
 
   const branchPins = useMemo(
     () => branches.map((branch, index) => ({
@@ -160,7 +162,7 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
               </div>
               <div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">DIRECCIÓN</span>
-                <p className="text-sm text-gray-200 leading-snug">Ubicación pendiente de configurar</p>
+                <p className="text-sm text-gray-200 leading-snug">{current.address || 'Ubicación pendiente de configurar'}</p>
               </div>
             </div>
 
@@ -170,7 +172,7 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
               </div>
               <div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">HORARIO</span>
-                <p className="text-sm text-gray-200 leading-snug">Horario pendiente de configurar</p>
+                <p className="text-sm text-gray-200 leading-snug">{current.hours || 'Horario pendiente de configurar'}</p>
               </div>
             </div>
             
@@ -186,12 +188,32 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
           </div>
 
           <div className="mt-auto pt-6 flex gap-3">
-             <Button className="flex-1 h-14 bg-surface text-white border border-outline hover:bg-surface-hover hover:border-gray-500 gap-2 font-semibold shadow-none transition-all active:scale-95">
+             {phoneHref ? (
+             <a
+               href={phoneHref}
+               className="inline-flex flex-1 h-14 items-center justify-center rounded-lg bg-surface text-white border border-outline hover:bg-surface-hover hover:border-gray-500 gap-2 font-semibold shadow-none transition-all active:scale-95"
+             >
+               <Phone size={18} /> LLAMAR
+             </a>
+             ) : (
+             <Button disabled className="flex-1 h-14 bg-surface text-white border border-outline gap-2 font-semibold shadow-none">
                <Phone size={18} /> LLAMAR
              </Button>
-             <Button className="flex-[2] h-14 gap-2 text-[15px] font-semibold bg-primary text-white shadow-[0_0_20px_rgba(229,9,20,0.3)] animate-pulse-glow hover:scale-[1.02] active:scale-95 transition-transform">
+             )}
+             {mapsHref ? (
+             <a
+               href={mapsHref}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="inline-flex flex-[2] h-14 items-center justify-center rounded-lg gap-2 text-[15px] font-semibold bg-primary text-white shadow-[0_0_20px_rgba(229,9,20,0.3)] animate-pulse-glow hover:scale-[1.02] active:scale-95 transition-transform"
+             >
+               <Navigation size={18} className="fill-current" /> CÓMO LLEGAR
+             </a>
+             ) : (
+             <Button disabled className="flex-[2] h-14 gap-2 text-[15px] font-semibold bg-primary text-white shadow-[0_0_20px_rgba(229,9,20,0.3)]">
                <Navigation size={18} className="fill-current" /> CÓMO LLEGAR
              </Button>
+             )}
           </div>
         </div>}
       </div>

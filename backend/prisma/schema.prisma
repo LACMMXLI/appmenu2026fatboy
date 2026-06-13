@@ -16,6 +16,9 @@ model Branch {
   id        String   @id @db.Uuid
   name      String
   phone     String?
+  address   String?
+  hours     String?
+  mapsUrl   String?  @map("maps_url")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("branches")
@@ -173,4 +176,3 @@ model Feedback {
 
   @@map("feedbacks")
 }
-
