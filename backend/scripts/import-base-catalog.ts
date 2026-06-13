@@ -7,7 +7,10 @@ import { PrismaClient, type CatalogStatus } from '@prisma/client';
 
 type CsvRecord = Record<string, string | undefined>;
 
-const baseDataDir = resolve(process.cwd(), process.env.BASE_DATA_DIR ?? '../../base');
+const baseDataDir = resolve(
+  process.cwd(),
+  process.env.BASE_DATA_DIR ?? (existsSync(resolve(process.cwd(), './base')) ? './base' : '../../base')
+);
 const importOnlyIfEmpty = process.argv.includes('--if-empty');
 
 const files = {

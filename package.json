@@ -4,22 +4,22 @@
   "version": "0.1.0",
   "description": "Monorepo para Fatboy POS web, frontend, backend y respaldos de datos.",
   "workspaces": [
-    "apps/frontend",
-    "apps/backend"
+    "frontend",
+    "backend"
   ],
   "scripts": {
     "dev": "npm run dev:frontend",
-    "dev:frontend": "npm --prefix apps/frontend run dev",
-    "dev:backend": "npm --prefix apps/backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
     "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "npm --prefix apps/frontend run build",
-    "build:backend": "npm --prefix apps/backend run build",
-    "import:base": "npm --prefix apps/backend run import:base",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "import:base": "npm --prefix backend run import:base",
     "lint": "npm run lint:frontend && npm run lint:backend",
-    "lint:frontend": "npm --prefix apps/frontend run lint",
-    "lint:backend": "npm --prefix apps/backend run lint",
-    "prisma:generate": "npm --prefix apps/backend run prisma:generate",
-    "prisma:migrate": "npm --prefix apps/backend run prisma:migrate",
-    "prisma:deploy": "npm --prefix apps/backend run prisma:deploy"
+    "lint:frontend": "npm --prefix frontend run lint",
+    "lint:backend": "npm --prefix backend run lint",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:migrate": "npm --prefix backend run prisma:migrate",
+    "prisma:deploy": "npm --prefix backend run prisma:deploy"
   }
 }

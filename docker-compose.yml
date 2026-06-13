@@ -19,14 +19,14 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: fatboy-backend
     restart: always
     environment:
       PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-fatboy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fatboy_menu}
-      BASE_DATA_DIR: ../../base
+      BASE_DATA_DIR: ./base
       ADMIN_CATALOG_KEY: ${ADMIN_CATALOG_KEY:?ADMIN_CATALOG_KEY is required}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8371}
     depends_on:
@@ -37,8 +37,8 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: fatboy-frontend
     restart: always
     ports:
