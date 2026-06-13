@@ -13,7 +13,6 @@ interface ProductDetailViewProps {
 export function ProductDetailView({ onNavigate, product }: ProductDetailViewProps) {
   const { addItem } = useCart();
   const [qty, setQty] = useState(1);
-  const [meatPrep, setMeatPrep] = useState('Término medio');
   const [isLiked, setIsLiked] = useState(false);
   const [notes, setNotes] = useState('');
   
@@ -46,7 +45,6 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
       price: productPrice,
       qty,
       img: productImage,
-      meatPrep,
       extras: finalExtras,
       removals: selectedRemovals,
       notes,
@@ -84,10 +82,10 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
   return (
     <div className="h-full flex flex-col bg-background w-full max-w-md mx-auto relative overflow-hidden">
       {/* Scrollable Content Container */}
-      <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
+      <div className="flex-1 overflow-y-auto pb-[calc(110px+env(safe-area-inset-bottom))] no-scrollbar">
         {/* Header Image Area */}
-        <div className="relative h-[340px] bg-background w-full animate-fade-in">
-        <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20">
+        <div className="relative h-[240px] bg-background w-full animate-fade-in">
+        <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-20">
           <button onClick={() => onNavigate('menu')} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 hover:scale-105 active:scale-95 transition-all">
             <ArrowLeft size={20} />
           </button>
@@ -99,57 +97,36 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
           src={productImage}
           alt={product.name}
           className="w-full h-full object-cover object-center animate-zoom-in group-hover:scale-105 transition-transform duration-700"
-          style={{ maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)' }}
+          style={{ maskImage: 'linear-gradient(to bottom, black 75%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 75%, transparent 100%)' }}
         />
       </div>
 
-      <div className="px-6 -mt-4 relative z-10 w-full animate-fade-in-up stagger-1">
+      <div className="px-5 -mt-6 relative z-10 w-full animate-fade-in-up stagger-1">
         {product.isPromotion && (
-          <span className="inline-block bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider mb-2 shadow-md">
+          <span className="inline-block bg-primary text-white text-[9px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider mb-1.5 shadow-md">
             PROMO
           </span>
         )}
         
-        <div className="flex justify-between items-start mb-2 group">
-          <h1 className="font-display text-3xl tracking-wide max-w-[70%] leading-tight group-hover:text-gray-200 transition-colors">{product.name}</h1>
-          <span className="font-display text-3xl text-accent tracking-wide drop-shadow-sm group-hover:drop-shadow-[0_0_10px_rgba(250,189,0,0.5)] transition-all">${productPrice}</span>
+        <div className="flex justify-between items-start mb-1 gap-2 group">
+          <h1 className="font-display text-2xl tracking-wide flex-1 leading-tight group-hover:text-gray-200 transition-colors">{product.name}</h1>
+          <span className="font-display text-2xl text-accent tracking-wide drop-shadow-sm group-hover:drop-shadow-[0_0_10px_rgba(250,189,0,0.5)] transition-all shrink-0">${productPrice}</span>
         </div>
         
-        <p className="text-gray-400 text-sm leading-snug mb-8">
-          {product.description || product.shortDescription || 'Producto Fatboy'}
+        <p className="text-gray-400 text-[11px] leading-snug mb-5">
+          {(product.description || product.shortDescription || 'Producto Fatboy').replace('carne queso acompañada', 'carne y queso, acompañada')}
         </p>
 
-        {/* Options */}
-        <div className="mb-8 w-full animate-fade-in-up stagger-2">
-          <h3 className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-4">ELIGE TU OPCIÓN DE CARNE</h3>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-            {['Término medio', 'Bien cocido', '3/4'].map(opt => (
-              <button
-                key={opt}
-                onClick={() => setMeatPrep(opt)}
-                className={cn(
-                  "px-4 py-2.5 rounded-lg text-sm border whitespace-nowrap transition-all duration-300 hover:scale-[1.02] active:scale-95",
-                  meatPrep === opt 
-                    ? "bg-primary border-primary text-white font-semibold shadow-[0_0_15px_rgba(229,9,20,0.4)]" 
-                    : "bg-surface border-outline text-gray-300 hover:border-gray-500 hover:text-white"
-                )}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Removals */}
-        <div className="mb-8 w-full animate-fade-in-up stagger-3">
-          <h3 className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-4">MODIFICACIONES</h3>
-          <div className="flex flex-wrap gap-2">
+        <div className="mb-5 w-full animate-fade-in-up stagger-3">
+          <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-2.5">MODIFICACIONES</h3>
+          <div className="flex flex-wrap gap-1.5">
             {removalsList.map((rem) => (
               <button
                 key={rem}
                 onClick={() => toggleRemoval(rem)}
                 className={cn(
-                  "px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300",
+                  "px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-300",
                   selectedRemovals.includes(rem) 
                     ? "bg-primary/20 text-primary border border-primary/50" 
                     : "bg-surface text-gray-400 border border-outline hover:text-white hover:border-gray-500"
@@ -162,11 +139,11 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
         </div>
 
         {/* Extras */}
-        <div className="mb-8 w-full animate-fade-in-up stagger-3">
-          <h3 className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-4">EXTRAS</h3>
+        <div className="mb-5 w-full animate-fade-in-up stagger-3">
+          <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-2.5">EXTRAS</h3>
           <div className="flex flex-col border border-outline rounded-xl overflow-hidden bg-surface divide-y divide-outline shadow-lg transition-colors">
             {extras.map((extra, i) => (
-              <label key={i} className="flex justify-between items-center p-4 cursor-pointer hover:bg-surface-hover hover:-translate-y-0.5 transition-all group">
+              <label key={i} className="flex justify-between items-center p-3 cursor-pointer hover:bg-surface-hover hover:-translate-y-0.5 transition-all group">
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 rounded border border-gray-500 flex items-center justify-center relative overflow-hidden transition-colors group-hover:border-gray-300">
                     <input 
@@ -188,29 +165,29 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
 
         {/* Notes */}
         <div className="mb-4 w-full animate-fade-in-up stagger-4">
-          <h3 className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-4">NOTAS ESPECIALES</h3>
+          <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-2.5">NOTAS ESPECIALES</h3>
           <textarea 
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Escribe aquí alguna nota..." 
-            className="w-full bg-surface border border-outline rounded-xl p-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:shadow-[0_0_15px_rgba(229,9,20,0.1)] resize-none h-28 transition-all"
+            className="w-full bg-surface border border-outline rounded-xl p-3 text-[11px] text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:shadow-[0_0_15px_rgba(229,9,20,0.1)] resize-none h-16 transition-all"
           ></textarea>
         </div>
       </div>
       </div>
 
       {/* Fixed Bottom Action */}
-      <div className="absolute bottom-0 left-0 w-full p-4 bg-[#1a1a1a] border-t border-white/5 flex items-center gap-4 z-50 rounded-t-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.6)] animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-        <div className="flex items-center justify-between border border-outline hover:border-gray-500 transition-colors rounded-xl h-14 px-1 w-[120px] bg-surface">
-          <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors active:scale-95">
-            <Minus size={18} />
+      <div className="absolute bottom-0 left-0 w-full px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] bg-[#1a1a1a]/95 backdrop-blur-md border-t border-white/5 flex items-center gap-3 z-50 rounded-t-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.6)] animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+        <div className="flex items-center justify-between border border-outline hover:border-gray-500 transition-colors rounded-xl h-11 px-1 w-[100px] bg-surface shrink-0">
+          <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors active:scale-95">
+            <Minus size={16} />
           </button>
-          <span className="font-bold text-lg w-6 text-center text-white">{qty}</span>
-          <button onClick={() => setQty(qty + 1)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors active:scale-95">
-            <Plus size={18} />
+          <span className="font-bold text-base w-6 text-center text-white">{qty}</span>
+          <button onClick={() => setQty(qty + 1)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors active:scale-95">
+            <Plus size={16} />
           </button>
         </div>
-        <Button size="lg" className="flex-1 text-[15px] animate-pulse-glow hover:scale-[1.02] active:scale-95 transition-transform" onClick={handleAddToCart}>
+        <Button size="lg" className="flex-1 text-[13px] h-11 px-0 animate-pulse-glow hover:scale-[1.02] active:scale-95 transition-transform" onClick={handleAddToCart}>
           AGREGAR AL CARRITO
         </Button>
       </div>
