@@ -1,4 +1,5 @@
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
+const NO_STORE: RequestCache = 'no-store';
 
 
 export interface Branch {
@@ -103,6 +104,7 @@ export async function uploadAdminProductImage(adminKey: string, id: string, file
 
   const response = await fetch(`${API_BASE_URL}/admin/products/${id}/image`, {
     method: 'POST',
+    cache: NO_STORE,
     headers: {
       Accept: 'application/json',
       'x-admin-key': adminKey,
@@ -124,6 +126,7 @@ export async function deleteAdminProduct(adminKey: string, id: string): Promise<
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    cache: NO_STORE,
     headers: {
       Accept: 'application/json',
     },
@@ -139,6 +142,7 @@ async function getJson<T>(path: string): Promise<T> {
 async function adminJson<T>(path: string, adminKey: string, method = 'GET', body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
+    cache: NO_STORE,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -262,6 +266,7 @@ export async function createOrder(payload: OrderPayload, token?: string): Promis
   }
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: 'POST',
+    cache: NO_STORE,
     headers,
     body: JSON.stringify(payload),
   });
@@ -319,6 +324,7 @@ export async function deleteAdminCustomer(adminKey: string, id: string): Promise
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
+    cache: NO_STORE,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -337,6 +343,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 async function requestWithAuth<T>(path: string, token: string, method = 'GET', body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
+    cache: NO_STORE,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -402,4 +409,3 @@ export async function submitFeedback(rating: number, comment: string): Promise<{
 export async function getAdminFeedback(adminKey: string): Promise<FeedbackItem[]> {
   return adminJson<FeedbackItem[]>('/admin/feedback', adminKey);
 }
-

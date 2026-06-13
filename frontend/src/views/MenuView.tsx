@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, Plus, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
@@ -43,25 +43,40 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError]         = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      try {
-        setIsLoading(true);
-        const [cats, prods] = await Promise.all([getCategories(), getProducts()]);
-        if (!mounted) return;
-        setCategories(cats);
-        setProducts(prods);
-        setActiveCategoryId(initialCategoryId || cats[0]?.id || '');
-      } catch {
-        if (mounted) setError('No se pudo cargar el menú. Verifica el backend.');
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
+  const loadMenu = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setIsLoading(true);
+      setError(null);
+      const [cats, prods] = await Promise.all([getCategories(), getProducts()]);
+      setCategories(cats);
+      setProducts(prods);
+      setActiveCategoryId((current) => current || initialCategoryId || cats[0]?.id || '');
+    } catch {
+      setError('No se pudo cargar el menú. Verifica el backend.');
+    } finally {
+      if (showLoading) setIsLoading(false);
     }
-    load();
-    return () => { mounted = false; };
-  }, []);
+  }, [initialCategoryId]);
+
+  useEffect(() => {
+    void loadMenu(true);
+  }, [loadMenu]);
+
+  useEffect(() => {
+    const refreshVisibleMenu = () => {
+      if (document.visibilityState === 'visible') {
+        void loadMenu(false);
+      }
+    };
+
+    window.addEventListener('focus', refreshVisibleMenu);
+    document.addEventListener('visibilitychange', refreshVisibleMenu);
+
+    return () => {
+      window.removeEventListener('focus', refreshVisibleMenu);
+      document.removeEventListener('visibilitychange', refreshVisibleMenu);
+    };
+  }, [loadMenu]);
 
   useEffect(() => {
     if (initialCategoryId) {

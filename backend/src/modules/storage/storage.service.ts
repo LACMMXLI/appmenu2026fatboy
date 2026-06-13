@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { Client } from 'minio';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
@@ -22,6 +22,7 @@ const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'ima
 
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
   private readonly bucket = process.env.MINIO_BUCKET || 'menu-fatboy';
   private readonly publicUrl = process.env.MINIO_PUBLIC_URL?.replace(/\/$/, '') || '';
   private client?: Client;
@@ -45,13 +46,21 @@ export class StorageService {
 
     await this.ensureBucket();
 
+    this.logger.log(`Subiendo imagen de producto a MinIO: bucket=${this.bucket} objectKey=${objectKey} productId=${target.productId}`);
+
     try {
       await this.getClient().putObject(this.bucket, objectKey, file.buffer, file.size, {
         'Content-Type': file.mimetype === 'image/jpg' ? 'image/jpeg' : file.mimetype,
       });
-    } catch {
+    } catch (error: any) {
+      this.logger.error(
+        `Fallo al escribir imagen en MinIO: bucket=${this.bucket} objectKey=${objectKey} productId=${target.productId}`,
+        error?.stack || error?.message,
+      );
       throw new InternalServerErrorException('No se pudo guardar imagen en MinIO.');
     }
+
+    this.logger.log(`Imagen guardada en MinIO: bucket=${this.bucket} objectKey=${objectKey} productId=${target.productId}`);
 
     return {
       bucket: this.bucket,
@@ -70,7 +79,8 @@ export class StorageService {
 
     try {
       await this.getClient().removeObject(this.bucket, objectKey);
-    } catch {
+    } catch (error: any) {
+      this.logger.error(`Fallo al eliminar imagen anterior en MinIO: bucket=${this.bucket} objectKey=${objectKey}`, error?.stack || error?.message);
       throw new InternalServerErrorException('No se pudo eliminar imagen anterior de MinIO.');
     }
   }
@@ -94,7 +104,8 @@ export class StorageService {
     try {
       const stream = await this.getClient().getObject(this.bucket, previousObjectKey);
       fileBuffer = await this.streamToBuffer(stream);
-    } catch {
+    } catch (error: any) {
+      this.logger.error(`Fallo al leer imagen anterior desde MinIO: bucket=${this.bucket} objectKey=${previousObjectKey}`, error?.stack || error?.message);
       throw new InternalServerErrorException('No se pudo leer imagen anterior desde MinIO.');
     }
 
@@ -102,7 +113,8 @@ export class StorageService {
       await this.getClient().putObject(this.bucket, objectKey, fileBuffer, fileBuffer.length, {
         'Content-Type': this.resolveContentType(parsed.extension),
       });
-    } catch {
+    } catch (error: any) {
+      this.logger.error(`Fallo al reubicar imagen en MinIO: bucket=${this.bucket} objectKey=${objectKey}`, error?.stack || error?.message);
       throw new InternalServerErrorException('No se pudo guardar imagen en MinIO.');
     }
 
@@ -156,8 +168,10 @@ export class StorageService {
       throw new InternalServerErrorException('No se pudo conectar a MinIO: faltan variables de entorno.');
     }
 
+    const normalizedEndpoint = endpoint.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+
     this.client = new Client({
-      endPoint: endpoint,
+      endPoint: normalizedEndpoint,
       port: Number(process.env.MINIO_PORT || 9000),
       useSSL: process.env.MINIO_USE_SSL === 'true',
       accessKey,

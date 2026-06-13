@@ -9,6 +9,16 @@ const corsOrigin = parseCorsOrigin(process.env.CORS_ORIGIN);
 const app = await NestFactory.create(AppModule);
 
 app.setGlobalPrefix('api');
+app.use((req: any, res: any, next: () => void) => {
+  if (req.path?.startsWith('/api')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+  }
+
+  next();
+});
 app.enableCors({
   origin: corsOrigin,
   credentials: true,

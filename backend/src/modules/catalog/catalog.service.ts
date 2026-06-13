@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CatalogStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -31,6 +31,8 @@ interface ProductInput {
 
 @Injectable()
 export class CatalogService {
+  private readonly logger = new Logger(CatalogService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
@@ -243,6 +245,8 @@ export class CatalogService {
       },
       include: { category: true },
     });
+
+    this.logger.log(`Producto actualizado con imagen: productId=${id} imageUrl=${uploadedImage.publicUrl} objectKey=${uploadedImage.objectKey}`);
 
     await this.storageService.deleteProductImage(uploadedImage.previousObjectKey);
 

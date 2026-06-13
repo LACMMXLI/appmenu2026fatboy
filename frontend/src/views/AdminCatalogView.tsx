@@ -196,6 +196,8 @@ export function AdminCatalogView() {
     await runAction(async () => {
       const updatedProduct = await uploadAdminProductImage(adminKey, product.id, file, 'main');
       updateLocalProduct(product.id, updatedProduct);
+      const refreshedCatalog = await getAdminCatalog(adminKey);
+      setCatalog(refreshedCatalog);
       success = true;
     }, 'Imagen de producto subida.');
     return success;
