@@ -29,6 +29,13 @@ services:
       BASE_DATA_DIR: ./base
       ADMIN_CATALOG_KEY: ${ADMIN_CATALOG_KEY:?ADMIN_CATALOG_KEY is required}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8371}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:?MINIO_ENDPOINT is required}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:-menu-fatboy}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:?MINIO_PUBLIC_URL is required}
     depends_on:
       postgres:
         condition: service_healthy

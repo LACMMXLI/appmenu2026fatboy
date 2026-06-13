@@ -96,6 +96,28 @@ export async function updateAdminProduct(adminKey: string, id: string, payload: 
   return adminJson<Product>(`/admin/products/${id}`, adminKey, 'PATCH', payload);
 }
 
+export async function uploadAdminProductImage(adminKey: string, id: string, file: File, role = 'main'): Promise<Product> {
+  const formData = new FormData();
+  formData.append('image', file);
+  formData.append('role', role);
+
+  const response = await fetch(`${API_BASE_URL}/admin/products/${id}/image`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'x-admin-key': adminKey,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const message = await readApiMessage(response);
+    throw new Error(message || `API ${response.status}: ${response.statusText}`);
+  }
+
+  return response.json() as Promise<Product>;
+}
+
 export async function deleteAdminProduct(adminKey: string, id: string): Promise<{ ok: boolean }> {
   return adminJson<{ ok: boolean }>(`/admin/products/${id}`, adminKey, 'DELETE');
 }
@@ -380,5 +402,4 @@ export async function submitFeedback(rating: number, comment: string): Promise<{
 export async function getAdminFeedback(adminKey: string): Promise<FeedbackItem[]> {
   return adminJson<FeedbackItem[]>('/admin/feedback', adminKey);
 }
-
 

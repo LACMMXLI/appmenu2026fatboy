@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { CatalogStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { StorageService, type UploadedImageFile } from '../storage/storage.service.js';
 
 interface ProductFilters {
   categoryId?: string;
@@ -30,7 +31,10 @@ interface ProductInput {
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
 
   async listBranches() {
     return this.prisma.branch.findMany({
@@ -167,10 +171,24 @@ export class CatalogService {
   }
 
   async updateProduct(id: string, input: ProductInput) {
-    await this.requireProduct(id);
+    const existingProduct = await this.requireProduct(id);
+    let nextCategoryName: string | undefined;
+    let relocatedImageUrl: string | undefined;
 
     if (input.categoryId !== undefined) {
-      await this.requireCategory(input.categoryId);
+      const nextCategory = await this.requireCategory(input.categoryId);
+      nextCategoryName = nextCategory.name;
+    }
+
+    const categoryChanged = input.categoryId !== undefined && input.categoryId !== existingProduct.categoryId;
+    const imageWasNotManuallyChanged = input.imageUrl === undefined || input.imageUrl === existingProduct.imageUrl;
+    if (categoryChanged && existingProduct.imageUrl && imageWasNotManuallyChanged && nextCategoryName) {
+      const relocated = await this.storageService.relocateProductImage({
+        productId: id,
+        categoryName: nextCategoryName,
+        currentImageUrl: existingProduct.imageUrl,
+      });
+      relocatedImageUrl = relocated?.publicUrl;
     }
 
     return this.mapProduct(
@@ -184,6 +202,7 @@ export class CatalogService {
           ...(input.description !== undefined ? { description: this.optionalText(input.description) } : {}),
           ...(input.shortDescription !== undefined ? { shortDescription: this.optionalText(input.shortDescription) } : {}),
           ...(input.imageUrl !== undefined ? { imageUrl: this.optionalText(input.imageUrl) } : {}),
+          ...(relocatedImageUrl !== undefined ? { imageUrl: relocatedImageUrl } : {}),
           ...(input.isPromotion !== undefined ? { isPromotion: Boolean(input.isPromotion) } : {}),
           ...(input.promotionTag !== undefined ? { promotionTag: this.optionalText(input.promotionTag) } : {}),
           ...(input.promotionTagColor !== undefined ? { promotionTagColor: this.optionalText(input.promotionTagColor) } : {}),
@@ -191,6 +210,43 @@ export class CatalogService {
         include: { category: true },
       }),
     );
+  }
+
+  async replaceProductImage(id: string, file: UploadedImageFile | undefined, role?: string) {
+    if (!file) {
+      throw new BadRequestException('Imagen inválida.');
+    }
+
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { category: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Producto no encontrado.');
+    }
+
+    const uploadedImage = await this.storageService.replaceProductImage(
+      {
+        productId: product.id,
+        categoryName: product.category.name,
+        currentImageUrl: product.imageUrl,
+        role: role || 'main',
+      },
+      file,
+    );
+
+    const updatedProduct = await this.prisma.product.update({
+      where: { id },
+      data: {
+        imageUrl: uploadedImage.publicUrl,
+      },
+      include: { category: true },
+    });
+
+    await this.storageService.deleteProductImage(uploadedImage.previousObjectKey);
+
+    return this.mapProduct(updatedProduct);
   }
 
   async deleteProduct(id: string) {

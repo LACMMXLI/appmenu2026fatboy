@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, KeyRound, Plus, RefreshCw, Save, Search, Trash2, Tag, Users, FileText, ShoppingBag, Store, Image, Settings, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -16,6 +16,7 @@ import {
   type Product,
   updateAdminCategory,
   updateAdminProduct,
+  uploadAdminProductImage,
   // Nuevas APIs
   getAdminCustomers,
   updateAdminCustomerPoints,
@@ -188,6 +189,16 @@ export function AdminCatalogView() {
       });
       await refreshAll();
     }, 'Producto guardado.');
+  }
+
+  async function uploadProductImage(product: Product, file: File) {
+    let success = false;
+    await runAction(async () => {
+      const updatedProduct = await uploadAdminProductImage(adminKey, product.id, file, 'main');
+      updateLocalProduct(product.id, updatedProduct);
+      success = true;
+    }, 'Imagen de producto subida.');
+    return success;
   }
 
   async function createProduct() {
@@ -371,6 +382,7 @@ export function AdminCatalogView() {
             onCreateProduct={createProduct}
             onProductChange={updateLocalProduct}
             onSaveProduct={saveProduct}
+            onUploadProductImage={uploadProductImage}
             onDeleteProduct={(product) =>
               runAction(async () => {
                 if (!window.confirm(`Eliminar producto "${product.name}"?`)) return;
@@ -518,6 +530,7 @@ interface ProductsAdminProps {
   onCreateProduct: () => void;
   onProductChange: (id: string, patch: Partial<Product>) => void;
   onSaveProduct: (product: Product) => void;
+  onUploadProductImage: (product: Product, file: File) => Promise<boolean>;
   onDeleteProduct: (product: Product) => void;
 }
 
@@ -533,8 +546,60 @@ function ProductsAdmin({
   onCreateProduct,
   onProductChange,
   onSaveProduct,
+  onUploadProductImage,
   onDeleteProduct,
 }: ProductsAdminProps) {
+  const [selectedImageFiles, setSelectedImageFiles] = useState<Record<string, File | undefined>>({});
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string | undefined>>({});
+  const previewUrlsRef = useRef(previewUrls);
+
+  useEffect(() => {
+    previewUrlsRef.current = previewUrls;
+  }, [previewUrls]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(previewUrlsRef.current as Record<string, string | undefined>).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
+
+  function handleImageFileChange(productId: string, file?: File) {
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Archivo demasiado grande. Máximo permitido: 5 MB.');
+      return;
+    }
+
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
+      alert('Imagen inválida. Solo se permite PNG, JPG, JPEG o WEBP.');
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrls((current) => {
+      if (current[productId]) URL.revokeObjectURL(current[productId]);
+      return { ...current, [productId]: nextPreviewUrl };
+    });
+    setSelectedImageFiles((current) => ({ ...current, [productId]: file }));
+  }
+
+  async function handleUploadSelectedImage(product: Product) {
+    const file = selectedImageFiles[product.id];
+    if (!file) return;
+
+    const success = await onUploadProductImage(product, file);
+    if (!success) return;
+
+    setSelectedImageFiles((current) => ({ ...current, [product.id]: undefined }));
+    setPreviewUrls((current) => {
+      if (current[product.id]) URL.revokeObjectURL(current[product.id]);
+      return { ...current, [product.id]: undefined };
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1.2fr_140px_1fr_2fr_auto]">
@@ -601,7 +666,45 @@ function ProductsAdmin({
                   <input value={product.description ?? ''} onChange={(event) => onProductChange(product.id, { description: event.target.value })} className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white" />
                 </td>
                 <td className="p-2">
-                  <input value={product.imageUrl ?? ''} onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })} className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white text-xs" />
+                  <div className="flex min-w-[280px] items-center gap-2">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
+                      {previewUrls[product.id] || product.imageUrl ? (
+                        <img
+                          src={previewUrls[product.id] || product.imageUrl || ''}
+                          alt={product.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-gray-600">
+                          <Image size={16} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid flex-1 gap-1">
+                      <input value={product.imageUrl ?? ''} onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })} className="h-9 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white text-xs" />
+                      <div className="flex items-center gap-2">
+                        <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-outline bg-background px-3 text-[11px] font-bold uppercase text-gray-300 transition-colors hover:border-primary hover:text-white">
+                          Seleccionar
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            className="hidden"
+                            onChange={(event) => handleImageFileChange(product.id, event.target.files?.[0])}
+                          />
+                        </label>
+                        {selectedImageFiles[product.id] && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleUploadSelectedImage(product)}
+                            disabled={isLoading}
+                            className="h-8 bg-blue-600 px-3 text-[11px] hover:bg-blue-700"
+                          >
+                            Subir
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </td>
                 <td className="p-2">
                   <button
@@ -1392,6 +1495,3 @@ function FeedbackAdmin({ feedbacks, isLoading }: FeedbackAdminProps) {
     </div>
   );
 }
-
-
-
