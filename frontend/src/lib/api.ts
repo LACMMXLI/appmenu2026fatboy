@@ -1,4 +1,8 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ??
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.PROD ? 'https://bakendmenu.fatboymexicali.com/api' : '/api')
+).replace(/\/$/, '');
 const NO_STORE: RequestCache = 'no-store';
 
 
