@@ -38,14 +38,34 @@ interface RedeemableProductInput {
   order?: number;
 }
 
+const FIXED_BRANCH_DETAILS = {
+  venecia: {
+    phone: '+526861105191',
+    address: 'Calz Lombardo Toledano 1200, Hacienda del Bosque, 21355 Mexicali, B.C.',
+    hours: 'Lunes a domingo 12:00 PM - 3:00 AM',
+    mapsUrl: 'https://maps.app.goo.gl/vwVeVoSUrbbD2oMM6',
+  },
+  sanMarcos: {
+    phone: '+526862761824',
+    address: 'C. Uxmal 101, San Marcos, 21050 Mexicali, B.C.',
+    hours: '24 horas todos los días',
+    mapsUrl: 'https://maps.app.goo.gl/ytg4tsmf3MrMnSm38',
+  },
+} as const;
+
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listBranches() {
-    return this.prisma.branch.findMany({
+    const branches = await this.prisma.branch.findMany({
       orderBy: { name: 'asc' },
     });
+
+    return branches.map((branch) => ({
+      ...branch,
+      ...this.fixedBranchDetails(branch.name),
+    }));
   }
 
   async listCategories(status?: string) {
@@ -563,5 +583,22 @@ export class CatalogService {
       favoriteBranchId: true,
       createdAt: true,
     } satisfies Prisma.CustomerSelect;
+  }
+
+  private fixedBranchDetails(branchName: string) {
+    const normalized = branchName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    if (normalized.includes('san marcos')) {
+      return FIXED_BRANCH_DETAILS.sanMarcos;
+    }
+
+    if (normalized.includes('venecia') || normalized.includes('venezia')) {
+      return FIXED_BRANCH_DETAILS.venecia;
+    }
+
+    return {};
   }
 }
