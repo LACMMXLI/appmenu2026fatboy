@@ -14,6 +14,7 @@
     "import:base": "tsx scripts/import-base-catalog.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.19.21",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
   },
