@@ -40,7 +40,7 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
       submitFeedback(selected, 'Redirigido a Google Reseñas')
         .catch((err) => console.error('Error saving 4/5 star feedback:', err));
 
-      const targetLink = googleUrl || 'https://search.google.com/local/writereview?placeid=ChIJN1t_tDeuEmsRUsoyG83dQkw';
+      const targetLink = googleUrl || 'https://search.google.com/local/writereview?placeid=ChIJi0vnrExx14ARCFbYG3xvPqo';
       
       setTimeout(() => {
         window.open(targetLink, '_blank', 'noopener,noreferrer');

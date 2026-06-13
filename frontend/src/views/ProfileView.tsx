@@ -131,14 +131,14 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
       <div className="w-full mb-3">
         <h3 className="font-display text-lg tracking-wide mb-2">CONTACTO & AYUDA</h3>
         <div className="bg-surface border border-outline/50 rounded-xl overflow-hidden divide-y divide-outline/50">
-          <a href="https://wa.me/526861234567" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between p-3 hover:bg-surface-hover transition-colors">
+          <a href="https://wa.me/526861105191" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between p-3 hover:bg-surface-hover transition-colors">
             <div className="flex items-center gap-2.5">
               <Phone size={16} className="text-[#25D366]" />
               <span className="text-xs font-semibold text-white">WhatsApp Fatboy Venecia</span>
             </div>
             <ChevronRight size={16} className="text-gray-500" />
           </a>
-          <a href="https://wa.me/526867654321" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between p-3 hover:bg-surface-hover transition-colors">
+          <a href="https://wa.me/526862761824" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between p-3 hover:bg-surface-hover transition-colors">
             <div className="flex items-center gap-2.5">
               <Phone size={16} className="text-[#25D366]" />
               <span className="text-xs font-semibold text-white">WhatsApp Fatboy San Marcos</span>
