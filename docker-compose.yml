@@ -1,18 +1,21 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
     container_name: fatboy-postgres
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: cacl691015
-      POSTGRES_DB: fatboy_menu
+      POSTGRES_USER: ${POSTGRES_USER:-fatboy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-fatboy_menu}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     expose:
       - 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -22,11 +25,13 @@ services:
     restart: always
     environment:
       PORT: 3000
-      DATABASE_URL: postgresql://postgres:cacl691015@postgres:5432/fatboy_menu
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fatboy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fatboy_menu}
       BASE_DATA_DIR: ../../base
-      ADMIN_CATALOG_KEY: FatboyAdmin-2026
+      ADMIN_CATALOG_KEY: ${ADMIN_CATALOG_KEY:?ADMIN_CATALOG_KEY is required}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8371}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     expose:
       - 3000
 
@@ -37,7 +42,7 @@ services:
     container_name: fatboy-frontend
     restart: always
     ports:
-      - "8371:80"
+      - "${FRONTEND_PORT:-8371}:80"
     depends_on:
       - backend
 

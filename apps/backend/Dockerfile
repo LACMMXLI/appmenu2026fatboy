@@ -19,7 +19,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/backend/node_modules ./apps/backend/node_modules
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 COPY --from=builder /app/apps/backend/prisma ./apps/backend/prisma
+COPY --from=builder /app/apps/backend/scripts ./apps/backend/scripts
 COPY base/ ./base/
 WORKDIR /app/apps/backend
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run import:base && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

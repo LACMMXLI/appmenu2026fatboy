@@ -210,6 +210,14 @@ export class CatalogService {
             ],
           }
         : {},
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        points: true,
+        favoriteBranchId: true,
+        createdAt: true,
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -222,6 +230,7 @@ export class CatalogService {
     return this.prisma.customer.update({
       where: { id },
       data: { points: pts },
+      select: this.customerPublicSelect(),
     });
   }
 
@@ -232,6 +241,7 @@ export class CatalogService {
         ...(input.name !== undefined ? { name: this.requiredText(input.name, 'nombre') } : {}),
         ...(input.phone !== undefined ? { phone: this.requiredText(input.phone, 'teléfono') } : {}),
       },
+      select: this.customerPublicSelect(),
     });
   }
 
@@ -403,5 +413,16 @@ export class CatalogService {
       ...product,
       price: Number(product.price),
     };
+  }
+
+  private customerPublicSelect() {
+    return {
+      id: true,
+      name: true,
+      phone: true,
+      points: true,
+      favoriteBranchId: true,
+      createdAt: true,
+    } satisfies Prisma.CustomerSelect;
   }
 }
