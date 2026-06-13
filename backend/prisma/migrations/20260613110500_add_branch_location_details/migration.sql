@@ -15,7 +15,7 @@ WHERE lower("name") IN ('venecia', 'venezia')
 UPDATE "branches"
 SET
   "phone" = COALESCE(NULLIF("phone", ''), '+526862761824'),
-  "address" = 'Uxmal 101, Fracc. San Marcos, 21050 Mexicali, B.C.',
-  "hours" = 'Abierto 24 horas',
+  "address" = 'C. Uxmal 101, San Marcos, 21050 Mexicali, B.C.',
+  "hours" = '24 horas todos los días',
   "maps_url" = 'https://maps.app.goo.gl/ytg4tsmf3MrMnSm38'
 WHERE lower("name") LIKE '%san marcos%';
