@@ -9,18 +9,14 @@ import {
   Post,
   Query,
   UnauthorizedException,
-  UploadedFile,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { CatalogService } from './catalog.service.js';
-import type { UploadedImageFile } from '../storage/storage.service.js';
 
 interface CategoryBody {
   name?: string;
   order?: number;
   status?: string;
+  imageUrl?: string | null;
 }
 
 interface ProductBody {
@@ -106,18 +102,6 @@ export class CatalogController {
   ) {
     this.assertAdmin(adminKey);
     return this.catalogService.updateProduct(id, body);
-  }
-
-  @Post('admin/products/:id/image')
-  @UseInterceptors(FileInterceptor('image', { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }))
-  uploadProductImage(
-    @Headers('x-admin-key') adminKey: string | undefined,
-    @Param('id') id: string,
-    @UploadedFile() file: UploadedImageFile | undefined,
-    @Body('role') role?: string,
-  ) {
-    this.assertAdmin(adminKey);
-    return this.catalogService.replaceProductImage(id, file, role);
   }
 
   @Delete('admin/products/:id')

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, KeyRound, Plus, RefreshCw, Save, Search, Trash2, Tag, Users, FileText, ShoppingBag, Store, Image, Settings, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -16,7 +16,6 @@ import {
   type Product,
   updateAdminCategory,
   updateAdminProduct,
-  uploadAdminProductImage,
   // Nuevas APIs
   getAdminCustomers,
   updateAdminCustomerPoints,
@@ -49,6 +48,7 @@ const emptyProduct = {
   price: 0,
   categoryId: '',
   description: '',
+  imageUrl: '',
 };
 
 const [veneciaReviewBranch, sanMarcosReviewBranch] = GOOGLE_REVIEW_BRANCHES;
@@ -73,7 +73,7 @@ export function AdminCatalogView() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   
-  const [newCategory, setNewCategory] = useState({ name: '', order: 999 });
+  const [newCategory, setNewCategory] = useState({ name: '', order: 999, imageUrl: '' });
   const [newProduct, setNewProduct] = useState(emptyProduct);
   const [newBanner, setNewBanner] = useState({ imageUrl: '', title: '', subtitle: '', buttonText: '', linkView: 'menu', order: 999 });
 
@@ -191,18 +191,6 @@ export function AdminCatalogView() {
     }, 'Producto guardado.');
   }
 
-  async function uploadProductImage(product: Product, file: File) {
-    let success = false;
-    await runAction(async () => {
-      const updatedProduct = await uploadAdminProductImage(adminKey, product.id, file, 'main');
-      updateLocalProduct(product.id, updatedProduct);
-      const refreshedCatalog = await getAdminCatalog(adminKey);
-      setCatalog(refreshedCatalog);
-      success = true;
-    }, 'Imagen de producto subida.');
-    return success;
-  }
-
   async function createProduct() {
     await runAction(async () => {
       await createAdminProduct(adminKey, {
@@ -210,6 +198,7 @@ export function AdminCatalogView() {
         price: newProduct.price,
         categoryId: newProduct.categoryId,
         description: newProduct.description,
+        imageUrl: newProduct.imageUrl,
       });
       setNewProduct({ ...emptyProduct, categoryId: catalog.categories[0]?.id || '' });
       await refreshAll();
@@ -233,6 +222,7 @@ export function AdminCatalogView() {
         name: category.name,
         order: category.order,
         status: category.status,
+        imageUrl: category.imageUrl,
       });
       await refreshAll();
     }, 'Categoría guardada.');
@@ -241,7 +231,7 @@ export function AdminCatalogView() {
   async function createCategory() {
     await runAction(async () => {
       await createAdminCategory(adminKey, newCategory);
-      setNewCategory({ name: '', order: 999 });
+      setNewCategory({ name: '', order: 999, imageUrl: '' });
       await refreshAll();
     }, 'Categoría creada.');
   }
@@ -384,7 +374,6 @@ export function AdminCatalogView() {
             onCreateProduct={createProduct}
             onProductChange={updateLocalProduct}
             onSaveProduct={saveProduct}
-            onUploadProductImage={uploadProductImage}
             onDeleteProduct={(product) =>
               runAction(async () => {
                 if (!window.confirm(`Eliminar producto "${product.name}"?`)) return;
@@ -532,7 +521,6 @@ interface ProductsAdminProps {
   onCreateProduct: () => void;
   onProductChange: (id: string, patch: Partial<Product>) => void;
   onSaveProduct: (product: Product) => void;
-  onUploadProductImage: (product: Product, file: File) => Promise<boolean>;
   onDeleteProduct: (product: Product) => void;
 }
 
@@ -548,63 +536,11 @@ function ProductsAdmin({
   onCreateProduct,
   onProductChange,
   onSaveProduct,
-  onUploadProductImage,
   onDeleteProduct,
 }: ProductsAdminProps) {
-  const [selectedImageFiles, setSelectedImageFiles] = useState<Record<string, File | undefined>>({});
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string | undefined>>({});
-  const previewUrlsRef = useRef(previewUrls);
-
-  useEffect(() => {
-    previewUrlsRef.current = previewUrls;
-  }, [previewUrls]);
-
-  useEffect(() => {
-    return () => {
-      Object.values(previewUrlsRef.current as Record<string, string | undefined>).forEach((url) => {
-        if (url) URL.revokeObjectURL(url);
-      });
-    };
-  }, []);
-
-  function handleImageFileChange(productId: string, file?: File) {
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Archivo demasiado grande. Máximo permitido: 5 MB.');
-      return;
-    }
-
-    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
-      alert('Imagen inválida. Solo se permite PNG, JPG, JPEG o WEBP.');
-      return;
-    }
-
-    const nextPreviewUrl = URL.createObjectURL(file);
-    setPreviewUrls((current) => {
-      if (current[productId]) URL.revokeObjectURL(current[productId]);
-      return { ...current, [productId]: nextPreviewUrl };
-    });
-    setSelectedImageFiles((current) => ({ ...current, [productId]: file }));
-  }
-
-  async function handleUploadSelectedImage(product: Product) {
-    const file = selectedImageFiles[product.id];
-    if (!file) return;
-
-    const success = await onUploadProductImage(product, file);
-    if (!success) return;
-
-    setSelectedImageFiles((current) => ({ ...current, [product.id]: undefined }));
-    setPreviewUrls((current) => {
-      if (current[product.id]) URL.revokeObjectURL(current[product.id]);
-      return { ...current, [product.id]: undefined };
-    });
-  }
-
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1.2fr_140px_1fr_2fr_auto]">
+      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1.2fr_140px_1fr_1.4fr_2fr_auto]">
         <Input label="Nuevo producto" value={newProduct.name} onChange={(event) => onNewProductChange({ ...newProduct, name: event.target.value })} />
         <Input label="Precio" type="number" min="0" step="0.01" value={newProduct.price} onChange={(event) => onNewProductChange({ ...newProduct, price: Number(event.target.value) })} />
         <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -619,6 +555,7 @@ function ProductsAdmin({
             ))}
           </select>
         </label>
+        <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} />
         <Input label="Descripción" value={newProduct.description} onChange={(event) => onNewProductChange({ ...newProduct, description: event.target.value })} />
         <Button className="self-end animate-pulse-glow" onClick={onCreateProduct} disabled={isLoading || !newProduct.name || !newProduct.categoryId}>
           <Plus size={16} className="mr-2" /> Crear
@@ -670,9 +607,9 @@ function ProductsAdmin({
                 <td className="p-2">
                   <div className="flex min-w-[280px] items-center gap-2">
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
-                      {previewUrls[product.id] || product.imageUrl ? (
+                      {product.imageUrl ? (
                         <img
-                          src={previewUrls[product.id] || product.imageUrl || ''}
+                          src={product.imageUrl}
                           alt={product.name}
                           className="h-full w-full object-cover"
                         />
@@ -683,28 +620,7 @@ function ProductsAdmin({
                       )}
                     </div>
                     <div className="grid flex-1 gap-1">
-                      <input value={product.imageUrl ?? ''} onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })} className="h-9 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white text-xs" />
-                      <div className="flex items-center gap-2">
-                        <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-outline bg-background px-3 text-[11px] font-bold uppercase text-gray-300 transition-colors hover:border-primary hover:text-white">
-                          Seleccionar
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/jpg,image/webp"
-                            className="hidden"
-                            onChange={(event) => handleImageFileChange(product.id, event.target.files?.[0])}
-                          />
-                        </label>
-                        {selectedImageFiles[product.id] && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleUploadSelectedImage(product)}
-                            disabled={isLoading}
-                            className="h-8 bg-blue-600 px-3 text-[11px] hover:bg-blue-700"
-                          >
-                            Subir
-                          </Button>
-                        )}
-                      </div>
+                      <input value={product.imageUrl ?? ''} onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })} placeholder="https://..." className="h-9 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white text-xs" />
                     </div>
                   </div>
                 </td>
@@ -735,9 +651,9 @@ function ProductsAdmin({
 // --- SUB-COMPONENTE CATEGORIAS ---
 interface CategoriesAdminProps {
   categories: Category[];
-  newCategory: { name: string; order: number };
+  newCategory: { name: string; order: number; imageUrl: string };
   isLoading: boolean;
-  onNewCategoryChange: (value: { name: string; order: number }) => void;
+  onNewCategoryChange: (value: { name: string; order: number; imageUrl: string }) => void;
   onCreateCategory: () => void;
   onCategoryChange: (id: string, patch: Partial<Category>) => void;
   onSaveCategory: (category: Category) => void;
@@ -756,20 +672,22 @@ function CategoriesAdmin({
 }: CategoriesAdminProps) {
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1fr_140px_auto]">
+      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1fr_140px_1.4fr_auto]">
         <Input label="Nueva categoría" value={newCategory.name} onChange={(event) => onNewCategoryChange({ ...newCategory, name: event.target.value })} />
         <Input label="Orden" type="number" min="0" value={newCategory.order} onChange={(event) => onNewCategoryChange({ ...newCategory, order: Number(event.target.value) })} />
+        <Input label="URL imagen" value={newCategory.imageUrl} onChange={(event) => onNewCategoryChange({ ...newCategory, imageUrl: event.target.value })} />
         <Button className="self-end animate-pulse-glow" onClick={onCreateCategory} disabled={isLoading || !newCategory.name}>
           <Plus size={16} className="mr-2" /> Crear
         </Button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
-        <table className="w-full min-w-[780px] border-collapse text-sm">
+        <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead className="bg-surface-hover text-xs uppercase tracking-wider text-gray-400">
             <tr>
               <th className="p-3 text-left">Categoría</th>
               <th className="p-3 text-left">Orden</th>
+              <th className="p-3 text-left">Imagen (URL)</th>
               <th className="p-3 text-left">Productos</th>
               <th className="p-3 text-left">Estado</th>
               <th className="p-3 text-right">Acciones</th>
@@ -783,6 +701,20 @@ function CategoriesAdmin({
                 </td>
                 <td className="p-2">
                   <input type="number" min="0" value={category.order} onChange={(event) => onCategoryChange(category.id, { order: Number(event.target.value) })} className="h-10 w-28 rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white font-semibold" />
+                </td>
+                <td className="p-2">
+                  <div className="flex min-w-[260px] items-center gap-2">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
+                      {category.imageUrl ? (
+                        <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-gray-600">
+                          <Image size={15} />
+                        </div>
+                      )}
+                    </div>
+                    <input value={category.imageUrl ?? ''} onChange={(event) => onCategoryChange(category.id, { imageUrl: event.target.value })} placeholder="https://..." className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white text-xs" />
+                  </div>
                 </td>
                 <td className="p-2 text-gray-300 font-semibold">{category._count?.products ?? 0}</td>
                 <td className="p-2">

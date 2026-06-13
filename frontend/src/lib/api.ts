@@ -17,6 +17,7 @@ export interface Category {
   name: string;
   order: number;
   status: 'active' | 'inactive';
+  imageUrl: string | null;
   _count?: {
     products: number;
   };
@@ -62,6 +63,7 @@ export interface CategoryPayload {
   name?: string;
   order?: number;
   status?: 'active' | 'inactive';
+  imageUrl?: string | null;
 }
 
 export interface ProductPayload {
@@ -99,29 +101,6 @@ export async function createAdminProduct(adminKey: string, payload: ProductPaylo
 
 export async function updateAdminProduct(adminKey: string, id: string, payload: ProductPayload): Promise<Product> {
   return adminJson<Product>(`/admin/products/${id}`, adminKey, 'PATCH', payload);
-}
-
-export async function uploadAdminProductImage(adminKey: string, id: string, file: File, role = 'main'): Promise<Product> {
-  const formData = new FormData();
-  formData.append('image', file);
-  formData.append('role', role);
-
-  const response = await fetch(`${API_BASE_URL}/admin/products/${id}/image`, {
-    method: 'POST',
-    cache: NO_STORE,
-    headers: {
-      Accept: 'application/json',
-      'x-admin-key': adminKey,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const message = await readApiMessage(response);
-    throw new Error(message || `API ${response.status}: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<Product>;
 }
 
 export async function deleteAdminProduct(adminKey: string, id: string): Promise<{ ok: boolean }> {

@@ -1,8 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CatalogStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import { StorageService, type UploadedImageFile } from '../storage/storage.service.js';
 
 interface ProductFilters {
   categoryId?: string;
@@ -14,6 +13,7 @@ interface CategoryInput {
   name?: string;
   order?: number;
   status?: string;
+  imageUrl?: string | null;
 }
 
 interface ProductInput {
@@ -31,12 +31,7 @@ interface ProductInput {
 
 @Injectable()
 export class CatalogService {
-  private readonly logger = new Logger(CatalogService.name);
-
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly storageService: StorageService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async listBranches() {
     return this.prisma.branch.findMany({
@@ -114,6 +109,7 @@ export class CatalogService {
         name,
         order: this.parseOrder(input.order),
         status: this.parseCatalogStatus(input.status),
+        imageUrl: this.optionalText(input.imageUrl),
       },
     });
   }
@@ -127,6 +123,7 @@ export class CatalogService {
         ...(input.name !== undefined ? { name: this.requiredText(input.name, 'nombre de categoría') } : {}),
         ...(input.order !== undefined ? { order: this.parseOrder(input.order) } : {}),
         ...(input.status !== undefined ? { status: this.parseCatalogStatus(input.status) } : {}),
+        ...(input.imageUrl !== undefined ? { imageUrl: this.optionalText(input.imageUrl) } : {}),
       },
     });
   }
@@ -173,25 +170,11 @@ export class CatalogService {
   }
 
   async updateProduct(id: string, input: ProductInput) {
-    const existingProduct = await this.requireProduct(id);
-    let nextCategoryName: string | undefined;
-    let relocatedImageUrl: string | undefined;
-
     if (input.categoryId !== undefined) {
-      const nextCategory = await this.requireCategory(input.categoryId);
-      nextCategoryName = nextCategory.name;
+      await this.requireCategory(input.categoryId);
     }
 
-    const categoryChanged = input.categoryId !== undefined && input.categoryId !== existingProduct.categoryId;
-    const imageWasNotManuallyChanged = input.imageUrl === undefined || input.imageUrl === existingProduct.imageUrl;
-    if (categoryChanged && existingProduct.imageUrl && imageWasNotManuallyChanged && nextCategoryName) {
-      const relocated = await this.storageService.relocateProductImage({
-        productId: id,
-        categoryName: nextCategoryName,
-        currentImageUrl: existingProduct.imageUrl,
-      });
-      relocatedImageUrl = relocated?.publicUrl;
-    }
+    await this.requireProduct(id);
 
     return this.mapProduct(
       await this.prisma.product.update({
@@ -204,7 +187,6 @@ export class CatalogService {
           ...(input.description !== undefined ? { description: this.optionalText(input.description) } : {}),
           ...(input.shortDescription !== undefined ? { shortDescription: this.optionalText(input.shortDescription) } : {}),
           ...(input.imageUrl !== undefined ? { imageUrl: this.optionalText(input.imageUrl) } : {}),
-          ...(relocatedImageUrl !== undefined ? { imageUrl: relocatedImageUrl } : {}),
           ...(input.isPromotion !== undefined ? { isPromotion: Boolean(input.isPromotion) } : {}),
           ...(input.promotionTag !== undefined ? { promotionTag: this.optionalText(input.promotionTag) } : {}),
           ...(input.promotionTagColor !== undefined ? { promotionTagColor: this.optionalText(input.promotionTagColor) } : {}),
@@ -212,45 +194,6 @@ export class CatalogService {
         include: { category: true },
       }),
     );
-  }
-
-  async replaceProductImage(id: string, file: UploadedImageFile | undefined, role?: string) {
-    if (!file) {
-      throw new BadRequestException('Imagen inválida.');
-    }
-
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      include: { category: true },
-    });
-
-    if (!product) {
-      throw new NotFoundException('Producto no encontrado.');
-    }
-
-    const uploadedImage = await this.storageService.replaceProductImage(
-      {
-        productId: product.id,
-        categoryName: product.category.name,
-        currentImageUrl: product.imageUrl,
-        role: role || 'main',
-      },
-      file,
-    );
-
-    const updatedProduct = await this.prisma.product.update({
-      where: { id },
-      data: {
-        imageUrl: uploadedImage.publicUrl,
-      },
-      include: { category: true },
-    });
-
-    this.logger.log(`Producto actualizado con imagen: productId=${id} imageUrl=${uploadedImage.publicUrl} objectKey=${uploadedImage.objectKey}`);
-
-    await this.storageService.deleteProductImage(uploadedImage.previousObjectKey);
-
-    return this.mapProduct(updatedProduct);
   }
 
   async deleteProduct(id: string) {

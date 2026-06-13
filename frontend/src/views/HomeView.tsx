@@ -68,9 +68,9 @@ const STATIC_PROMOS = [
 ];
 
 const FALLBACK_PRODUCTS = [
-  { id: 'fp1', name: 'FATBOY CLÁSICA',  price: 139, description: 'Doble carne smash, queso americano, lechuga, tomate, cebolla, pepinillos y nuestra salsa Fatboy.', imageUrl: '/images/product_fatboy_clasica_1781279420825.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const } },
-  { id: 'fp2', name: 'FATBOY BACON',    price: 159, description: 'Doble carne smash, queso americano, bacon crujiente, cebolla caramelizada y salsa Fatboy.', imageUrl: '/images/product_fatboy_bacon_1781279428950.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const } },
-  { id: 'fp3', name: 'FATBOY MUSHROOM', price: 155, description: 'Doble carne smash, queso suizo, champiñones salteados, cebolla caramelizada y aioli de ajo.', imageUrl: '/images/product_fatboy_mushroom_1781279439261.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const } },
+  { id: 'fp1', name: 'FATBOY CLÁSICA',  price: 139, description: 'Doble carne smash, queso americano, lechuga, tomate, cebolla, pepinillos y nuestra salsa Fatboy.', imageUrl: '/images/product_fatboy_clasica_1781279420825.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
+  { id: 'fp2', name: 'FATBOY BACON',    price: 159, description: 'Doble carne smash, queso americano, bacon crujiente, cebolla caramelizada y salsa Fatboy.', imageUrl: '/images/product_fatboy_bacon_1781279428950.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
+  { id: 'fp3', name: 'FATBOY MUSHROOM', price: 155, description: 'Doble carne smash, queso suizo, champiñones salteados, cebolla caramelizada y aioli de ajo.', imageUrl: '/images/product_fatboy_mushroom_1781279439261.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
 ];
 
 /* ─────────────────────────────────────────────────
@@ -192,7 +192,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
             onClick={() => onNavigate('menu', cat.id)}
           >
             <div className="cat-img-wrap">
-              <img src={getCategoryIcon(cat.name)} alt={cat.name} className="w-full h-full object-cover" />
+              <img src={cat.imageUrl || getCategoryIcon(cat.name)} alt={cat.name} className="w-full h-full object-cover" />
             </div>
             <span className="cat-label">{cat.name}</span>
           </div>
@@ -277,4 +277,3 @@ function formatWhatsAppLink(value: string): string {
   const cleanNumber = val.replace(/\D/g, '');
   return `https://wa.me/${cleanNumber}`;
 }
-

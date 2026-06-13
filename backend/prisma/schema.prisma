@@ -26,6 +26,7 @@ model Category {
   name      String
   order     Int           @default(999)
   status    CatalogStatus @default(active)
+  imageUrl  String?       @map("image_url")
   createdAt DateTime      @default(now()) @map("created_at")
   products  Product[]
 
@@ -141,6 +142,5 @@ model Feedback {
 
   @@map("feedbacks")
 }
-
 
 

@@ -132,7 +132,7 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
           >
             <div className="cat-img-wrap">
               <img
-                src={getCategoryIcon(cat.name)}
+                src={cat.imageUrl || getCategoryIcon(cat.name)}
                 alt={cat.name}
                 className="w-full h-full object-cover"
               />
