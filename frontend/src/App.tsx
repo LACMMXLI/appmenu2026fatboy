@@ -20,6 +20,7 @@ import { TopBar, BottomNav } from './components/layout/Navigation';
 import { GoogleReviewPrompt } from './components/layout/GoogleReviewPrompt';
 import { useUser } from './context/UserContext';
 import { getSystemSettings, type Product } from './lib/api';
+import { GOOGLE_REVIEW_ROUTE, getGoogleReviewCooldown, isGoogleReviewRoutePath } from './lib/googleReviews';
 
 const variants = {
   initial: { opacity: 0, y: 15 },
@@ -37,7 +38,9 @@ export default function App() {
   const { isAuthenticated } = useUser();
   const isAdminCatalogPath = window.location.pathname === '/admin-catalog';
   const isBranchOrdersPath = window.location.pathname === '/branch-orders';
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState(() =>
+    isGoogleReviewRoutePath(window.location.pathname) ? 'google-review' : 'home'
+  );
   const [pendingAuthView, setPendingAuthView] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -57,6 +60,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (currentView === 'google-review' || getGoogleReviewCooldown().blocked) {
+      setShowReviewPrompt(false);
+      return;
+    }
+
     const dismissed = localStorage.getItem('fatboy-google-review-dismissed');
     const lastPrompted = localStorage.getItem('fatboy-google-review-last-prompted');
     
@@ -73,7 +81,7 @@ export default function App() {
     } else {
       setShowReviewPrompt(false);
     }
-  }, []);
+  }, [currentView]);
 
   const handleDismissPrompt = () => {
     localStorage.setItem('fatboy-google-review-last-prompted', Date.now().toString());
@@ -98,6 +106,14 @@ export default function App() {
   const privateViews = ['cart', 'rewards', 'change-password', 'payment-methods'];
 
   const navigate = (view: string, extra?: any) => {
+    if (view === 'google-review' && !isGoogleReviewRoutePath(window.location.pathname)) {
+      window.history.pushState(null, '', GOOGLE_REVIEW_ROUTE);
+    }
+
+    if (view !== 'google-review' && isGoogleReviewRoutePath(window.location.pathname)) {
+      window.history.replaceState(null, '', '/');
+    }
+
     if (privateViews.includes(view) && !isAuthenticated) {
       setPendingAuthView(view);
       setCurrentView('auth');

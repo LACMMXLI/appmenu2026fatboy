@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Star, X, CheckCircle } from 'lucide-react';
+import { Star, X, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { getSystemSettings, submitFeedback } from '@/lib/api';
-import { GOOGLE_REVIEW_BRANCHES, getGoogleReviewUrl, type GoogleReviewBranch } from '@/lib/googleReviews';
+import {
+  GOOGLE_REVIEW_BRANCHES,
+  formatGoogleReviewCooldown,
+  getGoogleReviewCooldown,
+  getGoogleReviewUrl,
+  markGoogleReviewSubmitted,
+  type GoogleReviewBranch,
+} from '@/lib/googleReviews';
 
 interface GoogleReviewViewProps {
   onNavigate: (view: string) => void;
@@ -20,6 +27,8 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
     )
   );
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [cooldownRemainingMs, setCooldownRemainingMs] = useState(() => getGoogleReviewCooldown().remainingMs);
+  const isCooldownActive = cooldownRemainingMs > 0;
 
   useEffect(() => {
     // Mark as permanently dismissed so the modal doesn't show again
@@ -36,7 +45,19 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
       .catch((err) => console.error('Error fetching settings for review:', err));
   }, []);
 
+  useEffect(() => {
+    const refreshCooldown = () => {
+      setCooldownRemainingMs(getGoogleReviewCooldown().remainingMs);
+    };
+
+    refreshCooldown();
+    const timer = window.setInterval(refreshCooldown, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const handleStarClick = (selected: number) => {
+    if (isCooldownActive) return;
+
     setRating(selected);
     if (selected >= 4) {
       setComment('');
@@ -45,8 +66,14 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
 
   const handleGoogleRedirect = (branch: GoogleReviewBranch) => {
     if (!rating || rating < 4) return;
+    if (getGoogleReviewCooldown().blocked) {
+      setCooldownRemainingMs(getGoogleReviewCooldown().remainingMs);
+      return;
+    }
 
     setIsRedirecting(true);
+    markGoogleReviewSubmitted();
+    setCooldownRemainingMs(getGoogleReviewCooldown().remainingMs);
 
     submitFeedback(rating, `Redirigido a Google Reseñas - ${branch.label}`)
       .catch((err) => console.error('Error saving 4/5 star feedback:', err));
@@ -66,9 +93,16 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rating) return;
+    if (getGoogleReviewCooldown().blocked) {
+      setCooldownRemainingMs(getGoogleReviewCooldown().remainingMs);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await submitFeedback(rating, comment);
+      markGoogleReviewSubmitted();
+      setCooldownRemainingMs(getGoogleReviewCooldown().remainingMs);
       setIsDone(true);
     } catch (err) {
       alert('Hubo un error al enviar tus comentarios. Inténtalo de nuevo.');
@@ -115,7 +149,23 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
             />
           </div>
 
-          {!isDone && !isRedirecting && (
+          {isCooldownActive && !isDone && !isRedirecting && (
+            <div className="py-6 flex flex-col items-center justify-center animate-fade-in">
+              <Clock size={44} className="text-[#4285F4] mb-3" />
+              <h3 className="text-md font-bold text-gray-900 mb-1">Calificación ya registrada</h3>
+              <p className="text-xs text-gray-500 max-w-[260px] mb-5">
+                Para evitar reseñas duplicadas, podrás volver a calificar dentro de {formatGoogleReviewCooldown(cooldownRemainingMs)}.
+              </p>
+              <Button 
+                onClick={() => onNavigate('home')} 
+                className="bg-[#4285F4] hover:bg-[#357AE8] text-white font-sans text-xs font-bold uppercase rounded-lg px-6 py-2 shadow-none border-none"
+              >
+                Volver al Inicio
+              </Button>
+            </div>
+          )}
+
+          {!isCooldownActive && !isDone && !isRedirecting && (
             <>
               <h2 className="text-lg font-bold text-gray-900 leading-tight mb-1">
                 ¿Qué te pareció Fatboy Smash Burgers?
