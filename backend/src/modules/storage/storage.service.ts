@@ -172,8 +172,11 @@ export class StorageService {
 
     try {
       exists = await this.getClient().bucketExists(this.bucket);
-    } catch {
-      throw new InternalServerErrorException('No se pudo conectar a MinIO.');
+    } catch (error: any) {
+      const endpoint = process.env.MINIO_ENDPOINT || 'Desconocido';
+      const port = process.env.MINIO_PORT || '9000';
+      console.error(`[StorageService] Error conectando a MinIO en ${endpoint}:${port}:`, error);
+      throw new InternalServerErrorException(`No se pudo conectar a MinIO en ${endpoint}:${port}. Verifica que el hostname sea resoluble desde este contenedor. Detalles: ${error?.message}`);
     }
 
     if (exists) return;
