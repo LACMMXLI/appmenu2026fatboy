@@ -3,7 +3,7 @@ import { MapPin, ChevronDown, ChevronRight, Plus, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import {
-  getHomeBanners, getCategories, getProducts, getSystemSettings,
+  getCategories, getProducts, getSystemSettings,
   defaultProductImage,
   type HomeBanner, type Category, type Product,
 } from '@/lib/api';
@@ -16,22 +16,13 @@ interface HomeViewProps {
 /* ── Static fallback data ─────────────────────── */
 const FALLBACK_BANNERS: HomeBanner[] = [
   {
-    id: 'b1',
-    imageUrl: '/images/hero_burger_1781279338325.png',
-    title: 'HAMBURGUESAS\nSIN EXCUSAS',
-    subtitle: 'Carne smash, ingredientes frescos y sabor inolvidable.',
-    buttonText: 'VER MENÚ',
-    linkView: 'menu',
-    order: 0,
-  },
-  {
-    id: 'b2',
-    imageUrl: '/images/promo_banner_2x1_1781279460341.png',
-    title: '2X1\nEN CLÁSICAS',
-    subtitle: 'Solo por tiempo limitado, ¡no te lo pierdas!',
-    buttonText: 'VER PROMOS',
+    id: 'promo-futbolera',
+    imageUrl: '/images/promo_charola_futbolera.png',
+    title: null,
+    subtitle: null,
+    buttonText: null,
     linkView: 'promos',
-    order: 1,
+    order: 0,
   },
 ];
 
@@ -62,9 +53,7 @@ function getCategoryIcon(name: string): string {
 }
 
 const STATIC_PROMOS = [
-  { id: 'p1', img: '/images/promo_urban_fatboy_charola.png', label: 'CHAROLA URBAN FATBOY' },
-  { id: 'p2', img: '/images/promo_rollos_naturales.png', label: '2 ROLLOS NATURALES' },
-  { id: 'p3', img: '/images/promo_rollos_empanizados.png', label: '2 ROLLOS EMPANIZADOS' },
+  { id: 'promo-futbolera', img: '/images/promo_charola_futbolera.png', label: 'CHAROLA LA FUTBOLERA' },
 ];
 
 const FALLBACK_PRODUCTS = [
@@ -86,26 +75,33 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
   }, [banners.length]);
 
   const b = banners[idx];
+  const isImageOnly = !b.title && !b.subtitle && !b.buttonText;
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: 120 }}>
+    <div className="relative w-full overflow-hidden bg-black" style={isImageOnly ? { aspectRatio: '3 / 2' } : { height: 120 }}>
       {/* background image */}
       <img
         key={b.id}
         src={b.imageUrl}
         alt={b.title || 'Banner'}
-        className="absolute right-0 top-0 h-full w-1/2 object-cover animate-fade-in"
+        className={cn(
+          "absolute top-0 h-full animate-fade-in",
+          isImageOnly ? "object-contain" : "object-cover",
+          isImageOnly ? "left-0 w-full" : "right-0 w-1/2"
+        )}
         style={{ objectPosition: 'center' }}
       />
 
       {/* Dark overlay left side */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'linear-gradient(100deg, rgba(10,10,10,0.95) 30%, rgba(10,10,10,0.5) 60%, rgba(10,10,10,0) 100%)' }}
-      />
+      {!isImageOnly && (
+        <div
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(100deg, rgba(10,10,10,0.95) 30%, rgba(10,10,10,0.5) 60%, rgba(10,10,10,0) 100%)' }}
+        />
+      )}
 
       {/* Content */}
-      <div className="absolute inset-0 flex flex-col justify-center px-3 z-10">
+      {!isImageOnly && <div className="absolute inset-0 flex flex-col justify-center px-3 z-10">
         {/* Title */}
         <div className="mb-1">
           <h1
@@ -136,7 +132,7 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
             {b.buttonText || 'VER MENÚ'} <ChevronRight size={11} strokeWidth={3} />
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Slide dots */}
       {banners.length > 1 && (
@@ -165,10 +161,9 @@ export function HomeView({ onNavigate }: HomeViewProps) {
 
   useEffect(() => {
     let m = true;
-    Promise.allSettled([getHomeBanners(), getCategories(), getSystemSettings()])
-      .then(([bRes, cRes, sRes]) => {
+    Promise.allSettled([getCategories(), getSystemSettings()])
+      .then(([cRes, sRes]) => {
         if (!m) return;
-        if (bRes.status === 'fulfilled' && bRes.value.length > 0) setBanners(bRes.value);
         if (cRes.status === 'fulfilled') setCategories(cRes.value);
         if (sRes.status === 'fulfilled') setSettings(sRes.value);
       })
@@ -219,7 +214,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
               className="promo-card"
               onClick={() => onNavigate('promos')}
             >
-              <img src={promo.img} alt={promo.label} className="w-full h-full object-cover rounded-[10px]" />
+              <img src={promo.img} alt={promo.label} className="w-full h-full object-contain rounded-[10px] bg-black" />
             </div>
           ))}
         </div>

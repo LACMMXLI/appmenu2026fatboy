@@ -1,30 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Zap, ShoppingCart } from 'lucide-react';
-import { getProducts, defaultProductImage, type Product } from '@/lib/api';
+import { type Product } from '@/lib/api';
 
 interface PromosViewProps {
   onNavigate: (view: any, product?: Product) => void;
 }
 
 const STATIC_PROMOS = [
-  { id: 'sp1', img: '/images/promo_urban_fatboy_charola.png', label: 'CHAROLA URBAN FATBOY', desc: '4 hamburguesas, boneless, papas, apio, zanahoria y Pepsi 1.5 L.' },
-  { id: 'sp2', img: '/images/promo_rollos_naturales.png', label: '2 ROLLOS NATURALES', desc: '2 rollos cielo, mar y tierra naturales.' },
-  { id: 'sp3', img: '/images/promo_rollos_empanizados.png', label: '2 ROLLOS EMPANIZADOS', desc: '2 rollos cielo, mar y tierra empanizados.' },
+  { id: 'charola-futbolera', img: '/images/promo_charola_futbolera.png', label: 'CHAROLA LA FUTBOLERA', desc: 'La mejor botana para ver los partidos.' },
 ];
 
 export function PromosView({ onNavigate }: PromosViewProps) {
-  const [promos, setPromos]   = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let m = true;
-    getProducts()
-      .then(list => { if (m) setPromos(list.filter(p => p.isPromotion)); })
-      .catch(() => {})
-      .finally(() => { if (m) setLoading(false); });
-    return () => { m = false; };
-  }, []);
-
   return (
     <div
       className="flex-1 overflow-y-auto no-scrollbar"
@@ -45,11 +31,11 @@ export function PromosView({ onNavigate }: PromosViewProps) {
         {STATIC_PROMOS.map(promo => (
           <div
             key={promo.id}
-            className="rounded-xl overflow-hidden cursor-pointer"
+            className="rounded-xl overflow-hidden cursor-pointer bg-black"
             style={{ border: '1px solid var(--color-outline)' }}
             onClick={() => onNavigate('menu')}
           >
-            <img src={promo.img} alt={promo.label} className="w-full object-cover" style={{ height: 115 }} />
+            <img src={promo.img} alt={promo.label} className="w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
             <div
               className="p-2.5 flex items-center justify-between"
               style={{ background: 'var(--color-surface)' }}
@@ -69,50 +55,6 @@ export function PromosView({ onNavigate }: PromosViewProps) {
           </div>
         ))}
 
-        {/* Dynamic promos from backend */}
-        {!loading && promos.length > 0 && (
-          <>
-            <h2
-              className="text-[10.5px] font-black uppercase tracking-widest mt-1"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              MÁS PROMOCIONES
-            </h2>
-            {promos.map(p => (
-              <div
-                key={p.id}
-                className="rounded-xl overflow-hidden cursor-pointer"
-                style={{ border: '1px solid var(--color-outline)' }}
-                onClick={() => onNavigate('product-detail', p)}
-              >
-                <img
-                  src={p.imageUrl || defaultProductImage}
-                  alt={p.name}
-                  className="w-full object-cover"
-                  style={{ height: 100 }}
-                />
-                <div
-                  className="p-2.5 flex items-center justify-between"
-                  style={{ background: 'var(--color-surface)' }}
-                >
-                  <div>
-                    <h3 className="font-black text-[12.5px] text-white mb-0.5">{p.name}</h3>
-                    <p className="font-bold text-[11.5px]" style={{ color: 'var(--color-primary)' }}>
-                      ${p.price}.00
-                    </p>
-                  </div>
-                  <button
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[9.5px] uppercase tracking-wider flex-shrink-0 ml-3"
-                    style={{ background: 'var(--color-primary)', color: 'white' }}
-                    onClick={e => { e.stopPropagation(); onNavigate('product-detail', p); }}
-                  >
-                    <ShoppingCart size={11} /> Ver
-                  </button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
       </div>
     </div>
   );
