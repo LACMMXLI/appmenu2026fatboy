@@ -21,7 +21,7 @@ interface UserContextData {
   logout: () => Promise<void>;
   updateProfile: (name: string, phone: string, favoriteBranchId?: string | null) => Promise<void>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
-  redeemPoints: (amount: number) => boolean;
+  redeemReward: (productId: string) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextData>({} as UserContextData);
@@ -112,16 +112,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const redeemPoints = (amount: number) => {
-    if (points >= amount) {
-      setCustomer(prev => prev ? { ...prev, points: prev.points - amount } : null);
-      return true;
+  const redeemReward = async (productId: string) => {
+    if (!token) {
+      throw new Error('Para canjear puntos debes iniciar sesión.');
     }
-    return false;
+
+    const result = await api.redeemRewardProduct(token, productId);
+    setCustomer(result.customer);
   };
 
   return (
-    <UserContext.Provider value={{ isAuthenticated, customer, token, points, isLoading, login, register, logout, updateProfile, changePassword, redeemPoints }}>
+    <UserContext.Provider value={{ isAuthenticated, customer, token, points, isLoading, login, register, logout, updateProfile, changePassword, redeemReward }}>
       {children}
     </UserContext.Provider>
   );

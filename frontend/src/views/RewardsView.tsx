@@ -1,28 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Flame, Info, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useUser } from '@/context/UserContext';
 import { cn } from '@/lib/utils';
+import { getRedeemableProducts, type RedeemableProduct } from '@/lib/api';
 
 interface RewardsViewProps {
   onNavigate: (view: any) => void;
 }
 
 export function RewardsView({ onNavigate }: RewardsViewProps) {
-  const { points, redeemPoints } = useUser();
-  const [redeemedId, setRedeemedId] = useState<number | null>(null);
+  const { points, redeemReward } = useUser();
+  const [rewardsItems, setRewardsItems] = useState<RedeemableProduct[]>([]);
+  const [redeemedId, setRedeemedId] = useState<string | null>(null);
+  const [isLoadingRewards, setIsLoadingRewards] = useState(true);
+  const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
-  const rewardsItems = [
-    { id: 1, title: 'Bebida de Refill', pts: 50, img: 'https://images.unsplash.com/photo-1556881286-fc6915169721?q=80&w=200&auto=format&fit=crop' },
-    { id: 2, title: 'Nachos Clásicos', pts: 100, img: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?q=80&w=200&auto=format&fit=crop' },
-    { id: 3, title: 'Hamburguesa Sencilla', pts: 250, img: 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=200&auto=format&fit=crop' },
-    { id: 4, title: 'Sushi Tradicional', pts: 300, img: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=200&auto=format&fit=crop' }
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  const handleRedeem = (item: any) => {
-    if (redeemPoints(item.pts)) {
+    getRedeemableProducts()
+      .then((items) => {
+        if (isMounted) setRewardsItems(items);
+      })
+      .catch((err) => {
+        if (isMounted) setError(err instanceof Error ? err.message : 'No se pudieron cargar los canjeables.');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingRewards(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleRedeem = async (item: RedeemableProduct) => {
+    try {
+      setError('');
+      setRedeemingId(item.id);
+      await redeemReward(item.id);
       setRedeemedId(item.id);
       setTimeout(() => setRedeemedId(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo completar el canje.');
+    } finally {
+      setRedeemingId(null);
     }
   };
 
@@ -63,20 +87,37 @@ export function RewardsView({ onNavigate }: RewardsViewProps) {
 
         {/* Rewards List */}
         <div className="flex flex-col gap-4">
+          {error && (
+            <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 text-center text-sm font-semibold text-primary">
+              {error}
+            </div>
+          )}
+
+          {isLoadingRewards && (
+            <div className="bg-surface border border-outline rounded-2xl p-8 text-center text-gray-400 font-semibold">
+              Cargando canjeables...
+            </div>
+          )}
+
           {rewardsItems.map((item, i) => {
-            const canAfford = points >= item.pts;
+            const canAfford = points >= item.pointsCost;
             const isRedeemed = redeemedId === item.id;
             
             return (
               <div key={item.id} className="bg-surface rounded-2xl p-4 flex gap-4 border border-outline/50 relative overflow-hidden group hover:border-accent/40 hover:shadow-[0_8px_20px_rgba(250,189,0,0.1)] transition-all duration-300 animate-fade-in-up" style={{ animationDelay: `${0.1 * (i + 4)}s` }}>
                 <div className="w-[80px] h-[80px] rounded-xl overflow-hidden shrink-0 shadow-md">
-                  <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <img
+                    src={item.imageUrl || '/images/logo.png'}
+                    alt={item.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-between py-1">
                   <div>
-                    <h3 className="font-bold text-[14px] leading-tight text-white mb-1">{item.title}</h3>
-                    <span className="font-display text-xl text-accent tracking-wide block leading-none">{item.pts} PTS</span>
+                    <h3 className="font-bold text-[14px] leading-tight text-white mb-1">{item.name}</h3>
+                    {item.description && <p className="text-xs text-gray-400 leading-tight mb-1">{item.description}</p>}
+                    <span className="font-display text-xl text-accent tracking-wide block leading-none">{item.pointsCost} PTS</span>
                   </div>
                   
                   <div className="mt-2 flex">
@@ -89,6 +130,7 @@ export function RewardsView({ onNavigate }: RewardsViewProps) {
                         size="sm" 
                         disabled={!canAfford}
                         onClick={() => handleRedeem(item)}
+                        isLoading={redeemingId === item.id}
                         className={cn(
                           "text-xs font-semibold h-8 px-4 rounded-lg shadow-none flex-1 max-w-[120px]",
                           canAfford 
@@ -104,6 +146,11 @@ export function RewardsView({ onNavigate }: RewardsViewProps) {
               </div>
             );
           })}
+          {!isLoadingRewards && rewardsItems.length === 0 && (
+            <div className="bg-surface border border-outline rounded-2xl p-8 text-center text-gray-500 font-semibold">
+              No hay productos canjeables activos por el momento.
+            </div>
+          )}
         </div>
       </div>
       

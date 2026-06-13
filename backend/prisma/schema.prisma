@@ -64,8 +64,39 @@ model Customer {
   createdAt        DateTime  @default(now()) @map("created_at")
   sessions         Session[]
   orders           Order[]
+  rewardRedemptions RewardRedemption[]
 
   @@map("customers")
+}
+
+model RedeemableProduct {
+  id          String        @id @db.Uuid
+  name        String
+  pointsCost  Int           @map("points_cost")
+  status      CatalogStatus @default(active)
+  imageUrl    String?       @map("image_url")
+  description String?
+  order       Int           @default(999)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  redemptions RewardRedemption[]
+
+  @@index([status])
+  @@map("redeemable_products")
+}
+
+model RewardRedemption {
+  id                  String            @id @db.Uuid
+  customerId          String            @map("customer_id") @db.Uuid
+  customer            Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  redeemableProductId String            @map("redeemable_product_id") @db.Uuid
+  redeemableProduct   RedeemableProduct @relation(fields: [redeemableProductId], references: [id], onDelete: Restrict)
+  productName         String            @map("product_name")
+  pointsCost          Int               @map("points_cost")
+  createdAt           DateTime          @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([redeemableProductId])
+  @@map("reward_redemptions")
 }
 
 model Session {
@@ -142,5 +173,4 @@ model Feedback {
 
   @@map("feedbacks")
 }
-
 

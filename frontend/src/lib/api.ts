@@ -38,6 +38,17 @@ export interface Product {
   category: Category;
 }
 
+export interface RedeemableProduct {
+  id: string;
+  name: string;
+  pointsCost: number;
+  status: 'active' | 'inactive';
+  imageUrl: string | null;
+  description: string | null;
+  order: number;
+  createdAt: string;
+}
+
 export const defaultProductImage =
   'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=800&auto=format&fit=crop';
 
@@ -52,6 +63,10 @@ export async function getCategories(): Promise<Category[]> {
 export async function getProducts(categoryId?: string): Promise<Product[]> {
   const query = categoryId ? `?status=active&categoryId=${encodeURIComponent(categoryId)}` : '?status=active';
   return getJson<Product[]>(`/products${query}`);
+}
+
+export async function getRedeemableProducts(): Promise<RedeemableProduct[]> {
+  return getJson<RedeemableProduct[]>('/redeemable-products');
 }
 
 export interface AdminCatalog {
@@ -105,6 +120,31 @@ export async function updateAdminProduct(adminKey: string, id: string, payload: 
 
 export async function deleteAdminProduct(adminKey: string, id: string): Promise<{ ok: boolean }> {
   return adminJson<{ ok: boolean }>(`/admin/products/${id}`, adminKey, 'DELETE');
+}
+
+export interface RedeemableProductPayload {
+  name?: string;
+  pointsCost?: number;
+  status?: 'active' | 'inactive';
+  imageUrl?: string | null;
+  description?: string | null;
+  order?: number;
+}
+
+export async function getAdminRedeemableProducts(adminKey: string): Promise<RedeemableProduct[]> {
+  return adminJson<RedeemableProduct[]>('/admin/redeemable-products', adminKey);
+}
+
+export async function createAdminRedeemableProduct(adminKey: string, payload: RedeemableProductPayload): Promise<RedeemableProduct> {
+  return adminJson<RedeemableProduct>('/admin/redeemable-products', adminKey, 'POST', payload);
+}
+
+export async function updateAdminRedeemableProduct(adminKey: string, id: string, payload: RedeemableProductPayload): Promise<RedeemableProduct> {
+  return adminJson<RedeemableProduct>(`/admin/redeemable-products/${id}`, adminKey, 'PATCH', payload);
+}
+
+export async function deleteAdminRedeemableProduct(adminKey: string, id: string): Promise<{ ok: boolean }> {
+  return adminJson<{ ok: boolean }>(`/admin/redeemable-products/${id}`, adminKey, 'DELETE');
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -187,6 +227,14 @@ export async function updateProfile(token: string, payload: any): Promise<AuthRe
 
 export async function changePassword(token: string, payload: any): Promise<{ ok: boolean }> {
   return requestWithAuth<{ ok: boolean }>('/auth/change-password', token, 'PATCH', payload);
+}
+
+export async function redeemRewardProduct(token: string, productId: string): Promise<{ redemption: { id: string; productName: string; pointsCost: number; createdAt: string }; customer: AuthResponse['customer'] }> {
+  return requestWithAuth<{ redemption: { id: string; productName: string; pointsCost: number; createdAt: string }; customer: AuthResponse['customer'] }>(
+    `/redeemable-products/${productId}/redeem`,
+    token,
+    'POST',
+  );
 }
 
 // Order API

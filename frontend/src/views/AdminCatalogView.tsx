@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, KeyRound, Plus, RefreshCw, Save, Search, Trash2, Tag, Users, FileText, ShoppingBag, Store, Image, Settings, Star } from 'lucide-react';
+import { Check, KeyRound, Plus, RefreshCw, Save, Search, Trash2, Tag, Users, FileText, ShoppingBag, Store, Image, Settings, Star, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 import { Input } from '@/components/ui/Input';
@@ -36,10 +36,15 @@ import {
   getSystemSettings,
   updateAdminSystemSettings,
   getAdminFeedback,
-  type FeedbackItem
+  type FeedbackItem,
+  getAdminRedeemableProducts,
+  createAdminRedeemableProduct,
+  updateAdminRedeemableProduct,
+  deleteAdminRedeemableProduct,
+  type RedeemableProduct
 } from '@/lib/api';
 
-type Tab = 'products' | 'categories' | 'promotions' | 'customers' | 'orders' | 'banners' | 'settings' | 'feedback';
+type Tab = 'products' | 'categories' | 'promotions' | 'rewards' | 'customers' | 'orders' | 'banners' | 'settings' | 'feedback';
 
 
 
@@ -49,6 +54,14 @@ const emptyProduct = {
   categoryId: '',
   description: '',
   imageUrl: '',
+};
+
+const emptyRedeemableProduct = {
+  name: '',
+  pointsCost: 100,
+  imageUrl: '',
+  description: '',
+  order: 999,
 };
 
 const [veneciaReviewBranch, sanMarcosReviewBranch] = GOOGLE_REVIEW_BRANCHES;
@@ -61,6 +74,7 @@ export function AdminCatalogView() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [banners, setBanners] = useState<HomeBanner[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [redeemableProducts, setRedeemableProducts] = useState<RedeemableProduct[]>([]);
 
   
   const [activeTab, setActiveTab] = useState<Tab>('products');
@@ -75,6 +89,7 @@ export function AdminCatalogView() {
   
   const [newCategory, setNewCategory] = useState({ name: '', order: 999, imageUrl: '' });
   const [newProduct, setNewProduct] = useState(emptyProduct);
+  const [newRedeemableProduct, setNewRedeemableProduct] = useState(emptyRedeemableProduct);
   const [newBanner, setNewBanner] = useState({ imageUrl: '', title: '', subtitle: '', buttonText: '', linkView: 'menu', order: 999 });
 
   const activeCategories = useMemo(
@@ -134,6 +149,10 @@ export function AdminCatalogView() {
       // Cargar feedback
       const feedbacksList = await getAdminFeedback(key);
       setFeedbacks(feedbacksList);
+
+      // Cargar productos canjeables
+      const redeemablesList = await getAdminRedeemableProducts(key);
+      setRedeemableProducts(redeemablesList);
 
 
       setIsAuthorized(true);
@@ -203,6 +222,47 @@ export function AdminCatalogView() {
       setNewProduct({ ...emptyProduct, categoryId: catalog.categories[0]?.id || '' });
       await refreshAll();
     }, 'Producto creado.');
+  }
+
+  // --- CANJEABLES ---
+  function updateLocalRedeemableProduct(id: string, patch: Partial<RedeemableProduct>) {
+    setRedeemableProducts((current) =>
+      current.map((product) => (product.id === id ? { ...product, ...patch } : product)),
+    );
+  }
+
+  async function createRedeemableProduct() {
+    await runAction(async () => {
+      await createAdminRedeemableProduct(adminKey, {
+        ...newRedeemableProduct,
+        pointsCost: Number(newRedeemableProduct.pointsCost),
+        order: Number(newRedeemableProduct.order),
+      });
+      setNewRedeemableProduct(emptyRedeemableProduct);
+      await refreshAll();
+    }, 'Producto canjeable creado.');
+  }
+
+  async function saveRedeemableProduct(product: RedeemableProduct) {
+    await runAction(async () => {
+      await updateAdminRedeemableProduct(adminKey, product.id, {
+        name: product.name,
+        pointsCost: Number(product.pointsCost),
+        status: product.status,
+        imageUrl: product.imageUrl,
+        description: product.description,
+        order: Number(product.order),
+      });
+      await refreshAll();
+    }, 'Producto canjeable guardado.');
+  }
+
+  async function deleteRedeemableProductAction(product: RedeemableProduct) {
+    if (!window.confirm(`¿Eliminar producto canjeable "${product.name}"?`)) return;
+    await runAction(async () => {
+      await deleteAdminRedeemableProduct(adminKey, product.id);
+      await refreshAll();
+    }, 'Producto canjeable eliminado.');
   }
 
   // --- CATEGORIAS ---
@@ -331,6 +391,7 @@ export function AdminCatalogView() {
             { id: 'products', label: 'Productos', count: catalog.products.length, icon: ShoppingBag },
             { id: 'categories', label: 'Categorías', count: catalog.categories.length, icon: Store },
             { id: 'promotions', label: 'Promociones', count: catalog.products.filter(p => p.isPromotion).length, icon: Tag },
+            { id: 'rewards', label: 'Canjeables', count: redeemableProducts.length, icon: Gift },
             { id: 'banners', label: 'Banners Inicio', count: banners.length, icon: Image },
             { id: 'customers', label: 'Clientes', count: customers.length, icon: Users },
             { id: 'orders', label: 'Pedidos', count: orders.length, icon: FileText },
@@ -451,6 +512,19 @@ export function AdminCatalogView() {
             isLoading={isLoading}
             onProductChange={updateLocalProduct}
             onSaveProduct={saveProduct}
+          />
+        )}
+
+        {activeTab === 'rewards' && (
+          <RedeemableProductsAdmin
+            products={redeemableProducts}
+            newProduct={newRedeemableProduct}
+            isLoading={isLoading}
+            onNewProductChange={setNewRedeemableProduct}
+            onProductChange={updateLocalRedeemableProduct}
+            onCreateProduct={createRedeemableProduct}
+            onSaveProduct={saveRedeemableProduct}
+            onDeleteProduct={deleteRedeemableProductAction}
           />
         )}
 
@@ -812,6 +886,174 @@ function PromotionsAdmin({ products, isLoading, onProductChange, onSaveProduct }
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// --- SUB-COMPONENTE CANJEABLES ---
+interface RedeemableProductsAdminProps {
+  products: RedeemableProduct[];
+  newProduct: typeof emptyRedeemableProduct;
+  isLoading: boolean;
+  onNewProductChange: (value: typeof emptyRedeemableProduct) => void;
+  onProductChange: (id: string, patch: Partial<RedeemableProduct>) => void;
+  onCreateProduct: () => void;
+  onSaveProduct: (product: RedeemableProduct) => void;
+  onDeleteProduct: (product: RedeemableProduct) => void;
+}
+
+function RedeemableProductsAdmin({
+  products,
+  newProduct,
+  isLoading,
+  onNewProductChange,
+  onProductChange,
+  onCreateProduct,
+  onSaveProduct,
+  onDeleteProduct,
+}: RedeemableProductsAdminProps) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-outline bg-surface p-4">
+        <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+          <Gift size={16} className="text-accent" /> Productos canjeables
+        </h3>
+        <p className="text-xs text-gray-400">
+          Configura productos únicos para puntos. Solo los activos aparecen en la vista de recompensas del cliente.
+        </p>
+      </div>
+
+      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1.2fr_130px_1.5fr_90px_auto]">
+        <Input
+          label="Nuevo canjeable"
+          value={newProduct.name}
+          onChange={(event) => onNewProductChange({ ...newProduct, name: event.target.value })}
+        />
+        <Input
+          label="Puntos"
+          type="number"
+          min="1"
+          value={newProduct.pointsCost}
+          onChange={(event) => onNewProductChange({ ...newProduct, pointsCost: Number(event.target.value) })}
+        />
+        <Input
+          label="URL imagen"
+          value={newProduct.imageUrl}
+          onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })}
+        />
+        <Input
+          label="Orden"
+          type="number"
+          min="0"
+          value={newProduct.order}
+          onChange={(event) => onNewProductChange({ ...newProduct, order: Number(event.target.value) })}
+        />
+        <Button className="self-end animate-pulse-glow" onClick={onCreateProduct} disabled={isLoading || !newProduct.name}>
+          <Plus size={16} className="mr-2" /> Crear
+        </Button>
+        <div className="md:col-span-5">
+          <Input
+            label="Descripción"
+            value={newProduct.description}
+            onChange={(event) => onNewProductChange({ ...newProduct, description: event.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
+        <table className="w-full min-w-[1050px] border-collapse text-sm">
+          <thead className="bg-surface-hover text-xs uppercase tracking-wider text-gray-400">
+            <tr>
+              <th className="p-3 text-left">Producto</th>
+              <th className="p-3 text-left">Puntos</th>
+              <th className="p-3 text-left">Imagen</th>
+              <th className="p-3 text-left">Descripción</th>
+              <th className="p-3 text-left">Orden</th>
+              <th className="p-3 text-left">Estado</th>
+              <th className="p-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((product) => (
+              <tr key={product.id} className="border-t border-outline/50 hover:bg-surface-hover/30 transition-colors">
+                <td className="p-2">
+                  <input
+                    value={product.name}
+                    onChange={(event) => onProductChange(product.id, { name: event.target.value })}
+                    className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white"
+                  />
+                </td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={product.pointsCost}
+                    onChange={(event) => onProductChange(product.id, { pointsCost: Number(event.target.value) })}
+                    className="h-10 w-28 rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-accent font-bold"
+                  />
+                </td>
+                <td className="p-2">
+                  <div className="flex min-w-[250px] items-center gap-2">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-gray-600">
+                          <Image size={15} />
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      value={product.imageUrl ?? ''}
+                      onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })}
+                      placeholder="https://..."
+                      className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white text-xs"
+                    />
+                  </div>
+                </td>
+                <td className="p-2">
+                  <input
+                    value={product.description ?? ''}
+                    onChange={(event) => onProductChange(product.id, { description: event.target.value })}
+                    className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white"
+                  />
+                </td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    min="0"
+                    value={product.order}
+                    onChange={(event) => onProductChange(product.id, { order: Number(event.target.value) })}
+                    className="h-10 w-24 rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white font-semibold"
+                  />
+                </td>
+                <td className="p-2">
+                  <button
+                    type="button"
+                    onClick={() => onProductChange(product.id, { status: product.status === 'active' ? 'inactive' : 'active' })}
+                    className={cn('h-9 rounded-md px-3 text-xs font-bold uppercase transition-all', product.status === 'active' ? 'bg-green-500/15 text-green-300 border border-green-500/30' : 'bg-primary/15 text-primary border border-primary/30')}
+                  >
+                    {product.status === 'active' ? 'Activo' : 'Inactivo'}
+                  </button>
+                </td>
+                <td className="p-2">
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" onClick={() => onSaveProduct(product)} disabled={isLoading} className="bg-primary/90 hover:bg-primary"><Save size={15} /></Button>
+                    <Button size="sm" variant="outline" onClick={() => onDeleteProduct(product)} disabled={isLoading}><Trash2 size={15} /></Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {products.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-8 text-center text-gray-500 font-semibold">
+                  No hay productos canjeables configurados.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

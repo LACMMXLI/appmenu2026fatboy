@@ -29,6 +29,15 @@ interface ProductInput {
   promotionTagColor?: string | null;
 }
 
+interface RedeemableProductInput {
+  name?: string;
+  pointsCost?: number | string;
+  status?: string;
+  imageUrl?: string | null;
+  description?: string | null;
+  order?: number;
+}
+
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
@@ -203,6 +212,113 @@ export class CatalogService {
     return { ok: true };
   }
 
+  async listRedeemableProducts(status?: string) {
+    return this.prisma.redeemableProduct.findMany({
+      where: this.catalogStatusWhere(status),
+      orderBy: [{ order: 'asc' }, { pointsCost: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async listAdminRedeemableProducts() {
+    return this.prisma.redeemableProduct.findMany({
+      orderBy: [{ order: 'asc' }, { pointsCost: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async createRedeemableProduct(input: RedeemableProductInput) {
+    return this.prisma.redeemableProduct.create({
+      data: {
+        id: randomUUID(),
+        name: this.requiredText(input.name, 'nombre del canjeable'),
+        pointsCost: this.parsePointsCost(input.pointsCost),
+        status: this.parseCatalogStatus(input.status),
+        imageUrl: this.optionalText(input.imageUrl),
+        description: this.optionalText(input.description),
+        order: this.parseOrder(input.order),
+      },
+    });
+  }
+
+  async updateRedeemableProduct(id: string, input: RedeemableProductInput) {
+    await this.requireRedeemableProduct(id);
+
+    return this.prisma.redeemableProduct.update({
+      where: { id },
+      data: {
+        ...(input.name !== undefined ? { name: this.requiredText(input.name, 'nombre del canjeable') } : {}),
+        ...(input.pointsCost !== undefined ? { pointsCost: this.parsePointsCost(input.pointsCost) } : {}),
+        ...(input.status !== undefined ? { status: this.parseCatalogStatus(input.status) } : {}),
+        ...(input.imageUrl !== undefined ? { imageUrl: this.optionalText(input.imageUrl) } : {}),
+        ...(input.description !== undefined ? { description: this.optionalText(input.description) } : {}),
+        ...(input.order !== undefined ? { order: this.parseOrder(input.order) } : {}),
+      },
+    });
+  }
+
+  async deleteRedeemableProduct(id: string) {
+    await this.requireRedeemableProduct(id);
+
+    const redemptionsCount = await this.prisma.rewardRedemption.count({
+      where: { redeemableProductId: id },
+    });
+
+    if (redemptionsCount > 0) {
+      throw new ConflictException('No se puede eliminar un canjeable con historial. Desactívalo para ocultarlo del menú.');
+    }
+
+    await this.prisma.redeemableProduct.delete({ where: { id } });
+    return { ok: true };
+  }
+
+  async redeemProduct(customerId: string, redeemableProductId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const [customer, product] = await Promise.all([
+        tx.customer.findUnique({
+          where: { id: customerId },
+          select: this.customerPublicSelect(),
+        }),
+        tx.redeemableProduct.findUnique({ where: { id: redeemableProductId } }),
+      ]);
+
+      if (!customer) {
+        throw new NotFoundException('Cliente no encontrado.');
+      }
+
+      if (!product || product.status !== 'active') {
+        throw new NotFoundException('Producto canjeable no disponible.');
+      }
+
+      if (customer.points < product.pointsCost) {
+        throw new BadRequestException('Puntos insuficientes para este canje.');
+      }
+
+      const updatedCustomer = await tx.customer.update({
+        where: { id: customer.id },
+        data: {
+          points: {
+            decrement: product.pointsCost,
+          },
+        },
+        select: this.customerPublicSelect(),
+      });
+
+      const redemption = await tx.rewardRedemption.create({
+        data: {
+          id: randomUUID(),
+          customerId: customer.id,
+          redeemableProductId: product.id,
+          productName: product.name,
+          pointsCost: product.pointsCost,
+        },
+      });
+
+      return {
+        redemption,
+        customer: updatedCustomer,
+      };
+    });
+  }
+
   async listCustomers(query?: string) {
     return this.prisma.customer.findMany({
       where: query
@@ -364,6 +480,16 @@ export class CatalogService {
     return product;
   }
 
+  private async requireRedeemableProduct(id: string) {
+    const product = await this.prisma.redeemableProduct.findUnique({ where: { id } });
+
+    if (!product) {
+      throw new NotFoundException('Producto canjeable no encontrado.');
+    }
+
+    return product;
+  }
+
   private parseCatalogStatus(status?: string): CatalogStatus {
     if (status === undefined || status === '') {
       return 'active';
@@ -394,6 +520,16 @@ export class CatalogService {
     }
 
     return order;
+  }
+
+  private parsePointsCost(value: number | string | undefined): number {
+    const points = Number(value);
+
+    if (!Number.isInteger(points) || points <= 0) {
+      throw new BadRequestException('Puntos de canje inválidos.');
+    }
+
+    return points;
   }
 
   private requiredText(value: string | null | undefined, field: string): string {
