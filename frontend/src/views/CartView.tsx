@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Trash2, MessageCircle, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { useUser } from '@/context/UserContext';
@@ -19,8 +18,6 @@ export function CartView({ onNavigate }: CartViewProps) {
   const [selectedBranchId, setSelectedBranchId] = useState('');
   
   const [notes, setNotes] = useState('');
-  const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
   
   const [redeemPointsChecked, setRedeemPointsChecked] = useState(false);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
@@ -64,8 +61,9 @@ export function CartView({ onNavigate }: CartViewProps) {
       return;
     }
 
-    if (!isAuthenticated && (!guestName.trim() || !guestPhone.trim())) {
-      setError('Por favor ingresa tu nombre y teléfono para el pedido.');
+    if (!isAuthenticated || !customer || !token) {
+      setError('Para realizar un pedido debes iniciar sesión o registrarte.');
+      onNavigate('auth');
       return;
     }
 
@@ -81,8 +79,6 @@ export function CartView({ onNavigate }: CartViewProps) {
         paymentMethod: 'cash' as const,  // Default cash
         notes: notes || undefined,
         pointsToRedeem: redeemPointsChecked ? pointsToRedeem : undefined,
-        customerName: isAuthenticated ? undefined : guestName,
-        customerPhone: isAuthenticated ? undefined : guestPhone,
         items: items.map(item => ({
           id: item.id,
           title: item.title,
@@ -95,7 +91,7 @@ export function CartView({ onNavigate }: CartViewProps) {
         }))
       };
 
-      const order = await createOrder(payload, token || undefined);
+      const order = await createOrder(payload, token);
       
       // WhatsApp message formatting
       const shortId = order.id.substring(0, 8).toUpperCase();
@@ -301,25 +297,18 @@ export function CartView({ onNavigate }: CartViewProps) {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            <p className="text-xs text-primary bg-primary/5 border border-primary/20 p-3 rounded-lg text-center font-semibold cursor-pointer" onClick={() => onNavigate('auth')}>
-              ¿Ya tienes cuenta? Inicia sesión para acumular puntos.
+          <div className="bg-surface border border-primary/30 rounded-xl p-4 flex flex-col gap-3">
+            <p className="text-sm text-white font-semibold text-center">
+              Inicia sesión o crea tu cuenta para generar el pedido.
             </p>
-            <Input 
-              label="Nombre"
-              placeholder="Ej. Juan Pérez"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              required
-            />
-            <Input 
-              label="Teléfono"
-              placeholder="10 dígitos"
-              type="tel"
-              value={guestPhone}
-              onChange={(e) => setGuestPhone(e.target.value)}
-              required
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Button type="button" size="sm" onClick={() => onNavigate('auth')}>
+                INICIAR SESIÓN
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => onNavigate('register')}>
+                CREAR CUENTA
+              </Button>
+            </div>
           </div>
         )}
       </div>

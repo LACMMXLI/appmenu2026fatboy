@@ -208,8 +208,6 @@ export interface OrderPayload {
   notes?: string;
   items: OrderItemPayload[];
   pointsToRedeem?: number;
-  customerName?: string;
-  customerPhone?: string;
 }
 
 export interface Order {
@@ -239,14 +237,17 @@ export interface Order {
   }[];
 }
 
-export async function createOrder(payload: OrderPayload, token?: string): Promise<Order> {
+export async function createOrder(payload: OrderPayload, token: string): Promise<Order> {
+  if (!token) {
+    throw new Error('Para realizar un pedido debes iniciar sesión o registrarte.');
+  }
+
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: 'POST',
     cache: NO_STORE,

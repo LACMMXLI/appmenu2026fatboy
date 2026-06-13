@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createOrder(customerId: string | null, body: any) {
+  async createOrder(customerId: string, body: any) {
     const { branchId, deliveryType, paymentMethod, notes, items, pointsToRedeem } = body;
 
     const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
@@ -14,12 +14,13 @@ export class OrderService {
       throw new NotFoundException('Sucursal no encontrada.');
     }
 
-    let customer = null;
-    if (customerId) {
-      customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
-      if (!customer) {
-        throw new NotFoundException('Cliente no encontrado.');
-      }
+    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer) {
+      throw new NotFoundException('Cliente no encontrado.');
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new BadRequestException('El pedido debe incluir al menos un producto.');
     }
 
     // Fetch products to validate price
@@ -63,7 +64,7 @@ export class OrderService {
     }
 
     let pointsRedeemed = 0;
-    if (customer && pointsToRedeem && pointsToRedeem > 0) {
+    if (pointsToRedeem && pointsToRedeem > 0) {
       if (customer.points < pointsToRedeem) {
         throw new BadRequestException('Puntos insuficientes.');
       }
@@ -80,9 +81,9 @@ export class OrderService {
       const newOrder = await tx.order.create({
         data: {
           id: randomUUID(),
-          customerId: customer ? customer.id : null,
-          customerName: customer ? customer.name : (body.customerName || 'Invitado'),
-          customerPhone: customer ? customer.phone : (body.customerPhone || ''),
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.phone,
           branchId: branch.id,
           branchName: branch.name,
           status: 'pending',
@@ -101,17 +102,15 @@ export class OrderService {
         },
       });
 
-      if (customer) {
-        await tx.customer.update({
-          where: { id: customer.id },
-          data: {
-            points: {
-              decrement: pointsRedeemed,
-              increment: pointsEarned,
-            },
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: {
+          points: {
+            decrement: pointsRedeemed,
+            increment: pointsEarned,
           },
-        });
-      }
+        },
+      });
 
       return newOrder;
     });
