@@ -57,25 +57,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const dismissed = localStorage.getItem('fatboy-google-review-dismissed');
-      const lastPrompted = localStorage.getItem('fatboy-google-review-last-prompted');
-      
-      const now = Date.now();
-      const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours
-      
-      const shouldPrompt = !dismissed && (!lastPrompted || (now - parseInt(lastPrompted, 10) > cooldownPeriod));
-      
-      if (shouldPrompt) {
-        const timer = setTimeout(() => {
-          setShowReviewPrompt(true);
-        }, 2500); // Show 2.5 seconds after mounting / log in
-        return () => clearTimeout(timer);
-      }
+    const dismissed = localStorage.getItem('fatboy-google-review-dismissed');
+    const lastPrompted = localStorage.getItem('fatboy-google-review-last-prompted');
+    
+    const now = Date.now();
+    const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours
+    
+    const shouldPrompt = !dismissed && (!lastPrompted || (now - parseInt(lastPrompted, 10) > cooldownPeriod));
+    
+    if (shouldPrompt) {
+      const timer = setTimeout(() => {
+        setShowReviewPrompt(true);
+      }, 2500); // Show 2.5 seconds after mounting / log in
+      return () => clearTimeout(timer);
     } else {
       setShowReviewPrompt(false);
     }
-  }, [isAuthenticated]);
+  }, []);
 
   const handleDismissPrompt = () => {
     localStorage.setItem('fatboy-google-review-last-prompted', Date.now().toString());

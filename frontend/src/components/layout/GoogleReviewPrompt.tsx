@@ -26,13 +26,17 @@ export function GoogleReviewPrompt({ onClose, onRedirect }: GoogleReviewPromptPr
           <X size={18} />
         </button>
 
-        {/* Logo Container */}
-        <div className="w-16 h-16 rounded-full overflow-hidden border border-gray-100 bg-gray-50 p-1 mb-4 flex items-center justify-center shadow-inner">
-          <img 
-            src="/images/logo.png" 
-            alt="Fatboy Logo" 
-            className="w-full h-full object-contain" 
-          />
+        {/* Google Logo text */}
+        <div className="mb-4">
+          <span className="text-[20px] font-bold tracking-tight select-none">
+            <span className="text-[#4285F4]">G</span>
+            <span className="text-[#EA4335]">o</span>
+            <span className="text-[#FBBC05]">o</span>
+            <span className="text-[#4285F4]">g</span>
+            <span className="text-[#34A853]">l</span>
+            <span className="text-[#EA4335]">e</span>
+            <span className="text-gray-500 font-normal ml-1.5 text-base">Reseñas</span>
+          </span>
         </div>
 
         {/* Text */}
@@ -40,7 +44,7 @@ export function GoogleReviewPrompt({ onClose, onRedirect }: GoogleReviewPromptPr
           ¿Te gusta Fatboy? 🍔
         </h3>
         <p className="text-xs text-gray-500 leading-relaxed mb-4 font-medium px-1">
-          Déjanos una calificación en Google. Tu opinión nos ayuda a seguir preparando las mejores smash burgers.
+          Déjanos una calificación. Tu opinión nos ayuda a seguir preparando las mejores smash burgers.
         </p>
 
         {/* Stars */}
@@ -60,7 +64,7 @@ export function GoogleReviewPrompt({ onClose, onRedirect }: GoogleReviewPromptPr
         <div className="flex flex-col gap-2 w-full">
           <Button
             onClick={onRedirect}
-            className="w-full h-10 bg-primary hover:bg-primary-hover text-white text-xs font-extrabold uppercase rounded-lg shadow-md border-none"
+            className="w-full h-10 bg-[#4285F4] hover:bg-[#357AE8] text-white text-xs font-extrabold uppercase rounded-lg shadow-md border-none transition-colors"
           >
             Calificar Ahora
           </Button>
