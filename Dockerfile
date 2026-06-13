@@ -24,7 +24,7 @@ RUN npm prune --omit=dev \
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=8372
 ENV BASE_DATA_DIR=backend/base
 
 RUN apt-get update \
@@ -42,5 +42,5 @@ COPY backend/docker-entrypoint.sh backend/docker-entrypoint.sh
 RUN sed -i 's/\r$//' backend/docker-entrypoint.sh \
   && chmod +x backend/docker-entrypoint.sh
 
-EXPOSE 3000
+EXPOSE 8372
 CMD ["sh", "backend/docker-entrypoint.sh"]

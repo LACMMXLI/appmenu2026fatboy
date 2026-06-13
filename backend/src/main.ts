@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env.PORT ?? 8372);
 const corsOrigin = parseCorsOrigin(process.env.CORS_ORIGIN);
 
 const app = await NestFactory.create(AppModule);

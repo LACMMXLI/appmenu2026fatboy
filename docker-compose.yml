@@ -24,7 +24,7 @@ services:
     container_name: fatboy-backend
     restart: always
     environment:
-      PORT: 3000
+      PORT: 8372
       DATABASE_URL: postgresql://${POSTGRES_USER:-fatboy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fatboy_menu}
       BASE_DATA_DIR: ./base
       ADMIN_CATALOG_KEY: ${ADMIN_CATALOG_KEY:?ADMIN_CATALOG_KEY is required}
@@ -33,7 +33,7 @@ services:
       postgres:
         condition: service_healthy
     expose:
-      - 3000
+      - 8372
 
   frontend:
     build:

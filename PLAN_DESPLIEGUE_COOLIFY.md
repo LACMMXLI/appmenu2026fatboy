@@ -89,7 +89,7 @@ Recomendacion inicial: usar opcion A para imagenes publicas de catalogo y banner
 Backend:
 
 ```env
-PORT=3000
+PORT=8372
 DATABASE_URL=postgresql://menu_app:${POSTGRES_PASSWORD}@postgres:5432/menu_digital_web
 ADMIN_CATALOG_KEY=...
 PUBLIC_APP_URL=https://app.tudominio.com

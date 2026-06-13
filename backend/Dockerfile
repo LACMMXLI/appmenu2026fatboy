@@ -14,5 +14,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/base ./base
-EXPOSE 3000
+ENV PORT=8372
+EXPOSE 8372
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/scripts/import-base-catalog.js --if-empty && node dist/src/main.js"]
