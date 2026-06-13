@@ -62,9 +62,9 @@ function getCategoryIcon(name: string): string {
 }
 
 const STATIC_PROMOS = [
-  { id: 'p1', img: '/images/promo_banner_combo_fatboy_1781279450113.png',  label: 'COMBO FATBOY' },
-  { id: 'p2', img: '/images/promo_banner_2x1_1781279460341.png',            label: '2X1 CLÁSICAS' },
-  { id: 'p3', img: '/images/promo_banner_papas_gratis_1781279470761.png',   label: 'PAPAS GRATIS' },
+  { id: 'p1', img: '/images/promo_urban_fatboy_charola.png', label: 'CHAROLA URBAN FATBOY' },
+  { id: 'p2', img: '/images/promo_rollos_naturales.png', label: '2 ROLLOS NATURALES' },
+  { id: 'p3', img: '/images/promo_rollos_empanizados.png', label: '2 ROLLOS EMPANIZADOS' },
 ];
 
 const FALLBACK_PRODUCTS = [

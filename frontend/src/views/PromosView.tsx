@@ -7,9 +7,9 @@ interface PromosViewProps {
 }
 
 const STATIC_PROMOS = [
-  { id: 'sp1', img: '/images/promo_banner_combo_fatboy_1781279450113.png',  label: 'COMBO FATBOY',    desc: 'Burger + papas + refresco. El clásico de la casa.' },
-  { id: 'sp2', img: '/images/promo_banner_2x1_1781279460341.png',           label: '2X1 EN CLÁSICAS', desc: 'Compra una Fatboy Clásica y la segunda viene gratis.' },
-  { id: 'sp3', img: '/images/promo_banner_papas_gratis_1781279470761.png',  label: 'PAPAS GRATIS',    desc: 'Pide cualquier combo y recibe unas papas extra sin costo.' },
+  { id: 'sp1', img: '/images/promo_urban_fatboy_charola.png', label: 'CHAROLA URBAN FATBOY', desc: '4 hamburguesas, boneless, papas, apio, zanahoria y Pepsi 1.5 L.' },
+  { id: 'sp2', img: '/images/promo_rollos_naturales.png', label: '2 ROLLOS NATURALES', desc: '2 rollos cielo, mar y tierra naturales.' },
+  { id: 'sp3', img: '/images/promo_rollos_empanizados.png', label: '2 ROLLOS EMPANIZADOS', desc: '2 rollos cielo, mar y tierra empanizados.' },
 ];
 
 export function PromosView({ onNavigate }: PromosViewProps) {
