@@ -38,7 +38,7 @@ const FALLBACK_BANNERS: HomeBanner[] = [
 const CATEGORY_ICONS: Record<string, string> = {
   'hamburguesa': '/images/category_icon_burger_1781279364406.png',
   'combo':       '/images/category_icon_combo_1781279372441.png',
-  'dog':         '/images/category_icon_burger_1781279364406.png',
+  'dog':         '/images/category_icon_fries_1781279382390.png', /* Hot-dogs ahora usan icono de fries/snack para no repetir */
   'burrito':     '/images/category_icon_combo_1781279372441.png',
   'mexican':     '/images/category_icon_combo_1781279372441.png',
   'sushi':       '/images/category_icon_combo_1781279372441.png',
@@ -88,7 +88,7 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
   const b = banners[idx];
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: 135 }}>
+    <div className="relative w-full overflow-hidden" style={{ height: 120 }}>
       {/* background image */}
       <img
         key={b.id}
@@ -101,7 +101,7 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
       {/* Dark overlay left side */}
       <div
         className="absolute inset-0"
-        style={{ background: 'linear-gradient(100deg, rgba(10,10,10,1) 38%, rgba(10,10,10,0.7) 65%, rgba(10,10,10,0.1) 100%)' }}
+        style={{ background: 'linear-gradient(100deg, rgba(10,10,10,0.95) 30%, rgba(10,10,10,0.5) 60%, rgba(10,10,10,0) 100%)' }}
       />
 
       {/* Content */}
@@ -178,13 +178,13 @@ export function HomeView({ onNavigate }: HomeViewProps) {
 
 
   return (
-    <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingTop: 36, paddingBottom: 38 }}>
+    <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingTop: 44, paddingBottom: 60 }}>
 
       {/* ── HERO SLIDER ──────────────────────────── */}
       <HeroSlider banners={banners} onNavigate={onNavigate} />
 
       {/* ── CATEGORY PILLS ───────────────────────── */}
-      <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-3 py-2">
+      <div className="flex gap-4 overflow-x-auto no-scrollbar px-4 py-3">
         {categories.map(cat => (
           <div
             key={cat.id}
@@ -212,7 +212,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
           </button>
         </div>
 
-        <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-3 pb-2">
+        <div className="promos-container no-scrollbar">
           {STATIC_PROMOS.map(promo => (
             <div
               key={promo.id}
@@ -230,7 +230,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         {/* Botón de Ubicaciones */}
         <button
           onClick={() => onNavigate('branches')}
-          className="w-full h-11 bg-primary text-white font-sans font-bold uppercase rounded-lg flex items-center justify-center gap-2 hover:bg-primary-hover active:scale-[0.98] transition-all border border-primary/20 shadow-[0_0_10px_rgba(229,9,20,0.15)]"
+          className="w-full h-10 bg-primary text-white font-sans font-bold uppercase rounded-lg flex items-center justify-center gap-2 hover:bg-primary-hover active:scale-[0.98] transition-all border border-primary/20 shadow-[0_0_10px_rgba(229,9,20,0.15)]"
           style={{ fontSize: '11px' }}
         >
           <MapPin size={15} className="text-gold" style={{ color: 'var(--color-gold)' }} />

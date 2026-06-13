@@ -36,8 +36,8 @@ export function TopBar({ onNavigate }: Omit<NavProps, 'currentView'>) {
         <img
           src="/images/logo.png"
           alt="FATBOY"
-          className="h-8 w-auto object-contain"
-          style={{ maxWidth: 120 }}
+          className="h-10 w-auto object-contain"
+          style={{ maxWidth: 140 }}
         />
       </button>
 
