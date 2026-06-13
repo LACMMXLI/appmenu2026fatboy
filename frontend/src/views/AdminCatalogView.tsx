@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
+import { GOOGLE_REVIEW_BRANCHES, buildGoogleReviewUrl } from '@/lib/googleReviews';
 import {
   createAdminCategory,
   createAdminProduct,
@@ -48,6 +49,8 @@ const emptyProduct = {
   categoryId: '',
   description: '',
 };
+
+const [veneciaReviewBranch, sanMarcosReviewBranch] = GOOGLE_REVIEW_BRANCHES;
 
 export function AdminCatalogView() {
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('fatboy-admin-key') ?? '');
@@ -1218,6 +1221,7 @@ function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: SettingsAdminPr
   const [facebookUrl, setFacebookUrl] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
+  const [googleReviewsSanMarcosUrl, setGoogleReviewsSanMarcosUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -1229,6 +1233,7 @@ function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: SettingsAdminPr
         if (data.facebook_url) setFacebookUrl(data.facebook_url);
         if (data.whatsapp_number) setWhatsappNumber(data.whatsapp_number);
         if (data.google_reviews_url) setGoogleReviewsUrl(data.google_reviews_url);
+        if (data.google_reviews_san_marcos_url) setGoogleReviewsSanMarcosUrl(data.google_reviews_san_marcos_url);
       })
       .catch((err) => console.error('Error al cargar configuraciones:', err))
       .finally(() => {
@@ -1247,6 +1252,7 @@ function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: SettingsAdminPr
         facebook_url: facebookUrl,
         whatsapp_number: whatsappNumber,
         google_reviews_url: googleReviewsUrl,
+        google_reviews_san_marcos_url: googleReviewsSanMarcosUrl,
       });
       onSaveSuccess();
     } catch (err: any) {
@@ -1284,10 +1290,16 @@ function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: SettingsAdminPr
           onChange={(e) => setWhatsappNumber(e.target.value)}
         />
         <Input
-          label="Enlace de Reseñas en Google Maps"
+          label={`Enlace de Reseñas en Google Maps - ${veneciaReviewBranch.label}`}
           placeholder="https://search.google.com/local/writereview?placeid=..."
           value={googleReviewsUrl}
           onChange={(e) => setGoogleReviewsUrl(e.target.value)}
+        />
+        <Input
+          label={`Enlace de Reseñas en Google Maps - ${sanMarcosReviewBranch.label}`}
+          placeholder={buildGoogleReviewUrl(sanMarcosReviewBranch.fallbackPlaceId)}
+          value={googleReviewsSanMarcosUrl}
+          onChange={(e) => setGoogleReviewsSanMarcosUrl(e.target.value)}
         />
         <p className="text-[11px] text-gray-400">
           Nota: Si ingresas un número telefónico, por favor incluye el código de país sin el símbolo "+" (ej: 521234567890).
@@ -1380,7 +1392,6 @@ function FeedbackAdmin({ feedbacks, isLoading }: FeedbackAdminProps) {
     </div>
   );
 }
-
 
 
 

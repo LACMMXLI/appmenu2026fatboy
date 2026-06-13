@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Star, X, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { getSystemSettings, submitFeedback } from '@/lib/api';
+import { GOOGLE_REVIEW_BRANCHES, getGoogleReviewUrl, type GoogleReviewBranch } from '@/lib/googleReviews';
 
 interface GoogleReviewViewProps {
   onNavigate: (view: string) => void;
@@ -13,19 +14,24 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
-  const [googleUrl, setGoogleUrl] = useState('');
+  const [googleUrls, setGoogleUrls] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      GOOGLE_REVIEW_BRANCHES.map((branch) => [branch.id, getGoogleReviewUrl(branch, {})])
+    )
+  );
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     // Mark as permanently dismissed so the modal doesn't show again
     localStorage.setItem('fatboy-google-review-dismissed', 'true');
 
-    // Fetch google reviews url
     getSystemSettings()
       .then((data) => {
-        if (data.google_reviews_url) {
-          setGoogleUrl(data.google_reviews_url);
-        }
+        setGoogleUrls(
+          Object.fromEntries(
+            GOOGLE_REVIEW_BRANCHES.map((branch) => [branch.id, getGoogleReviewUrl(branch, data)])
+          )
+        );
       })
       .catch((err) => console.error('Error fetching settings for review:', err));
   }, []);
@@ -33,21 +39,28 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
   const handleStarClick = (selected: number) => {
     setRating(selected);
     if (selected >= 4) {
-      // Redirect to Google Maps reviews
-      setIsRedirecting(true);
-      
-      // Submit feedback to DB too, so we keep track of 4-5 star clicks
-      submitFeedback(selected, 'Redirigido a Google Reseñas')
-        .catch((err) => console.error('Error saving 4/5 star feedback:', err));
-
-      const targetLink = googleUrl || 'https://search.google.com/local/writereview?placeid=ChIJi0vnrExx14ARCFbYG3xvPqo';
-      
-      setTimeout(() => {
-        window.open(targetLink, '_blank', 'noopener,noreferrer');
-        setIsRedirecting(false);
-        setIsDone(true);
-      }, 1500);
+      setComment('');
     }
+  };
+
+  const handleGoogleRedirect = (branch: GoogleReviewBranch) => {
+    if (!rating || rating < 4) return;
+
+    setIsRedirecting(true);
+
+    submitFeedback(rating, `Redirigido a Google Reseñas - ${branch.label}`)
+      .catch((err) => console.error('Error saving 4/5 star feedback:', err));
+
+    const targetLink = googleUrls[branch.id] || getGoogleReviewUrl(branch, {});
+    const openedWindow = window.open(targetLink, '_blank', 'noopener,noreferrer');
+    if (!openedWindow) {
+      window.location.href = targetLink;
+    }
+
+    setTimeout(() => {
+      setIsRedirecting(false);
+      setIsDone(true);
+    }, 800);
   };
 
   const handleSubmitFeedback = async (e: React.FormEvent) => {
@@ -158,6 +171,26 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
                     Enviar comentarios
                   </Button>
                 </form>
+              )}
+
+              {rating !== null && rating >= 4 && (
+                <div className="w-full animate-fade-in">
+                  <p className="text-xs font-semibold text-gray-700 mb-3">
+                    Selecciona la sucursal donde quieres publicar tu reseña en Google.
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {GOOGLE_REVIEW_BRANCHES.map((branch) => (
+                      <Button
+                        key={branch.id}
+                        type="button"
+                        onClick={() => handleGoogleRedirect(branch)}
+                        className="w-full bg-[#4285F4] hover:bg-[#357AE8] text-white font-sans text-xs font-bold uppercase rounded-lg py-2.5 h-10 shadow-none border-none transition-colors"
+                      >
+                        {branch.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               )}
             </>
           )}
