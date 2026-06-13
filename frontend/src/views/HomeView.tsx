@@ -24,6 +24,15 @@ const FALLBACK_BANNERS: HomeBanner[] = [
     linkView: 'promos',
     order: 0,
   },
+  {
+    id: 'promo-fatgool',
+    imageUrl: '/images/promo_charola_fatgool.png',
+    title: null,
+    subtitle: null,
+    buttonText: null,
+    linkView: 'promos',
+    order: 1,
+  },
 ];
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -53,7 +62,18 @@ function getCategoryIcon(name: string): string {
 }
 
 const STATIC_PROMOS = [
-  { id: 'promo-futbolera', img: '/images/promo_charola_futbolera.png', label: 'CHAROLA LA FUTBOLERA' },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
+    img: '/images/promo_charola_futbolera.png',
+    label: 'CHAROLA LA FUTBOLERA',
+    price: 380,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4102',
+    img: '/images/promo_charola_fatgool.png',
+    label: 'CHAROLA FATGOOL',
+    price: 499,
+  },
 ];
 
 const FALLBACK_PRODUCTS = [
@@ -154,6 +174,7 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
    MAIN HOME VIEW
 ───────────────────────────────────────────────── */
 export function HomeView({ onNavigate }: HomeViewProps) {
+  const { addItem } = useCart();
   const [banners, setBanners]     = useState<HomeBanner[]>(FALLBACK_BANNERS);
   const [categories, setCategories] = useState<Category[]>([]);
   const [settings, setSettings]     = useState<Record<string, string>>({});
@@ -170,6 +191,20 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       .finally(() => { if (m) setLoading(false); });
     return () => { m = false; };
   }, []);
+
+  const addPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+    addItem({
+      id: promo.id,
+      title: promo.label,
+      price: promo.price,
+      qty: 1,
+      img: promo.img,
+      extras: [],
+      removals: [],
+      notes: '',
+    });
+    onNavigate('cart');
+  };
 
 
   return (
@@ -211,10 +246,20 @@ export function HomeView({ onNavigate }: HomeViewProps) {
           {STATIC_PROMOS.map(promo => (
             <div
               key={promo.id}
-              className="promo-card"
-              onClick={() => onNavigate('promos')}
+              className="promo-card bg-black"
+              onClick={() => addPromoToCart(promo)}
             >
               <img src={promo.img} alt={promo.label} className="w-full h-full object-contain rounded-[10px] bg-black" />
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  addPromoToCart(promo);
+                }}
+                className="absolute bottom-2 right-2 rounded-md bg-primary px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_0_12px_rgba(229,9,20,0.45)]"
+              >
+                Agregar ${promo.price}
+              </button>
             </div>
           ))}
         </div>

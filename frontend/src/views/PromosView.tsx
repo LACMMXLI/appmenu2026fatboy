@@ -1,16 +1,46 @@
 import React from 'react';
 import { Zap, ShoppingCart } from 'lucide-react';
 import { type Product } from '@/lib/api';
+import { useCart } from '@/context/CartContext';
 
 interface PromosViewProps {
   onNavigate: (view: any, product?: Product) => void;
 }
 
 const STATIC_PROMOS = [
-  { id: 'charola-futbolera', img: '/images/promo_charola_futbolera.png', label: 'CHAROLA LA FUTBOLERA', desc: 'La mejor botana para ver los partidos.' },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
+    img: '/images/promo_charola_futbolera.png',
+    label: 'CHAROLA LA FUTBOLERA',
+    desc: 'Boneless, alitas, papas sazonadas, aros de cebolla, palitos de queso, apio, zanahoria y aderezo ranch.',
+    price: 380,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4102',
+    img: '/images/promo_charola_fatgool.png',
+    label: 'CHAROLA FATGOOL',
+    desc: 'Hamburguesa guacamole, hamburguesa bacon, burrito de asada, burrito de pastor, boneless, papas, apio, zanahoria, aderezo ranch y bebida.',
+    price: 499,
+  },
 ];
 
 export function PromosView({ onNavigate }: PromosViewProps) {
+  const { addItem } = useCart();
+
+  const addPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+    addItem({
+      id: promo.id,
+      title: promo.label,
+      price: promo.price,
+      qty: 1,
+      img: promo.img,
+      extras: [],
+      removals: [],
+      notes: '',
+    });
+    onNavigate('cart');
+  };
+
   return (
     <div
       className="flex-1 overflow-y-auto no-scrollbar"
@@ -33,7 +63,7 @@ export function PromosView({ onNavigate }: PromosViewProps) {
             key={promo.id}
             className="rounded-xl overflow-hidden cursor-pointer bg-black"
             style={{ border: '1px solid var(--color-outline)' }}
-            onClick={() => onNavigate('menu')}
+            onClick={() => addPromoToCart(promo)}
           >
             <img src={promo.img} alt={promo.label} className="w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
             <div
@@ -43,13 +73,14 @@ export function PromosView({ onNavigate }: PromosViewProps) {
               <div>
                 <h3 className="font-black text-[12.5px] text-white mb-0.5">{promo.label}</h3>
                 <p className="text-[9.5px] text-[#777] leading-snug">{promo.desc}</p>
+                <p className="font-bold text-[12px] mt-1" style={{ color: 'var(--color-primary)' }}>${promo.price}.00</p>
               </div>
               <button
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[9.5px] uppercase tracking-wider flex-shrink-0 ml-3"
                 style={{ background: 'var(--color-primary)', color: 'white' }}
-                onClick={e => { e.stopPropagation(); onNavigate('menu'); }}
+                onClick={e => { e.stopPropagation(); addPromoToCart(promo); }}
               >
-                <ShoppingCart size={11} /> Pedir
+                <ShoppingCart size={11} /> Agregar
               </button>
             </div>
           </div>
