@@ -22,6 +22,27 @@ const STATIC_PROMOS = [
     desc: 'Hamburguesa guacamole, hamburguesa bacon, burrito de asada, burrito de pastor, boneless, papas, apio, zanahoria, aderezo ranch y bebida.',
     price: 499,
   },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4103',
+    img: '/images/promo_rollos_empanizados.png',
+    label: '2 ROLLOS CIELO, MAR Y TIERRA EMPANIZADOS',
+    desc: '2 rollos empanizados de cielo, mar y tierra. Válido hasta las 10:00 PM.',
+    price: 150,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4104',
+    img: '/images/promo_rollos_naturales.png',
+    label: '2 ROLLOS CIELO, MAR Y TIERRA NATURALES',
+    desc: '2 rollos naturales de cielo, mar y tierra. Válido hasta las 10:00 PM.',
+    price: 100,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4105',
+    img: '/images/promo_urban_fatboy_charola.png',
+    label: 'CHAROLA URBAN FATBOY',
+    desc: '4 hamburguesas, boneless, papas, apio y zanahoria, pepsi 1.5 L.',
+    price: 350,
+  },
 ];
 
 export function PromosView({ onNavigate }: PromosViewProps) {
