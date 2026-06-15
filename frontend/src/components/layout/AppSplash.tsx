@@ -17,9 +17,9 @@ export function AppSplash() {
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       >
         <img
-          src="/images/logo.png"
-          alt="Fatboy"
-          className="h-28 w-auto object-contain drop-shadow-[0_0_28px_rgba(232,0,10,0.45)]"
+          src="/icons/pwa-icon-512.png"
+          alt="Fatboy App"
+          className="h-28 w-28 rounded-3xl object-contain drop-shadow-[0_0_28px_rgba(232,0,10,0.45)]"
         />
         <motion.div
           className="mt-6 h-1 w-32 overflow-hidden rounded-full bg-white/10"
