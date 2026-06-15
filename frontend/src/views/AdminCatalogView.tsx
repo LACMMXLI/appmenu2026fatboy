@@ -364,17 +364,27 @@ export function AdminCatalogView() {
 
   if (!isAuthorized) {
     return (
-      <main className="min-h-[100dvh] bg-background text-white flex items-center justify-center px-5">
-        <form onSubmit={handleUnlock} className="w-full max-w-sm rounded-xl border border-outline bg-surface p-5 shadow-2xl">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="h-11 w-11 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
+      <main className="admin-aurora min-h-[100dvh] text-white flex items-center justify-center px-5 relative overflow-hidden">
+        {/* Decorative radial glows */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-1/4 left-1/3 h-64 w-64 rounded-full bg-primary/8 blur-[100px]" />
+          <div className="absolute bottom-1/3 right-1/4 h-48 w-48 rounded-full bg-gold/5 blur-[80px]" />
+        </div>
+
+        <form onSubmit={handleUnlock} className="admin-gradient-border relative w-full max-w-sm rounded-2xl p-6 shadow-[0_30px_80px_rgba(0,0,0,0.5)]">
+          {/* Glass inner surface */}
+          <div className="absolute inset-[1px] rounded-2xl bg-surface/95 backdrop-blur-xl" style={{ zIndex: -1 }} />
+
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center shadow-[0_0_20px_rgba(232,0,10,0.3)]">
               <KeyRound size={22} />
             </div>
             <div>
-              <h1 className="font-display text-3xl leading-none">ADMINISTRACIÓN</h1>
-              <p className="text-xs text-gray-400">Control total del restaurante Fatboy.</p>
+              <h1 className="admin-shimmer font-display text-3xl leading-none">ADMINISTRACIÓN</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Control total del restaurante Fatboy.</p>
             </div>
           </div>
+
           <Input
             label="Clave administrativa"
             type="password"
@@ -382,10 +392,25 @@ export function AdminCatalogView() {
             onChange={(event) => setAdminKey(event.target.value)}
             autoFocus
           />
-          {error && <p className="mt-3 text-sm text-primary">{error}</p>}
-          <Button type="submit" className="mt-5 w-full" isLoading={isLoading}>
+
+          {error && (
+            <p className="mt-3 text-sm text-primary flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              {error}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            className="mt-5 w-full bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary shadow-[0_0_20px_rgba(232,0,10,0.25)] transition-all duration-300"
+            isLoading={isLoading}
+          >
             Entrar
           </Button>
+
+          <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-widest text-gray-600">
+            Fatboy POS · Panel Administrativo
+          </p>
         </form>
       </main>
     );
