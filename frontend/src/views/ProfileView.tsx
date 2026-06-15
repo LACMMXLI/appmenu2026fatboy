@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Flame, MapPin, Phone, ChevronRight, Lock, CreditCard, LogOut, Store, Gift } from 'lucide-react';
+import { Star, Flame, Phone, ChevronRight, Lock, CreditCard, LogOut, Store, Gift, Zap, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { Button } from '@/components/ui/Button';
@@ -58,15 +58,69 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
           </div>
         </div>
       ) : (
-        <div className="bg-surface border border-outline/50 p-4 rounded-xl flex flex-col items-center justify-center text-center mb-3">
-          <div className="w-16 h-16 bg-primary/10 border border-primary/30 rounded-full flex items-center justify-center mb-3 text-primary">
-            <Star size={32} />
+        <div className="space-y-4">
+          <section className="relative overflow-hidden rounded-[28px] border border-white/12 bg-[radial-gradient(circle_at_50%_18%,rgba(232,0,10,0.34),transparent_34%),linear-gradient(135deg,rgba(232,0,10,0.12),rgba(255,255,255,0.025))] px-5 py-7 text-center shadow-[0_18px_55px_rgba(0,0,0,0.45)]">
+            <div className="pointer-events-none absolute left-8 top-16 h-10 w-10 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_24px_rgba(232,0,10,0.45)] rotate-[-18deg]" />
+            <div className="pointer-events-none absolute right-10 top-20 h-8 w-8 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_22px_rgba(232,0,10,0.4)] rotate-[18deg]" />
+            <div className="pointer-events-none absolute right-20 bottom-24 h-7 w-7 rounded-full border border-primary/30 bg-primary/20 shadow-[0_0_18px_rgba(232,0,10,0.35)]" />
+
+            <div className="relative mx-auto mb-5 flex h-[108px] w-[108px] items-center justify-center rounded-full border border-primary/70 bg-primary/10 shadow-[0_0_34px_rgba(232,0,10,0.55)]">
+              <div className="absolute inset-4 rounded-full border border-primary/40" />
+              <Star size={58} className="relative text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.65)]" strokeWidth={2.2} />
+            </div>
+
+            <h2 className="mx-auto max-w-[300px] text-[30px] font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
+              Gana puntos en cada compra
+            </h2>
+            <p className="mx-auto mt-3 max-w-[305px] text-sm font-semibold leading-snug text-gray-300">
+              Regístrate para acumular puntos y obtener beneficios cada vez que ordenas en Fatboy.
+            </p>
+            <Button
+              onClick={() => onNavigate('auth')}
+              className="mt-6 h-14 w-full rounded-2xl bg-primary text-sm font-black uppercase tracking-wide text-white shadow-[0_0_24px_rgba(232,0,10,0.42)] animate-pulse-glow"
+            >
+              INICIAR SESIÓN / REGISTRARSE
+            </Button>
+          </section>
+
+          <section>
+            <h3 className="mb-3 text-[22px] font-black tracking-tight text-white">¿Por qué registrarte?</h3>
+            <div className="grid gap-2.5">
+              {[
+                { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
+                { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
+                { icon: Zap, title: 'Compra más rápido', description: 'Guarda tu cuenta y ordena más fácil.', tone: 'text-primary' },
+              ].map((item) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => onNavigate('auth')}
+                  className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-surface/80 p-3.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover"
+                >
+                  <span className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_20px_rgba(232,0,10,0.22)]">
+                    <item.icon size={28} className={item.tone} strokeWidth={2.2} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-black leading-tight text-white">{item.title}</span>
+                    <span className="mt-1 block text-sm font-semibold leading-snug text-gray-400">{item.description}</span>
+                  </span>
+                  <ChevronRight size={24} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-surface/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/8 text-white">
+              <ShieldCheck size={31} strokeWidth={1.9} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base font-black leading-tight text-white">Registrarte es gratis.</p>
+              <p className="mt-1 text-sm font-semibold leading-snug text-gray-400">
+                Puedes seguir explorando el menú sin crear una cuenta.
+              </p>
+            </div>
           </div>
-          <h2 className="font-display text-xl mb-1 text-white">Únete a la familia</h2>
-          <p className="text-xs text-gray-400 mb-4">Inicia sesión para acumular puntos y obtener recompensas gratis.</p>
-          <Button onClick={() => onNavigate('auth')} className="w-full bg-primary text-white shadow-[0_0_15px_rgba(229,9,20,0.3)] animate-pulse-glow">
-            INICIAR SESIÓN / REGISTRARSE
-          </Button>
         </div>
       )}
 
@@ -128,7 +182,7 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
       )}
 
       {/* Contacto & Ayuda */}
-      <div className="w-full mb-3">
+      {isAuthenticated && <div className="w-full mb-3">
         <h3 className="font-display text-lg tracking-wide mb-2">CONTACTO & AYUDA</h3>
         <div className="bg-surface border border-outline/50 rounded-xl overflow-hidden divide-y divide-outline/50">
           <a href="https://wa.me/526861105191" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between p-3 hover:bg-surface-hover transition-colors">
@@ -153,7 +207,7 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
             <ChevronRight size={16} className="text-gray-500" />
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Configuration */}
       {isAuthenticated && (
