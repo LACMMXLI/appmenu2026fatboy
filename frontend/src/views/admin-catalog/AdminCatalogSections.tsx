@@ -204,43 +204,42 @@ export function ProductsAdmin({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: 0.18, delay: Math.min(index * 0.018, 0.08) }}
-              className="admin-card-hover group grid min-w-0 gap-4 rounded-xl border border-outline bg-surface p-4 shadow-[0_12px_32px_rgba(0,0,0,0.22)] hover:border-primary/35 hover:bg-surface-2/60 2xl:grid-cols-[116px_minmax(0,1.05fr)_minmax(0,1fr)_minmax(180px,210px)]"
+              className="admin-card-hover group grid min-w-0 gap-3 rounded-lg border border-outline bg-surface/95 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:border-primary/35 hover:bg-surface-2/55 xl:grid-cols-[minmax(260px,0.9fr)_minmax(260px,1fr)_minmax(280px,1.15fr)_minmax(170px,auto)]"
             >
-              {/* Thumbnail */}
-              <div className="flex gap-3 xl:block">
-                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-outline bg-background xl:h-[104px] xl:w-full">
+              {/* Product identity */}
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
                   {product.imageUrl ? (
                     <img
                       src={product.imageUrl}
                       alt={product.name}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-gray-600">
-                      <Image size={24} />
+                      <Image size={18} />
                     </div>
                   )}
                 </div>
-                <div className="min-w-0 xl:hidden">
-                  <p className="break-words text-base font-black text-white">{product.name || 'Producto sin nombre'}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black text-white">{product.name || 'Producto sin nombre'}</p>
                   <p className="mt-1 text-xs font-bold uppercase tracking-wide text-primary">{product.category.name}</p>
-                  <p className="mt-2 text-lg font-black text-gold">${Number(product.price).toFixed(2)}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold text-gray-500">
+                    <span className="text-gold">${Number(product.price).toFixed(2)}</span>
+                    <span>{product.status === 'active' ? 'Visible' : 'Oculto'}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Editable fields */}
-              <div className="grid min-w-0 gap-3">
-                <div className="hidden xl:block">
-                  <p className="break-words text-base font-black text-white">{product.name || 'Producto sin nombre'}</p>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-primary">{product.category.name}</p>
-                </div>
+              {/* Core editable fields */}
+              <div className="grid min-w-0 gap-2">
                 <Input
                   label="Nombre"
                   value={product.name}
                   onChange={(event) => onProductChange(product.id, { name: event.target.value })}
-                  className="h-11 bg-background"
+                  className="h-9 bg-background px-3"
                 />
-                <div className="grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
+                <div className="grid gap-2 sm:grid-cols-[110px_minmax(0,1fr)]">
                   <Input
                     label="Precio"
                     type="number"
@@ -248,14 +247,14 @@ export function ProductsAdmin({
                     step="0.01"
                     value={product.price}
                     onChange={(event) => onProductChange(product.id, { price: Number(event.target.value) })}
-                    className="h-11 bg-background font-bold"
+                    className="h-9 bg-background px-3 font-bold"
                   />
                   <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
                     Categoría
                     <select
                       value={product.categoryId}
                       onChange={(event) => onProductChange(product.id, { categoryId: event.target.value })}
-                      className="h-11 w-full rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
+                      className="h-9 w-full rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
                     >
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>{category.name}</option>
@@ -266,13 +265,13 @@ export function ProductsAdmin({
               </div>
 
               {/* Description + Image URL */}
-              <div className="grid min-w-0 gap-3">
+              <div className="grid min-w-0 gap-2">
                 <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
                   Descripción
                   <textarea
                     value={product.description ?? ''}
                     onChange={(event) => onProductChange(product.id, { description: event.target.value })}
-                    className="min-h-[86px] w-full resize-y rounded-lg border border-outline bg-background px-3 py-2 text-sm leading-5 text-white outline-none transition-colors focus:border-primary"
+                    className="h-16 min-h-0 w-full resize-none rounded-lg border border-outline bg-background px-3 py-2 text-sm leading-5 text-white outline-none transition-colors focus:border-primary"
                   />
                 </label>
                 <Input
@@ -280,19 +279,19 @@ export function ProductsAdmin({
                   value={product.imageUrl ?? ''}
                   onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })}
                   placeholder="https://..."
-                  className="h-11 bg-background text-xs"
+                  className="h-9 bg-background px-3 text-xs"
                 />
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap items-end justify-between gap-3 xl:flex-col xl:items-stretch">
-                <div className="grid gap-2">
+              <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 xl:flex-col xl:items-stretch xl:justify-end">
+                <div className="grid gap-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Estado</span>
                   <button
                     type="button"
                     onClick={() => onProductChange(product.id, { status: product.status === 'active' ? 'inactive' : 'active' })}
                     className={cn(
-                      'flex h-10 items-center gap-2 rounded-lg px-4 text-xs font-black uppercase transition-all duration-200',
+                      'flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-black uppercase transition-all duration-200',
                       product.status === 'active'
                         ? 'bg-green-500/15 text-green-300 border border-green-500/30'
                         : 'bg-primary/15 text-primary border border-primary/30',
@@ -302,7 +301,7 @@ export function ProductsAdmin({
                     {product.status === 'active' ? 'Activo' : 'Inactivo'}
                   </button>
                 </div>
-                <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-1">
+                <div className="grid w-full min-w-0 grid-cols-3 gap-2 xl:grid-cols-1">
                   <Button size="sm" onClick={() => onSaveProduct(product)} disabled={isLoading} className="bg-primary/90 hover:bg-primary" title="Guardar cambios">
                     <Save size={15} className="mr-1.5" /> Guardar
                   </Button>
