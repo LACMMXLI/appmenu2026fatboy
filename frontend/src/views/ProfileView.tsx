@@ -167,8 +167,8 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
           </div>
         </div>
       ) : (
-        <div className="grid h-full min-h-0 grid-rows-[auto_auto_auto] gap-1.5">
-          <section className="relative min-h-0 overflow-hidden rounded-xl border border-white/12 bg-[radial-gradient(circle_at_50%_12%,rgba(232,0,10,0.24),transparent_30%),linear-gradient(135deg,rgba(232,0,10,0.11),rgba(255,255,255,0.025))] px-3 py-2 text-center shadow-[0_8px_22px_rgba(0,0,0,0.36)] flex flex-col justify-center">
+        <div className="flex flex-col h-full min-h-0 gap-1.5">
+          <section className="relative shrink-0 overflow-hidden rounded-xl border border-white/12 bg-[radial-gradient(circle_at_50%_12%,rgba(232,0,10,0.24),transparent_30%),linear-gradient(135deg,rgba(232,0,10,0.11),rgba(255,255,255,0.025))] px-3 py-2 text-center shadow-[0_8px_22px_rgba(0,0,0,0.36)] flex flex-col justify-center">
             <div className="pointer-events-none absolute left-7 top-9 h-4 w-4 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_12px_rgba(232,0,10,0.3)] rotate-[-18deg]" />
             <div className="pointer-events-none absolute right-9 top-10 h-4 w-4 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_11px_rgba(232,0,10,0.3)] rotate-[18deg]" />
             <div className="pointer-events-none absolute right-16 bottom-10 h-3.5 w-3.5 rounded-full border border-primary/30 bg-primary/20 shadow-[0_0_10px_rgba(232,0,10,0.25)]" />
@@ -186,49 +186,35 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
             </p>
             <Button
               onClick={() => onNavigate('auth')}
-              className="mt-2 h-7.5 w-full rounded-lg bg-primary text-[10px] font-black uppercase tracking-wide text-white shadow-[0_0_14px_rgba(232,0,10,0.32)] animate-pulse-glow"
+              className="mt-2 h-7.5 w-full rounded-lg bg-primary text-[10px] font-black uppercase tracking-wide text-white shadow-[0_0_14px_rgba(232,0,10,0.32)] animate-pulse-glow shrink-0"
             >
               INICIAR SESIÓN / REGISTRARSE
             </Button>
           </section>
 
-          <section className="min-h-0 flex flex-col justify-center">
-            <h3 className="mb-0.5 text-[12px] font-black leading-none tracking-tight text-white">¿Por qué registrarte?</h3>
-            <div className="grid gap-1">
-              {[
-                { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
-                { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
-                { icon: Zap, title: 'Compra más rápido', description: 'Guarda tu cuenta y ordena más fácil.', tone: 'text-primary' },
-              ].map((item) => (
-                <button
-                  key={item.title}
-                  type="button"
-                  onClick={() => onNavigate('auth')}
-                  className="group flex w-full items-center gap-2 rounded-lg border border-white/10 bg-surface/80 px-2 py-1 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_8px_rgba(232,0,10,0.16)]">
-                    <item.icon size={13} className={item.tone} strokeWidth={2.2} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] font-black leading-tight text-white">{item.title}</span>
-                    <span className="block text-[9.5px] font-semibold leading-none text-gray-400">{item.description}</span>
-                  </span>
-                  <ChevronRight size={13} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <div className="flex min-h-0 items-center gap-2 rounded-lg border border-white/10 bg-surface/80 px-2 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-white">
-              <ShieldCheck size={15} strokeWidth={1.9} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-black leading-tight text-white">Registrarte es gratis.</p>
-              <p className="text-[9.5px] font-semibold leading-tight text-gray-400">
-                Puedes seguir explorando el menú sin crear una cuenta.
-              </p>
-            </div>
+          <div className="flex-1 grid grid-rows-4 gap-1.5 min-h-0">
+            {[
+              { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
+              { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
+              { icon: Zap, title: 'Compra más rápido', description: 'Guarda tu cuenta y ordena más fácil.', tone: 'text-primary' },
+              { icon: ShieldCheck, title: 'Registrarte es gratis', description: 'Puedes seguir explorando el menú sin crear una cuenta.', tone: 'text-primary' },
+            ].map((item) => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => onNavigate('auth')}
+                className="group flex w-full items-center gap-3 rounded-lg border border-white/10 bg-surface/80 px-3 py-1.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover min-h-0"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_8px_rgba(232,0,10,0.16)]">
+                  <item.icon size={15} className={item.tone} strokeWidth={2.2} />
+                </span>
+                <span className="min-w-0 flex-1 flex flex-col justify-center">
+                  <span className="block text-[11px] font-black leading-tight text-white uppercase">{item.title}</span>
+                  <span className="block text-[9.5px] font-semibold leading-tight text-gray-400 mt-0.5">{item.description}</span>
+                </span>
+                <ChevronRight size={14} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
+              </button>
+            ))}
           </div>
         </div>
       )}
