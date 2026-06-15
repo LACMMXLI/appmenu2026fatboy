@@ -327,7 +327,7 @@ export default function App() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Instalar app</p>
-                <h3 className="mt-0.5 text-sm font-black text-white">Fatboy Menú en tu pantalla</h3>
+                <h3 className="mt-0.5 text-sm font-black text-white">Fatboy App en tu pantalla</h3>
                 <p className="mt-1 text-xs font-medium leading-snug text-gray-400">
                   Accede más rápido al menú sin buscar la página en el navegador.
                 </p>

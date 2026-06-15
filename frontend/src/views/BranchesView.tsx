@@ -195,7 +195,7 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
             </div>
           </div>
 
-          <div className="mt-auto pt-2.5 flex shrink-0 gap-2">
+          <div className="mt-2 flex shrink-0 gap-2">
              {phoneHref ? (
              <a
                href={phoneHref}

@@ -1,6 +1,6 @@
 {
-  "name": "Fatboy Menú",
-  "short_name": "Menú",
+  "name": "Fatboy App",
+  "short_name": "Fatboy App",
   "description": "Menú digital Fatboy Mexicali",
   "start_url": "/",
   "scope": "/",
