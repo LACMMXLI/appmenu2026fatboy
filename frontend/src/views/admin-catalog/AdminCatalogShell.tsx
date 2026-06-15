@@ -54,7 +54,37 @@ export function AdminCatalogShell({
   onTabChange,
 }: AdminCatalogShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+  const [showHeader, setShowHeader] = React.useState(true);
+  const lastScrollTopRef = React.useRef(0);
+  const headerRef = React.useRef<HTMLElement>(null);
+
   const activeItem = ADMIN_NAV_ITEMS.find((item) => item.id === activeTab) ?? ADMIN_NAV_ITEMS[0];
+
+  React.useEffect(() => {
+    const measureHeader = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        document.documentElement.style.setProperty('--admin-header-height', `${height}px`);
+      }
+    };
+    
+    measureHeader();
+    window.addEventListener('resize', measureHeader);
+    return () => window.removeEventListener('resize', measureHeader);
+  }, [activeTab]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    const lastScrollTop = lastScrollTopRef.current;
+    
+    if (scrollTop > lastScrollTop && scrollTop > 80) {
+      setShowHeader(false);
+    } else if (scrollTop < lastScrollTop) {
+      setShowHeader(true);
+    }
+    
+    lastScrollTopRef.current = scrollTop;
+  };
 
   return (
     <main className="min-h-[100dvh] overflow-x-hidden bg-[radial-gradient(circle_at_12%_8%,rgba(232,0,10,0.15),transparent_30%),radial-gradient(circle_at_84%_0%,rgba(250,189,0,0.10),transparent_28%),var(--color-background)] text-white">
@@ -160,7 +190,11 @@ export function AdminCatalogShell({
         {/* ── Content Area ─────────────────── */}
         <section className="flex min-h-0 min-w-0 flex-col bg-[linear-gradient(180deg,rgba(255,255,255,0.025),transparent_220px)] md:h-[100dvh] md:overflow-hidden">
           {/* Header */}
-          <header className="sticky top-0 z-20 border-b border-outline bg-background/92 px-4 py-3 backdrop-blur-lg md:px-6 relative">
+          <header
+            ref={headerRef}
+            style={{ marginTop: showHeader ? '0' : 'calc(-1 * var(--admin-header-height, 70px))' }}
+            className="sticky top-0 z-20 border-b border-outline bg-background/92 px-4 py-3 backdrop-blur-lg md:px-6 transition-[margin-top] duration-300 ease-in-out"
+          >
             <div className="flex flex-wrap items-center gap-3">
               <div className="mr-auto min-w-[220px]">
                 {/* Breadcrumb */}
@@ -212,7 +246,12 @@ export function AdminCatalogShell({
             {isLoading && <div className="admin-progress-bar" />}
           </header>
 
-          <div className="mx-auto min-h-0 w-full max-w-[1360px] flex-1 overflow-y-auto px-4 py-5 md:px-6 xl:px-8">{children}</div>
+          <div
+            onScroll={handleScroll}
+            className="admin-scroll-container mx-auto min-h-0 w-full max-w-[1360px] flex-1 overflow-y-auto px-4 py-5 md:px-6 xl:px-8"
+          >
+            {children}
+          </div>
         </section>
       </div>
     </main>

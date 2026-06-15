@@ -112,10 +112,32 @@ export function ProductsAdmin({
 }: ProductsAdminProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showHeader, setShowHeader] = useState(true);
+  const lastScrollTopRef = React.useRef(0);
 
   const selectedCategoryName = selectedCategoryId
     ? categories.find((category) => category.id === selectedCategoryId)?.name
     : 'Todas las categorias';
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('.admin-scroll-container');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const scrollTop = scrollContainer.scrollTop;
+      const lastScrollTop = lastScrollTopRef.current;
+
+      if (scrollTop > lastScrollTop && scrollTop > 80) {
+        setShowHeader(false);
+      } else if (scrollTop < lastScrollTop) {
+        setShowHeader(true);
+      }
+      lastScrollTopRef.current = scrollTop;
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
 
   function openCreateModal() {
     const defaultCategoryId = activeCategories.some((category) => category.id === selectedCategoryId)
@@ -137,56 +159,66 @@ export function ProductsAdmin({
 
   return (
     <div className="space-y-4">
-      <SectionHeader
-        tag="Inventario comercial"
-        title="Productos por categoria"
-        subtitle={`${selectedCategoryName} · ${products.length} productos visibles`}
-      >
-        <Button onClick={openCreateModal} disabled={isLoading || activeCategories.length === 0}>
-          <Plus size={16} className="mr-2" /> Nuevo producto
-        </Button>
-      </SectionHeader>
-
       {/* Search + Category Filters (Sticky for premium feel) */}
-      <div className="sticky top-[53px] md:top-[61px] z-20 rounded-xl border border-outline bg-background/95 backdrop-blur p-3 shadow-md">
-        <div className="flex items-center gap-3 rounded-lg border border-outline bg-surface px-3 py-1.5 transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.1)]">
-          <Search size={18} className="shrink-0 text-gray-500" />
-          <input
-            value={search}
-            onChange={(event) => onSearch(event.target.value)}
-            placeholder="Buscar por producto, categoría o descripción..."
-            className="h-9 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
-          />
+      <div
+        style={{ top: showHeader ? 'var(--admin-header-height, 69px)' : '0px' }}
+        className="sticky z-20 rounded-xl border border-outline bg-background/95 backdrop-blur p-3 shadow-md transition-[top] duration-300 ease-in-out"
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex items-center gap-3 rounded-lg border border-outline bg-surface px-3 py-1.5 transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.1)] flex-1">
+            <Search size={18} className="shrink-0 text-gray-500" />
+            <input
+              value={search}
+              onChange={(event) => onSearch(event.target.value)}
+              placeholder="Buscar por producto, categoría o descripción..."
+              className="h-9 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
+            />
+          </div>
+          
+          <Button
+            onClick={openCreateModal}
+            disabled={isLoading || activeCategories.length === 0}
+            size="sm"
+            className="h-9 shrink-0 px-4 text-xs font-bold uppercase tracking-wider"
+          >
+            <Plus size={16} className="mr-1.5" /> Nuevo producto
+          </Button>
         </div>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <button
-            type="button"
-            onClick={() => onCategoryFilterChange('')}
-            className={cn(
-              'h-9 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all duration-200',
-              !selectedCategoryId
-                ? 'border-primary bg-primary text-white shadow-[0_0_24px_rgba(232,0,10,0.28)]'
-                : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white hover:shadow-[0_0_12px_rgba(232,0,10,0.1)]',
-            )}
-          >
-            Todas ({categories.length})
-          </button>
-          {categories.map((category) => (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar flex-1">
             <button
-              key={category.id}
               type="button"
-              onClick={() => onCategoryFilterChange(category.id)}
+              onClick={() => onCategoryFilterChange('')}
               className={cn(
-                'h-9 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all duration-200',
-                selectedCategoryId === category.id
+                'h-8 shrink-0 rounded-lg border px-3 text-[10px] font-black uppercase tracking-wide transition-all duration-200',
+                !selectedCategoryId
                   ? 'border-primary bg-primary text-white shadow-[0_0_24px_rgba(232,0,10,0.28)]'
                   : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white hover:shadow-[0_0_12px_rgba(232,0,10,0.1)]',
               )}
             >
-              {category.name} ({category._count?.products ?? 0})
+              Todas ({categories.length})
             </button>
-          ))}
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => onCategoryFilterChange(category.id)}
+                className={cn(
+                  'h-8 shrink-0 rounded-lg border px-3 text-[10px] font-black uppercase tracking-wide transition-all duration-200',
+                  selectedCategoryId === category.id
+                    ? 'border-primary bg-primary text-white shadow-[0_0_24px_rgba(232,0,10,0.28)]'
+                    : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white hover:shadow-[0_0_12px_rgba(232,0,10,0.1)]',
+                )}
+              >
+                {category.name} ({category._count?.products ?? 0})
+              </button>
+            ))}
+          </div>
+          
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0 bg-surface/50 px-2.5 py-1 rounded-md border border-outline/40">
+            {selectedCategoryName} · {products.length} productos
+          </span>
         </div>
       </div>
 
