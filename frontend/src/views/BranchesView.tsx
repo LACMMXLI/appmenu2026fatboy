@@ -68,7 +68,7 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
         </div>
       </header>
 
-      <div className="relative w-full h-[280px] overflow-hidden bg-[#0a0a0a] animate-fade-in flex items-center justify-center z-10 transition-all duration-700" style={{ perspective: '1000px' }}>
+      <div className="relative w-full h-[34dvh] min-h-[210px] max-h-[250px] overflow-hidden bg-[#0a0a0a] animate-fade-in flex items-center justify-center z-10 transition-all duration-700" style={{ perspective: '1000px' }}>
         <div className="absolute inset-0 z-30 pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, transparent 0%, #09090b 70%)' }}></div>
         
         <div className="w-[180%] h-[180%] absolute top-[-40%] left-[-40%] transition-transform duration-1000 ease-out group" style={{ transformStyle: 'preserve-3d', transform: 'rotateX(55deg) rotateZ(-25deg)' }}>
@@ -128,8 +128,8 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
       </div>
 
       {/* Info Section */}
-      <div className="flex-1 bg-background relative z-20 -mt-10 rounded-t-[32px] border-t border-white/10 p-6 flex flex-col overflow-y-auto shadow-[0_-15px_40px_rgba(0,0,0,0.7)] pb-6 no-scrollbar">
-        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6 shrink-0"></div>
+      <div className="min-h-0 flex-1 bg-background relative z-20 -mt-10 rounded-t-[28px] border-t border-white/10 px-5 pt-4 pb-4 flex flex-col overflow-hidden shadow-[0_-15px_40px_rgba(0,0,0,0.7)]">
+        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 shrink-0"></div>
 
         {isLoading && (
           <div className="rounded-xl bg-surface border border-outline p-5 text-sm text-gray-300">
@@ -143,60 +143,63 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
           </div>
         )}
         
-        {!isLoading && !error && current && <div className="flex-1 flex flex-col animate-fade-in-up stagger-3" key={activeBranch}>
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="font-display text-4xl text-white tracking-wide mb-1 leading-none drop-shadow-sm">Fatboy {current.name}</h2>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="flex items-center gap-1.5 bg-green-500/10 text-green-400 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider border border-green-500/20">
+        {!isLoading && !error && current && <div className="min-h-0 flex-1 flex flex-col animate-fade-in-up stagger-3" key={activeBranch}>
+          <div className="mb-3 shrink-0 rounded-2xl border border-primary/25 bg-[linear-gradient(135deg,rgba(229,9,20,0.18),rgba(255,255,255,0.035))] px-4 py-3 shadow-[0_14px_28px_rgba(0,0,0,0.28)]">
+            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-primary/90">Sucursal Fatboy</p>
+            <div className="mt-1 flex items-end justify-between gap-3">
+              <h2 className="font-display text-[2.35rem] text-white tracking-wide leading-[0.86] drop-shadow-sm">
+                {current.name}
+              </h2>
+              <div className="pb-0.5">
+                <span className="flex items-center gap-1.5 bg-green-500/10 text-green-300 text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider border border-green-500/25">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span> ABIERTO
                 </span>
               </div>
             </div>
           </div>
           
-          <div className="flex flex-col gap-4 mt-4">
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-surface border border-outline hover:border-gray-500 transition-colors group cursor-default">
-              <div className="w-10 h-10 rounded-full bg-surface-light flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors shadow-inner">
+          <div className="grid shrink-0 gap-2.5">
+            <div className="flex items-start gap-3 rounded-xl bg-surface border border-outline px-3.5 py-3 transition-colors group cursor-default">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
                 <MapPin size={18} className="text-primary" />
               </div>
-              <div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">DIRECCIÓN</span>
-                <p className="text-sm text-gray-200 leading-snug">{current.address || 'Ubicación pendiente de configurar'}</p>
+              <div className="min-w-0">
+                <span className="text-[9px] font-black text-primary uppercase tracking-[0.22em] block mb-0.5">Dirección</span>
+                <p className="text-[13px] font-semibold text-gray-100 leading-snug line-clamp-2">{current.address || 'Ubicación pendiente de configurar'}</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-surface border border-outline hover:border-gray-500 transition-colors group cursor-default">
-              <div className="w-10 h-10 rounded-full bg-surface-light flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors shadow-inner">
+            <div className="flex items-start gap-3 rounded-xl bg-surface border border-outline px-3.5 py-3 transition-colors group cursor-default">
+              <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
                 <Store size={18} className="text-accent" />
               </div>
-              <div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">HORARIO</span>
-                <p className="text-sm text-gray-200 leading-snug">{current.hours || 'Horario pendiente de configurar'}</p>
+              <div className="min-w-0">
+                <span className="text-[9px] font-black text-accent uppercase tracking-[0.22em] block mb-0.5">Horario</span>
+                <p className="text-[13px] font-semibold text-gray-100 leading-snug line-clamp-2">{current.hours || 'Horario pendiente de configurar'}</p>
               </div>
             </div>
             
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-surface border border-outline hover:border-gray-500 transition-colors group cursor-default">
-              <div className="w-10 h-10 rounded-full bg-surface-light flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors shadow-inner">
+            <div className="flex items-start gap-3 rounded-xl bg-surface border border-outline px-3.5 py-3 transition-colors group cursor-default">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-400/20 flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
                 <Phone size={18} className="text-blue-400" />
               </div>
-              <div className="flex-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">TELÉFONO</span>
-                <p className="text-sm text-gray-200 leading-snug">{current.phone || 'Pendiente'}</p>
+              <div className="min-w-0 flex-1">
+                <span className="text-[9px] font-black text-blue-300 uppercase tracking-[0.22em] block mb-0.5">Teléfono</span>
+                <p className="text-[13px] font-black text-white leading-snug tracking-wide">{current.phone || 'Pendiente'}</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-auto pt-6 flex gap-3">
+          <div className="mt-auto pt-3 flex shrink-0 gap-2.5">
              {phoneHref ? (
              <a
                href={phoneHref}
-               className="inline-flex flex-1 h-14 items-center justify-center rounded-lg bg-surface text-white border border-outline hover:bg-surface-hover hover:border-gray-500 gap-2 font-semibold shadow-none transition-all active:scale-95"
+               className="inline-flex flex-1 h-12 items-center justify-center rounded-lg bg-surface text-white border border-outline hover:bg-surface-hover hover:border-gray-500 gap-2 text-sm font-black shadow-none transition-all active:scale-95"
              >
                <Phone size={18} /> LLAMAR
              </a>
              ) : (
-             <Button disabled className="flex-1 h-14 bg-surface text-white border border-outline gap-2 font-semibold shadow-none">
+             <Button disabled className="flex-1 h-12 bg-surface text-white border border-outline gap-2 text-sm font-black shadow-none">
                <Phone size={18} /> LLAMAR
              </Button>
              )}
@@ -205,12 +208,12 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
                href={mapsHref}
                target="_blank"
                rel="noopener noreferrer"
-               className="inline-flex flex-[2] h-14 items-center justify-center rounded-lg gap-2 text-[15px] font-semibold bg-primary text-white shadow-[0_0_20px_rgba(229,9,20,0.3)] animate-pulse-glow hover:scale-[1.02] active:scale-95 transition-transform"
+               className="inline-flex flex-[2] h-12 items-center justify-center rounded-lg gap-2 text-sm font-black bg-primary text-white shadow-[0_0_20px_rgba(229,9,20,0.3)] animate-pulse-glow hover:scale-[1.02] active:scale-95 transition-transform"
              >
                <Navigation size={18} className="fill-current" /> CÓMO LLEGAR
              </a>
              ) : (
-             <Button disabled className="flex-[2] h-14 gap-2 text-[15px] font-semibold bg-primary text-white shadow-[0_0_20px_rgba(229,9,20,0.3)]">
+             <Button disabled className="flex-[2] h-12 gap-2 text-sm font-black bg-primary text-white shadow-[0_0_20px_rgba(229,9,20,0.3)]">
                <Navigation size={18} className="fill-current" /> CÓMO LLEGAR
              </Button>
              )}
