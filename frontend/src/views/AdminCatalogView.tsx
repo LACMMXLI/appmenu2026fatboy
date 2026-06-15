@@ -80,6 +80,7 @@ export function AdminCatalogView() {
   
   const [activeTab, setActiveTab] = useState<Tab>('products');
   const [search, setSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [orderBranchFilter, setOrderBranchFilter] = useState('');
   
@@ -100,8 +101,15 @@ export function AdminCatalogView() {
 
   const visibleProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return catalog.products;
     return catalog.products.filter((product) => {
+      if (productCategoryFilter && product.categoryId !== productCategoryFilter) {
+        return false;
+      }
+
+      if (!term) {
+        return true;
+      }
+
       return (
         product.name.toLowerCase().includes(term) ||
         product.category.name.toLowerCase().includes(term) ||
@@ -109,7 +117,7 @@ export function AdminCatalogView() {
         product.shortDescription?.toLowerCase().includes(term)
       );
     });
-  }, [catalog.products, search]);
+  }, [catalog.products, productCategoryFilter, search]);
 
   useEffect(() => {
     if (adminKey) {
@@ -399,13 +407,16 @@ export function AdminCatalogView() {
           activeCategories={activeCategories}
           products={visibleProducts}
           search={search}
+          selectedCategoryId={productCategoryFilter}
           newProduct={newProduct}
           isLoading={isLoading}
           onSearch={setSearch}
+          onCategoryFilterChange={setProductCategoryFilter}
           onNewProductChange={setNewProduct}
           onCreateProduct={createProduct}
           onProductChange={updateLocalProduct}
           onSaveProduct={saveProduct}
+          onCancelChanges={() => refreshAll()}
           onDeleteProduct={(product) =>
             runAction(async () => {
               if (!window.confirm(`Eliminar producto "${product.name}"?`)) return;

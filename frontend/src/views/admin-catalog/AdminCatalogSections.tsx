@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Gift, Image, Plus, RefreshCw, Save, Search, Settings, Star, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -26,13 +27,16 @@ interface ProductsAdminProps {
   activeCategories: Category[];
   products: Product[];
   search: string;
+  selectedCategoryId: string;
   newProduct: NewProduct;
   isLoading: boolean;
   onSearch: (value: string) => void;
+  onCategoryFilterChange: (value: string) => void;
   onNewProductChange: (value: NewProduct) => void;
-  onCreateProduct: () => void;
+  onCreateProduct: () => Promise<void> | void;
   onProductChange: (id: string, patch: Partial<Product>) => void;
   onSaveProduct: (product: Product) => void;
+  onCancelChanges: () => void;
   onDeleteProduct: (product: Product) => void;
 }
 
@@ -41,121 +45,297 @@ export function ProductsAdmin({
   activeCategories,
   products,
   search,
+  selectedCategoryId,
   newProduct,
   isLoading,
   onSearch,
+  onCategoryFilterChange,
   onNewProductChange,
   onCreateProduct,
   onProductChange,
   onSaveProduct,
+  onCancelChanges,
   onDeleteProduct,
 }: ProductsAdminProps) {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const selectedCategoryName = selectedCategoryId
+    ? categories.find((category) => category.id === selectedCategoryId)?.name
+    : 'Todas las categorias';
+
+  function openCreateModal() {
+    const defaultCategoryId = activeCategories.some((category) => category.id === selectedCategoryId)
+      ? selectedCategoryId
+      : activeCategories[0]?.id || '';
+
+    onNewProductChange({
+      ...newProduct,
+      categoryId: newProduct.categoryId || defaultCategoryId,
+    });
+    setIsCreateOpen(true);
+  }
+
+  async function handleCreateProduct() {
+    if (!newProduct.name || !(newProduct.categoryId || activeCategories[0]?.id)) return;
+    await onCreateProduct();
+    setIsCreateOpen(false);
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1.2fr_140px_1fr_1.4fr_2fr_auto]">
-        <Input label="Nuevo producto" value={newProduct.name} onChange={(event) => onNewProductChange({ ...newProduct, name: event.target.value })} />
-        <Input label="Precio" type="number" min="0" step="0.01" value={newProduct.price} onChange={(event) => onNewProductChange({ ...newProduct, price: Number(event.target.value) })} />
-        <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Categoría
-          <select
-            value={newProduct.categoryId || categories[0]?.id || ''}
-            onChange={(event) => onNewProductChange({ ...newProduct, categoryId: event.target.value })}
-            className="h-14 rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none focus:border-primary"
+    <div className="space-y-5">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-xl border border-outline bg-[linear-gradient(135deg,rgba(232,0,10,0.13),rgba(24,24,24,0.96)_42%,rgba(250,189,0,0.08))] p-4 shadow-[0_18px_45px_rgba(0,0,0,0.28)]"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="mr-auto min-w-[220px]">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Inventario comercial</p>
+            <h3 className="text-lg font-black uppercase tracking-wide text-white">Productos por categoria</h3>
+            <p className="text-xs font-medium text-gray-400">{selectedCategoryName} · {products.length} productos visibles</p>
+          </div>
+          <Button onClick={openCreateModal} disabled={isLoading || activeCategories.length === 0}>
+            <Plus size={16} className="mr-2" /> Nuevo producto
+          </Button>
+        </div>
+      </motion.div>
+
+      <div className="rounded-xl border border-outline bg-surface p-3 shadow-md">
+        <div className="flex items-center gap-3 rounded-lg border border-outline bg-background px-3 py-2">
+          <Search size={18} className="shrink-0 text-gray-500" />
+          <input
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Buscar por producto, categoría o descripción..."
+            className="h-10 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
+          />
+        </div>
+
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => onCategoryFilterChange('')}
+            className={cn(
+              'h-10 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all',
+              !selectedCategoryId
+                ? 'border-primary bg-primary text-white shadow-[0_0_18px_rgba(232,0,10,0.22)]'
+                : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white',
+            )}
           >
-            {activeCategories.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </select>
-        </label>
-        <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} />
-        <Input label="Descripción" value={newProduct.description} onChange={(event) => onNewProductChange({ ...newProduct, description: event.target.value })} />
-        <Button className="self-end animate-pulse-glow" onClick={onCreateProduct} disabled={isLoading || !newProduct.name || !newProduct.categoryId}>
-          <Plus size={16} className="mr-2" /> Crear
-        </Button>
+            Todas ({categories.length})
+          </button>
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onCategoryFilterChange(category.id)}
+              className={cn(
+                'h-10 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all',
+                selectedCategoryId === category.id
+                  ? 'border-primary bg-primary text-white shadow-[0_0_18px_rgba(232,0,10,0.22)]'
+                  : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white',
+              )}
+            >
+              {category.name} ({category._count?.products ?? 0})
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 rounded-xl border border-outline bg-surface px-4 py-3">
-        <Search size={18} className="text-gray-500" />
-        <input
-          value={search}
-          onChange={(event) => onSearch(event.target.value)}
-          placeholder="Buscar por producto, categoría o descripción..."
-          className="h-10 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
-        />
-      </div>
+      <motion.div layout className="grid gap-3">
+        <AnimatePresence initial={false}>
+          {products.map((product, index) => (
+            <motion.article
+              key={product.id}
+              layout
+              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.18, delay: Math.min(index * 0.018, 0.08) }}
+              className="grid gap-4 rounded-xl border border-outline bg-surface p-4 shadow-[0_12px_32px_rgba(0,0,0,0.22)] transition-colors hover:border-primary/35 hover:bg-surface-2/60 xl:grid-cols-[116px_minmax(0,1.25fr)_minmax(280px,1fr)_210px]"
+            >
+              <div className="flex gap-3 xl:block">
+                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-outline bg-background xl:h-[104px] xl:w-full">
+                  {product.imageUrl ? (
+                    <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-gray-600">
+                      <Image size={24} />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 xl:hidden">
+                  <p className="break-words text-base font-black text-white">{product.name || 'Producto sin nombre'}</p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-primary">{product.category.name}</p>
+                  <p className="mt-2 text-lg font-black text-gold">${Number(product.price).toFixed(2)}</p>
+                </div>
+              </div>
 
-      <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
-        <table className="w-full min-w-[1100px] border-collapse text-sm">
-          <thead className="bg-surface-hover text-xs uppercase tracking-wider text-gray-400">
-            <tr>
-              <th className="p-3 text-left">Producto</th>
-              <th className="p-3 text-left">Precio</th>
-              <th className="p-3 text-left">Categoría</th>
-              <th className="p-3 text-left">Descripción</th>
-              <th className="p-3 text-left">Imagen (URL)</th>
-              <th className="p-3 text-left">Estado</th>
-              <th className="p-3 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-t border-outline/50 hover:bg-surface-hover/30 transition-colors">
-                <td className="p-2">
-                  <input value={product.name} onChange={(event) => onProductChange(product.id, { name: event.target.value })} className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white" />
-                </td>
-                <td className="p-2">
-                  <input type="number" min="0" step="0.01" value={product.price} onChange={(event) => onProductChange(product.id, { price: Number(event.target.value) })} className="h-10 w-24 rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white font-semibold" />
-                </td>
-                <td className="p-2">
-                  <select value={product.categoryId} onChange={(event) => onProductChange(product.id, { categoryId: event.target.value })} className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white">
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="p-2">
-                  <input value={product.description ?? ''} onChange={(event) => onProductChange(product.id, { description: event.target.value })} className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white" />
-                </td>
-                <td className="p-2">
-                  <div className="flex min-w-[280px] items-center gap-2">
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-600">
-                          <Image size={16} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="grid flex-1 gap-1">
-                      <input value={product.imageUrl ?? ''} onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })} placeholder="https://..." className="h-9 w-full rounded-md border border-outline bg-background px-3 outline-none focus:border-primary text-white text-xs" />
-                    </div>
-                  </div>
-                </td>
-                <td className="p-2">
+              <div className="grid min-w-0 gap-3">
+                <div className="hidden xl:block">
+                  <p className="break-words text-base font-black text-white">{product.name || 'Producto sin nombre'}</p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-primary">{product.category.name}</p>
+                </div>
+                <Input
+                  label="Nombre"
+                  value={product.name}
+                  onChange={(event) => onProductChange(product.id, { name: event.target.value })}
+                  className="h-11 bg-background"
+                />
+                <div className="grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
+                  <Input
+                    label="Precio"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={product.price}
+                    onChange={(event) => onProductChange(product.id, { price: Number(event.target.value) })}
+                    className="h-11 bg-background font-bold"
+                  />
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Categoría
+                    <select
+                      value={product.categoryId}
+                      onChange={(event) => onProductChange(product.id, { categoryId: event.target.value })}
+                      className="h-11 w-full rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none focus:border-primary"
+                    >
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid min-w-0 gap-3">
+                <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  Descripción
+                  <textarea
+                    value={product.description ?? ''}
+                    onChange={(event) => onProductChange(product.id, { description: event.target.value })}
+                    className="min-h-[86px] w-full resize-y rounded-lg border border-outline bg-background px-3 py-2 text-sm leading-5 text-white outline-none focus:border-primary"
+                  />
+                </label>
+                <Input
+                  label="URL imagen"
+                  value={product.imageUrl ?? ''}
+                  onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })}
+                  placeholder="https://..."
+                  className="h-11 bg-background text-xs"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-end justify-between gap-3 xl:flex-col xl:items-stretch">
+                <div className="grid gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Estado</span>
                   <button
                     type="button"
                     onClick={() => onProductChange(product.id, { status: product.status === 'active' ? 'inactive' : 'active' })}
-                    className={cn('h-9 rounded-md px-3 text-xs font-bold uppercase transition-all', product.status === 'active' ? 'bg-green-500/15 text-green-300 border border-green-500/30' : 'bg-primary/15 text-primary border border-primary/30')}
+                    className={cn('h-10 rounded-lg px-4 text-xs font-black uppercase transition-all', product.status === 'active' ? 'bg-green-500/15 text-green-300 border border-green-500/30' : 'bg-primary/15 text-primary border border-primary/30')}
                   >
                     {product.status === 'active' ? 'Activo' : 'Inactivo'}
                   </button>
-                </td>
-                <td className="p-2">
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" onClick={() => onSaveProduct(product)} disabled={isLoading} className="bg-primary/90 hover:bg-primary"><Save size={15} /></Button>
-                    <Button size="sm" variant="outline" onClick={() => onDeleteProduct(product)} disabled={isLoading}><Trash2 size={15} /></Button>
+                </div>
+                <div className="grid min-w-[260px] grid-cols-3 gap-2 xl:w-full">
+                  <Button size="sm" onClick={() => onSaveProduct(product)} disabled={isLoading} className="bg-primary/90 hover:bg-primary">
+                    <Save size={15} className="mr-1.5" /> Guardar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={onCancelChanges} disabled={isLoading}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => onDeleteProduct(product)} disabled={isLoading} className="border-primary/45 text-primary hover:bg-primary/10">
+                    <Trash2 size={15} className="mr-1.5" /> Eliminar
+                  </Button>
+                </div>
+              </div>
+            </motion.article>
+          ))}
+        </AnimatePresence>
+
+        {products.length === 0 && (
+          <div className="rounded-xl border border-dashed border-outline bg-surface p-10 text-center">
+            <p className="text-sm font-black uppercase tracking-wide text-white">Sin productos visibles</p>
+            <p className="mt-1 text-xs font-medium text-gray-400">Cambia la categoria o la busqueda para ver mas resultados.</p>
+          </div>
+        )}
+      </motion.div>
+
+      <AnimatePresence>
+        {isCreateOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Nuevo producto"
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-xl border border-outline bg-surface shadow-[0_30px_80px_rgba(0,0,0,0.55)]"
+            >
+              <div className="sticky top-0 z-10 border-b border-outline bg-surface/95 px-5 py-4 backdrop-blur">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Alta de producto</p>
+                <h3 className="text-xl font-black uppercase tracking-wide text-white">Nuevo producto</h3>
+              </div>
+
+              <div className="grid gap-4 p-5 md:grid-cols-[190px_minmax(0,1fr)]">
+                <div className="overflow-hidden rounded-xl border border-outline bg-background">
+                  <div className="aspect-square">
+                    {newProduct.imageUrl ? (
+                      <img src={newProduct.imageUrl} alt={newProduct.name || 'Nuevo producto'} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-gray-600">
+                        <Image size={34} />
+                      </div>
+                    )}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <Input label="Nombre" value={newProduct.name} onChange={(event) => onNewProductChange({ ...newProduct, name: event.target.value })} autoFocus />
+                  <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+                    <Input label="Precio" type="number" min="0" step="0.01" value={newProduct.price} onChange={(event) => onNewProductChange({ ...newProduct, price: Number(event.target.value) })} />
+                    <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                      Categoría
+                      <select
+                        value={newProduct.categoryId || activeCategories[0]?.id || ''}
+                        onChange={(event) => onNewProductChange({ ...newProduct, categoryId: event.target.value })}
+                        className="h-14 rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none focus:border-primary"
+                      >
+                        {activeCategories.map((category) => (
+                          <option key={category.id} value={category.id}>{category.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} placeholder="https://..." />
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Descripción
+                    <textarea
+                      value={newProduct.description}
+                      onChange={(event) => onNewProductChange({ ...newProduct, description: event.target.value })}
+                      className="min-h-[110px] w-full resize-y rounded-lg border border-outline bg-background px-4 py-3 text-sm leading-5 text-white outline-none focus:border-primary"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2 border-t border-outline px-5 py-4">
+                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isLoading}>
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleCreateProduct} disabled={isLoading || !newProduct.name || !(newProduct.categoryId || activeCategories[0]?.id)}>
+                  <Plus size={16} className="mr-2" /> Crear producto
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
