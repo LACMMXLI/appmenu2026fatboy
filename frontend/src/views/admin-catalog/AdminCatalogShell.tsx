@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
+  AlertCircle,
   Check,
   ChevronRight,
   PanelLeftClose,
@@ -41,6 +42,7 @@ interface AdminCatalogShellProps {
   isLoading: boolean;
   onRefresh: () => void;
   onTabChange: (tab: Tab) => void;
+  headerControls?: React.ReactNode;
 }
 
 export function AdminCatalogShell({
@@ -52,42 +54,13 @@ export function AdminCatalogShell({
   isLoading,
   onRefresh,
   onTabChange,
+  headerControls,
 }: AdminCatalogShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
-  const [showHeader, setShowHeader] = React.useState(true);
-  const lastScrollTopRef = React.useRef(0);
-  const headerRef = React.useRef<HTMLElement>(null);
-
   const activeItem = ADMIN_NAV_ITEMS.find((item) => item.id === activeTab) ?? ADMIN_NAV_ITEMS[0];
 
-  React.useEffect(() => {
-    const measureHeader = () => {
-      if (headerRef.current) {
-        const height = headerRef.current.offsetHeight;
-        document.documentElement.style.setProperty('--admin-header-height', `${height}px`);
-      }
-    };
-    
-    measureHeader();
-    window.addEventListener('resize', measureHeader);
-    return () => window.removeEventListener('resize', measureHeader);
-  }, [activeTab]);
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = e.currentTarget.scrollTop;
-    const lastScrollTop = lastScrollTopRef.current;
-    
-    if (scrollTop > lastScrollTop && scrollTop > 80) {
-      setShowHeader(false);
-    } else if (scrollTop < lastScrollTop) {
-      setShowHeader(true);
-    }
-    
-    lastScrollTopRef.current = scrollTop;
-  };
-
   return (
-    <main className="min-h-[100dvh] overflow-x-hidden bg-[radial-gradient(circle_at_12%_8%,rgba(232,0,10,0.15),transparent_30%),radial-gradient(circle_at_84%_0%,rgba(250,189,0,0.10),transparent_28%),var(--color-background)] text-white">
+    <main className="min-h-[100dvh] overflow-x-clip bg-[radial-gradient(circle_at_12%_8%,rgba(232,0,10,0.15),transparent_30%),radial-gradient(circle_at_84%_0%,rgba(250,189,0,0.10),transparent_28%),var(--color-background)] text-white">
       <div
         className={cn(
           'mx-auto grid min-h-[100dvh] w-full max-w-[1680px] gap-0 transition-[grid-template-columns] duration-300 md:grid-cols-[286px_minmax(0,1fr)]',
@@ -95,7 +68,7 @@ export function AdminCatalogShell({
         )}
       >
         {/* ── Sidebar ─────────────────────── */}
-        <aside className="border-b border-outline bg-[#111111]/95 backdrop-blur-xl md:sticky md:top-0 md:h-[100dvh] md:border-b-0 md:border-r md:border-r-outline/60">
+        <aside className="min-w-0 border-b border-outline bg-[#111111]/95 backdrop-blur-xl md:sticky md:top-0 md:h-[100dvh] md:border-b-0 md:border-r md:border-r-outline/60">
           <div className="flex h-full flex-col">
             {/* Logo Area */}
             <div className={cn('border-b border-outline/60 px-5 py-5', isSidebarCollapsed && 'md:px-3')}>
@@ -136,7 +109,7 @@ export function AdminCatalogShell({
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.03, duration: 0.25 }}
                       className={cn(
-                        'group relative grid min-w-[190px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-200 md:min-w-0',
+                        'group relative flex md:grid md:grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 md:gap-3 rounded-lg border px-2 py-1.5 md:px-3 md:py-2.5 text-left transition-all duration-200 min-w-[110px] md:min-w-0 shrink-0',
                         isSidebarCollapsed && 'md:min-w-0 md:grid-cols-1 md:justify-items-center md:px-2',
                         isActive
                           ? 'border-primary/50 bg-primary/15 text-white shadow-[0_0_20px_rgba(232,0,10,0.12),inset_3px_0_0_var(--color-primary)]'
@@ -145,17 +118,17 @@ export function AdminCatalogShell({
                     >
                       <span
                         className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-md border transition-all duration-200',
+                          'flex h-7 w-7 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md border transition-all duration-200',
                           isActive
                             ? 'border-primary/40 bg-primary text-white shadow-[0_0_12px_rgba(232,0,10,0.3)]'
                             : 'border-outline bg-background text-gray-500 group-hover:border-primary/30 group-hover:text-gray-300',
                         )}
                       >
-                        <Icon size={17} />
+                        <Icon size={14} className="md:w-[17px] md:h-[17px]" />
                       </span>
-                      <span className={cn('min-w-0', isSidebarCollapsed && 'md:hidden')}>
-                        <span className="block truncate text-xs font-black uppercase tracking-wide">{item.label}</span>
-                        <span className="block truncate text-[10px] font-semibold text-gray-500">{item.description}</span>
+                      <span className={cn('min-w-0 flex-1 md:flex-initial', isSidebarCollapsed && 'md:hidden')}>
+                        <span className="block truncate text-[10px] md:text-xs font-black uppercase tracking-wide">{item.label}</span>
+                        <span className="hidden md:block truncate text-[10px] font-semibold text-gray-500">{item.description}</span>
                       </span>
                       <motion.span
                         key={`${item.id}-${counts[item.id]}`}
@@ -163,7 +136,7 @@ export function AdminCatalogShell({
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                         className={cn(
-                          'rounded-full px-2 py-0.5 text-[10px] font-black transition-colors duration-200',
+                          'rounded-full px-1.5 py-0.5 text-[9px] md:text-[10px] font-black transition-colors duration-200 shrink-0',
                           isSidebarCollapsed && 'md:absolute md:right-1 md:top-1 md:px-1.5',
                           isActive ? 'bg-white text-background' : 'bg-surface-2 text-gray-500 group-hover:bg-surface-2/80 group-hover:text-gray-400',
                         )}
@@ -190,66 +163,78 @@ export function AdminCatalogShell({
         {/* ── Content Area ─────────────────── */}
         <section className="flex min-h-0 min-w-0 flex-col bg-[linear-gradient(180deg,rgba(255,255,255,0.025),transparent_220px)] md:h-[100dvh] md:overflow-hidden">
           {/* Header */}
-          <header
-            ref={headerRef}
-            style={{ marginTop: showHeader ? '0' : 'calc(-1 * var(--admin-header-height, 70px))' }}
-            className="sticky top-0 z-20 border-b border-outline bg-background/92 px-4 py-3 backdrop-blur-lg md:px-6 transition-[margin-top] duration-300 ease-in-out"
-          >
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="mr-auto min-w-[220px]">
-                {/* Breadcrumb */}
-                <div className="mb-0.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
-                  <span>Admin</span>
-                  <ChevronRight size={10} className="text-gray-600" />
-                  <span className="text-primary">{activeItem.label}</span>
+          <header className="sticky top-0 z-20 border-b border-outline bg-background/92 px-4 py-2 backdrop-blur-lg md:px-6">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              {/* Row 1 / Left side */}
+              <div className="flex items-center justify-between w-full md:w-auto md:mr-auto">
+                <div className="min-w-0">
+                  {/* Breadcrumb */}
+                  <div className="hidden sm:flex mb-0.5 items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
+                    <span>Admin</span>
+                    <ChevronRight size={10} className="text-gray-600" />
+                    <span className="text-primary">{activeItem.label}</span>
+                  </div>
+                  <h2 className="text-lg md:text-xl font-black uppercase tracking-wide text-white leading-tight">{activeItem.label}</h2>
+                  <p className="hidden md:block text-xs font-medium text-gray-400 mt-0.5">{activeItem.description}</p>
                 </div>
-                <h2 className="text-xl font-black uppercase tracking-wide text-white">{activeItem.label}</h2>
-                <p className="text-xs font-medium text-gray-400">{activeItem.description}</p>
+                
+                {/* Refresh button on mobile */}
+                <div className="flex items-center gap-2 md:hidden">
+                  <Button variant="outline" size="sm" onClick={onRefresh} isLoading={isLoading} className="h-9 px-2.5">
+                    <RefreshCw size={14} className={cn('transition-transform duration-500', isLoading && 'animate-spin')} />
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex min-h-9 flex-wrap items-center justify-end gap-3">
-                <AnimatePresence mode="wait">
-                  {message && (
-                    <motion.span
-                      key="message"
-                      initial={{ opacity: 0, x: 20, scale: 0.95 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: 20, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-center gap-1.5 rounded-full border border-green-500/25 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-300"
-                    >
-                      <Check size={14} /> {message}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                <AnimatePresence mode="wait">
-                  {error && (
-                    <motion.span
-                      key="error"
-                      initial={{ opacity: 0, x: 20, scale: 0.95 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: 20, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold text-primary"
-                    >
-                      {error}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                <Button variant="outline" size="sm" onClick={onRefresh} isLoading={isLoading}>
-                  <RefreshCw size={15} className={cn('mr-2 transition-transform duration-500', isLoading && 'animate-spin')} /> Actualizar
-                </Button>
+              {/* Row 2 / Right side controls */}
+              <div className="flex items-center gap-1.5 w-full md:w-auto md:justify-end">
+                {headerControls}
+
+                {/* Refresh button on desktop */}
+                <div className="hidden md:flex items-center">
+                  <Button variant="outline" size="sm" onClick={onRefresh} isLoading={isLoading} className="h-9 px-3">
+                    <RefreshCw size={14} className={cn('mr-1.5 transition-transform duration-500', isLoading && 'animate-spin')} />
+                    Actualizar
+                  </Button>
+                </div>
               </div>
             </div>
+
+            {/* Floating absolute toast alerts (replaces inline elements to save space) */}
+            <AnimatePresence mode="wait">
+              {message && (
+                <motion.div
+                  key="message"
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed top-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-green-500/25 bg-[#181818]/95 px-4 py-2 text-xs font-bold text-green-300 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                >
+                  <Check size={14} className="text-green-400" /> {message}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed top-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-primary/30 bg-[#181818]/95 px-4 py-2 text-xs font-bold text-primary shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                >
+                  <AlertCircle size={14} className="text-primary" /> {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Loading progress bar */}
             {isLoading && <div className="admin-progress-bar" />}
           </header>
 
-          <div
-            onScroll={handleScroll}
-            className="admin-scroll-container mx-auto min-h-0 w-full max-w-[1360px] flex-1 overflow-y-auto px-4 py-5 md:px-6 xl:px-8"
-          >
+          <div className="mx-auto min-h-0 w-full max-w-[1360px] flex-1 overflow-y-auto px-4 py-5 md:px-6 xl:px-8">
             {children}
           </div>
         </section>

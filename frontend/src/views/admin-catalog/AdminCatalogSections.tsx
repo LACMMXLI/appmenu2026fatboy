@@ -91,6 +91,8 @@ interface ProductsAdminProps {
   onSaveProduct: (product: Product) => void;
   onCancelChanges: () => void;
   onDeleteProduct: (product: Product) => void;
+  isCreateOpen: boolean;
+  setIsCreateOpen: (value: boolean) => void;
 }
 
 export function ProductsAdmin({
@@ -109,35 +111,14 @@ export function ProductsAdmin({
   onSaveProduct,
   onCancelChanges,
   onDeleteProduct,
+  isCreateOpen,
+  setIsCreateOpen,
 }: ProductsAdminProps) {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [showHeader, setShowHeader] = useState(true);
-  const lastScrollTopRef = React.useRef(0);
 
   const selectedCategoryName = selectedCategoryId
     ? categories.find((category) => category.id === selectedCategoryId)?.name
     : 'Todas las categorias';
-
-  useEffect(() => {
-    const scrollContainer = document.querySelector('.admin-scroll-container');
-    if (!scrollContainer) return;
-
-    const handleScroll = () => {
-      const scrollTop = scrollContainer.scrollTop;
-      const lastScrollTop = lastScrollTopRef.current;
-
-      if (scrollTop > lastScrollTop && scrollTop > 80) {
-        setShowHeader(false);
-      } else if (scrollTop < lastScrollTop) {
-        setShowHeader(true);
-      }
-      lastScrollTopRef.current = scrollTop;
-    };
-
-    scrollContainer.addEventListener('scroll', handleScroll);
-    return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, []);
 
   function openCreateModal() {
     const defaultCategoryId = activeCategories.some((category) => category.id === selectedCategoryId)
@@ -159,68 +140,6 @@ export function ProductsAdmin({
 
   return (
     <div className="space-y-4">
-      {/* Search + Category Filters (Sticky for premium feel) */}
-      <div
-        style={{ top: showHeader ? 'var(--admin-header-height, 69px)' : '0px' }}
-        className="sticky z-20 rounded-xl border border-outline bg-background/95 backdrop-blur p-3 shadow-md transition-[top] duration-300 ease-in-out"
-      >
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="flex items-center gap-3 rounded-lg border border-outline bg-surface px-3 py-1.5 transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.1)] flex-1">
-            <Search size={18} className="shrink-0 text-gray-500" />
-            <input
-              value={search}
-              onChange={(event) => onSearch(event.target.value)}
-              placeholder="Buscar por producto, categoría o descripción..."
-              className="h-9 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
-            />
-          </div>
-          
-          <Button
-            onClick={openCreateModal}
-            disabled={isLoading || activeCategories.length === 0}
-            size="sm"
-            className="h-9 shrink-0 px-4 text-xs font-bold uppercase tracking-wider"
-          >
-            <Plus size={16} className="mr-1.5" /> Nuevo producto
-          </Button>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar flex-1">
-            <button
-              type="button"
-              onClick={() => onCategoryFilterChange('')}
-              className={cn(
-                'h-8 shrink-0 rounded-lg border px-3 text-[10px] font-black uppercase tracking-wide transition-all duration-200',
-                !selectedCategoryId
-                  ? 'border-primary bg-primary text-white shadow-[0_0_24px_rgba(232,0,10,0.28)]'
-                  : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white hover:shadow-[0_0_12px_rgba(232,0,10,0.1)]',
-              )}
-            >
-              Todas ({categories.length})
-            </button>
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => onCategoryFilterChange(category.id)}
-                className={cn(
-                  'h-8 shrink-0 rounded-lg border px-3 text-[10px] font-black uppercase tracking-wide transition-all duration-200',
-                  selectedCategoryId === category.id
-                    ? 'border-primary bg-primary text-white shadow-[0_0_24px_rgba(232,0,10,0.28)]'
-                    : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white hover:shadow-[0_0_12px_rgba(232,0,10,0.1)]',
-                )}
-              >
-                {category.name} ({category._count?.products ?? 0})
-              </button>
-            ))}
-          </div>
-          
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0 bg-surface/50 px-2.5 py-1 rounded-md border border-outline/40">
-            {selectedCategoryName} · {products.length} productos
-          </span>
-        </div>
-      </div>
 
       {/* Product Grid */}
       <motion.div
@@ -1080,17 +999,6 @@ export function CustomersAdmin({
 }: CustomersAdminProps) {
   return (
     <div className="space-y-4">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-3 rounded-xl border border-outline bg-surface px-4 py-2 shadow-md transition-all focus-within:border-primary/40 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.08)]">
-        <Search size={18} className="shrink-0 text-gray-500" />
-        <input
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Buscar cliente por nombre o teléfono..."
-          className="h-10 min-w-[220px] flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
-          onKeyDown={(e) => e.key === 'Enter' && onSearchSubmit()}
-        />
-        <Button size="sm" onClick={onSearchSubmit} disabled={isLoading}>Buscar</Button>
-      </motion.div>
 
       <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
         <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -1227,21 +1135,6 @@ export function OrdersAdmin({
 
   return (
     <div className="space-y-4">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-4 rounded-xl border border-outline bg-surface p-4 shadow-md">
-        <label className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Filtrar por Sucursal:
-          <select
-            value={branchFilter}
-            onChange={(e) => onBranchFilterChange(e.target.value)}
-            className="h-10 rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
-          >
-            <option value="">Todas las sucursales</option>
-            {branches.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-        </label>
-      </motion.div>
 
       <div className="flex flex-col gap-4">
         <AnimatePresence initial={false}>

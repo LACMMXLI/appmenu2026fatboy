@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import {
@@ -93,6 +93,7 @@ export function AdminCatalogView() {
   const [newProduct, setNewProduct] = useState<NewProduct>(emptyProduct);
   const [newRedeemableProduct, setNewRedeemableProduct] = useState<NewRedeemableProduct>(emptyRedeemableProduct);
   const [newBanner, setNewBanner] = useState<NewBanner>({ imageUrl: '', title: '', subtitle: '', buttonText: '', linkView: 'menu', order: 999 });
+  const [isCreateProductOpen, setIsCreateProductOpen] = useState(false);
 
   const activeCategories = useMemo(
     () => catalog.categories.filter((category) => category.status === 'active'),
@@ -124,6 +125,20 @@ export function AdminCatalogView() {
       refreshAll(adminKey);
     }
   }, []);
+
+  useEffect(() => {
+    if (message) {
+      const t = setTimeout(() => setMessage(''), 4500);
+      return () => clearTimeout(t);
+    }
+  }, [message]);
+
+  useEffect(() => {
+    if (error) {
+      const t = setTimeout(() => setError(''), 5500);
+      return () => clearTimeout(t);
+    }
+  }, [error]);
 
   async function refreshAll(key = adminKey) {
     try {
@@ -362,6 +377,78 @@ export function AdminCatalogView() {
     feedback: feedbacks.length,
   }), [catalog.products, catalog.categories, redeemableProducts.length, banners.length, customers.length, orders.length, feedbacks.length]);
 
+  const headerControls = useMemo(() => {
+    if (activeTab === 'products') {
+      return (
+        <div className="flex items-center gap-1.5 flex-1 md:flex-initial justify-end">
+          <div className="flex items-center gap-1.5 rounded-lg border border-outline bg-surface px-2 py-1 transition-all focus-within:border-primary/50 flex-1 max-w-[140px] sm:max-w-[180px] md:max-w-[200px]">
+            <Search size={13} className="shrink-0 text-gray-500" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar producto..."
+              className="h-7 min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-gray-500"
+            />
+          </div>
+          
+          <select
+            value={productCategoryFilter}
+            onChange={(event) => setProductCategoryFilter(event.target.value)}
+            className="h-9 rounded-lg border border-outline bg-surface px-2 text-xs text-white outline-none focus:border-primary transition-colors max-w-[110px] sm:max-w-[140px] truncate"
+          >
+            <option value="">Categorías</option>
+            {catalog.categories.map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
+          
+          <Button
+            onClick={() => setIsCreateProductOpen(true)}
+            disabled={isLoading || activeCategories.length === 0}
+            size="sm"
+            className="h-9 shrink-0 px-2 md:px-3 text-xs flex items-center justify-center"
+            title="Nuevo producto"
+          >
+            <Plus size={14} />
+            <span className="hidden sm:inline ml-1">Nuevo</span>
+          </Button>
+        </div>
+      );
+    }
+
+    if (activeTab === 'customers') {
+      return (
+        <div className="flex items-center gap-1.5 rounded-lg border border-outline bg-surface px-2 py-1 transition-all focus-within:border-primary/50 flex-grow max-w-[180px] sm:max-w-[220px]">
+          <Search size={13} className="shrink-0 text-gray-500" />
+          <input
+            value={customerSearch}
+            onChange={(e) => setCustomerSearch(e.target.value)}
+            placeholder="Buscar cliente..."
+            className="h-7 min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-gray-500"
+            onKeyDown={(e) => e.key === 'Enter' && searchCustomers()}
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === 'orders') {
+      return (
+        <select
+          value={orderBranchFilter}
+          onChange={(e) => setOrderBranchFilter(e.target.value)}
+          className="h-9 rounded-lg border border-outline bg-surface px-2 text-xs text-white outline-none focus:border-primary transition-colors max-w-[130px] sm:max-w-[160px] truncate"
+        >
+          <option value="">Sucursales</option>
+          {branches.map((b) => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>
+      );
+    }
+
+    return null;
+  }, [activeTab, search, productCategoryFilter, customerSearch, orderBranchFilter, catalog.categories, branches, isLoading, activeCategories.length]);
+
   if (!isAuthorized) {
     return (
       <main className="admin-aurora min-h-[100dvh] text-white flex items-center justify-center px-5 relative overflow-hidden">
@@ -425,6 +512,7 @@ export function AdminCatalogView() {
       isLoading={isLoading}
       onRefresh={() => refreshAll()}
       onTabChange={setActiveTab}
+      headerControls={headerControls}
     >
       {activeTab === 'products' && (
         <ProductsAdmin
@@ -449,6 +537,8 @@ export function AdminCatalogView() {
               await refreshAll();
             }, 'Producto eliminado.')
           }
+          isCreateOpen={isCreateProductOpen}
+          setIsCreateOpen={setIsCreateProductOpen}
         />
       )}
 
