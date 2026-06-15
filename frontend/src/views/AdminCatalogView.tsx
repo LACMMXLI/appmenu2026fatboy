@@ -503,6 +503,7 @@ export function AdminCatalogView() {
           onCreateCategory={createCategory}
           onCategoryChange={updateLocalCategory}
           onSaveCategory={saveCategory}
+          onCancelChanges={() => refreshAll()}
           onDeleteCategory={(category) =>
             runAction(async () => {
               if (!window.confirm(`Eliminar categoría "${category.name}"?`)) return;

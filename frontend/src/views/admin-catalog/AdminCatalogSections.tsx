@@ -29,6 +29,7 @@ import { GOOGLE_REVIEW_BRANCHES, buildGoogleReviewUrl } from '@/lib/googleReview
 import {
   getSystemSettings,
   updateAdminSystemSettings,
+  defaultProductImage,
   type Branch,
   type Category,
   type Customer,
@@ -62,20 +63,14 @@ function AdminEmptyState({ icon: Icon, title, description }: { icon: React.Eleme
 ═══════════════════════════════════════════ */
 function SectionHeader({ tag, title, subtitle, children }: { tag: string; title: string; subtitle: string; children?: React.ReactNode }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="admin-premium-panel rounded-xl border border-outline p-4 shadow-[0_18px_45px_rgba(0,0,0,0.28)]"
-    >
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="mr-auto min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">{tag}</p>
-          <h3 className="text-lg font-black uppercase tracking-wide text-white">{title}</h3>
-          <p className="text-xs font-medium text-gray-400">{subtitle}</p>
-        </div>
-        {children}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline/40 pb-3.5 mb-1 shrink-0">
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">{tag}</p>
+        <h3 className="text-base font-black uppercase tracking-wide text-white mt-0.5">{title}</h3>
+        {subtitle && <p className="text-xs font-medium text-gray-400 mt-0.5">{subtitle}</p>}
       </div>
-    </motion.div>
+      <div className="flex items-center gap-2">{children}</div>
+    </div>
   );
 }
 
@@ -116,6 +111,8 @@ export function ProductsAdmin({
   onDeleteProduct,
 }: ProductsAdminProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
   const selectedCategoryName = selectedCategoryId
     ? categories.find((category) => category.id === selectedCategoryId)?.name
     : 'Todas las categorias';
@@ -139,7 +136,7 @@ export function ProductsAdmin({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="space-y-4">
       <SectionHeader
         tag="Inventario comercial"
         title="Productos por categoria"
@@ -150,24 +147,24 @@ export function ProductsAdmin({
         </Button>
       </SectionHeader>
 
-      {/* Search + Category Filters */}
-      <div className="shrink-0 rounded-xl border border-outline bg-surface p-3 shadow-md">
-        <div className="flex items-center gap-3 rounded-lg border border-outline bg-background px-3 py-2 transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.1)]">
+      {/* Search + Category Filters (Sticky for premium feel) */}
+      <div className="sticky top-[53px] md:top-[61px] z-20 rounded-xl border border-outline bg-background/95 backdrop-blur p-3 shadow-md">
+        <div className="flex items-center gap-3 rounded-lg border border-outline bg-surface px-3 py-1.5 transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.1)]">
           <Search size={18} className="shrink-0 text-gray-500" />
           <input
             value={search}
             onChange={(event) => onSearch(event.target.value)}
             placeholder="Buscar por producto, categoría o descripción..."
-            className="h-10 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
+            className="h-9 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
           />
         </div>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           <button
             type="button"
             onClick={() => onCategoryFilterChange('')}
             className={cn(
-              'h-10 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all duration-200',
+              'h-9 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all duration-200',
               !selectedCategoryId
                 ? 'border-primary bg-primary text-white shadow-[0_0_24px_rgba(232,0,10,0.28)]'
                 : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white hover:shadow-[0_0_12px_rgba(232,0,10,0.1)]',
@@ -181,7 +178,7 @@ export function ProductsAdmin({
               type="button"
               onClick={() => onCategoryFilterChange(category.id)}
               className={cn(
-                'h-10 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all duration-200',
+                'h-9 shrink-0 rounded-lg border px-4 text-xs font-black uppercase tracking-wide transition-all duration-200',
                 selectedCategoryId === category.id
                   ? 'border-primary bg-primary text-white shadow-[0_0_24px_rgba(232,0,10,0.28)]'
                   : 'border-outline bg-background text-gray-400 hover:border-primary/50 hover:text-white hover:shadow-[0_0_12px_rgba(232,0,10,0.1)]',
@@ -193,10 +190,10 @@ export function ProductsAdmin({
         </div>
       </div>
 
-      {/* Product Cards */}
+      {/* Product Grid */}
       <motion.div
         layout
-        className="grid min-h-[360px] flex-1 content-start gap-2 overflow-y-auto rounded-xl border border-outline bg-background/45 p-3 pr-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:min-h-0"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 rounded-xl border border-outline bg-background/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
       >
         <AnimatePresence initial={false}>
           {products.map((product, index) => (
@@ -206,126 +203,91 @@ export function ProductsAdmin({
               initial={{ opacity: 0, y: 10, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: 0.18, delay: Math.min(index * 0.018, 0.08) }}
-              className="admin-card-hover group grid min-w-0 gap-3 rounded-lg border border-outline bg-surface/95 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:border-primary/35 hover:bg-surface-2/55 xl:grid-cols-[minmax(260px,0.9fr)_minmax(260px,1fr)_minmax(280px,1.15fr)_minmax(170px,auto)]"
+              transition={{ duration: 0.18, delay: Math.min(index * 0.015, 0.08) }}
+              className="admin-card-hover group relative flex flex-col justify-between rounded-xl border border-outline bg-surface/95 p-3.5 shadow-lg hover:border-primary/35"
             >
-              {/* Product identity */}
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
+              <div>
+                {/* Product Image */}
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-outline/30 bg-background mb-3">
                   {product.imageUrl ? (
                     <img
                       src={product.imageUrl}
                       alt={product.name}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = defaultProductImage;
+                      }}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-gray-600">
-                      <Image size={18} />
+                      <Image size={24} />
                     </div>
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black text-white">{product.name || 'Producto sin nombre'}</p>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-primary">{product.category.name}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold text-gray-500">
-                    <span className="text-gold">${Number(product.price).toFixed(2)}</span>
-                    <span>{product.status === 'active' ? 'Visible' : 'Oculto'}</span>
+                  
+                  {/* Status Overlay Badge */}
+                  <div className="absolute top-2 right-2">
+                    <span className={cn(
+                      "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-md",
+                      product.status === 'active'
+                        ? "bg-green-500/15 text-green-300 border-green-500/35"
+                        : "bg-primary/15 text-primary border-primary/35"
+                    )}>
+                      {product.status === 'active' && <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" />}
+                      {product.status === 'active' ? 'Activo' : 'Inactivo'}
+                    </span>
                   </div>
                 </div>
-              </div>
 
-              {/* Core editable fields */}
-              <div className="grid min-w-0 gap-2">
-                <Input
-                  label="Nombre"
-                  value={product.name}
-                  onChange={(event) => onProductChange(product.id, { name: event.target.value })}
-                  className="h-9 bg-background px-3"
-                />
-                <div className="grid gap-2 sm:grid-cols-[110px_minmax(0,1fr)]">
-                  <Input
-                    label="Precio"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={product.price}
-                    onChange={(event) => onProductChange(product.id, { price: Number(event.target.value) })}
-                    className="h-9 bg-background px-3 font-bold"
-                  />
-                  <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Categoría
-                    <select
-                      value={product.categoryId}
-                      onChange={(event) => onProductChange(product.id, { categoryId: event.target.value })}
-                      className="h-9 w-full rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
-                    >
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>{category.name}</option>
-                      ))}
-                    </select>
-                  </label>
+                {/* Identity Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-primary truncate">
+                      {product.category.name}
+                    </span>
+                    <span className="text-sm font-bold text-gold shrink-0">
+                      ${Number(product.price).toFixed(2)}
+                    </span>
+                  </div>
+                  <h4 className="mt-1 font-sans text-sm font-bold text-white truncate group-hover:text-gold transition-colors">
+                    {product.name || 'Producto sin nombre'}
+                  </h4>
+                  <p className="mt-1.5 text-xs text-gray-400 line-clamp-2 min-h-[2rem] leading-relaxed">
+                    {product.description || <span className="italic text-gray-600">Sin descripción</span>}
+                  </p>
                 </div>
-              </div>
-
-              {/* Description + Image URL */}
-              <div className="grid min-w-0 gap-2">
-                <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  Descripción
-                  <textarea
-                    value={product.description ?? ''}
-                    onChange={(event) => onProductChange(product.id, { description: event.target.value })}
-                    className="h-16 min-h-0 w-full resize-none rounded-lg border border-outline bg-background px-3 py-2 text-sm leading-5 text-white outline-none transition-colors focus:border-primary"
-                  />
-                </label>
-                <Input
-                  label="URL imagen"
-                  value={product.imageUrl ?? ''}
-                  onChange={(event) => onProductChange(product.id, { imageUrl: event.target.value })}
-                  placeholder="https://..."
-                  className="h-9 bg-background px-3 text-xs"
-                />
               </div>
 
               {/* Actions */}
-              <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 xl:flex-col xl:items-stretch xl:justify-end">
-                <div className="grid gap-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Estado</span>
-                  <button
-                    type="button"
-                    onClick={() => onProductChange(product.id, { status: product.status === 'active' ? 'inactive' : 'active' })}
-                    className={cn(
-                      'flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-black uppercase transition-all duration-200',
-                      product.status === 'active'
-                        ? 'bg-green-500/15 text-green-300 border border-green-500/30'
-                        : 'bg-primary/15 text-primary border border-primary/30',
-                    )}
-                  >
-                    {product.status === 'active' && <span className="h-2 w-2 rounded-full bg-green animate-pulse-dot" />}
-                    {product.status === 'active' ? 'Activo' : 'Inactivo'}
-                  </button>
-                </div>
-                <div className="grid w-full min-w-0 grid-cols-3 gap-2 xl:grid-cols-1">
-                  <Button size="sm" onClick={() => onSaveProduct(product)} disabled={isLoading} className="bg-primary/90 hover:bg-primary" title="Guardar cambios">
-                    <Save size={15} className="mr-1.5" /> Guardar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={onCancelChanges} disabled={isLoading} title="Descartar cambios">
-                    Cancelar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => onDeleteProduct(product)} disabled={isLoading} className="border-primary/45 text-primary hover:bg-primary/10" title="Eliminar producto permanentemente">
-                    <Trash2 size={15} className="mr-1.5" /> Eliminar
-                  </Button>
-                </div>
+              <div className="mt-4 flex gap-2 border-t border-outline/20 pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-xs"
+                  onClick={() => setEditingProduct(product)}
+                >
+                  Editar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => onDeleteProduct(product)}
+                >
+                  Eliminar
+                </Button>
               </div>
             </motion.article>
           ))}
         </AnimatePresence>
 
         {products.length === 0 && (
-          <AdminEmptyState
-            icon={ShoppingBag}
-            title="Sin productos visibles"
-            description="Cambia la categoria o la busqueda para ver mas resultados."
-          />
+          <div className="col-span-full">
+            <AdminEmptyState
+              icon={ShoppingBag}
+              title="Sin productos visibles"
+              description="Cambia la categoria o la busqueda para ver mas resultados."
+            />
+          </div>
         )}
       </motion.div>
 
@@ -348,9 +310,18 @@ export function ProductsAdmin({
               transition={{ duration: 0.18 }}
               className="admin-gradient-border max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.55)]"
             >
-              <div className="sticky top-0 z-10 border-b border-outline bg-surface/95 px-5 py-4 backdrop-blur rounded-t-2xl">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Alta de producto</p>
-                <h3 className="text-xl font-black uppercase tracking-wide text-white">Nuevo producto</h3>
+              <div className="sticky top-0 z-10 border-b border-outline bg-surface/95 px-5 py-4 backdrop-blur rounded-t-2xl flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Alta de producto</p>
+                  <h3 className="text-xl font-black uppercase tracking-wide text-white">Nuevo producto</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
               <div className="grid gap-4 bg-surface p-5 md:grid-cols-[190px_minmax(0,1fr)]">
@@ -367,15 +338,15 @@ export function ProductsAdmin({
                 </div>
 
                 <div className="grid gap-4">
-                  <Input label="Nombre *" value={newProduct.name} onChange={(event) => onNewProductChange({ ...newProduct, name: event.target.value })} autoFocus />
+                  <Input label="Nombre *" value={newProduct.name} onChange={(event) => onNewProductChange({ ...newProduct, name: event.target.value })} autoFocus className="h-10 px-3 text-sm" />
                   <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
-                    <Input label="Precio" type="number" min="0" step="0.01" value={newProduct.price} onChange={(event) => onNewProductChange({ ...newProduct, price: Number(event.target.value) })} />
+                    <Input label="Precio" type="number" min="0" step="0.01" value={newProduct.price} onChange={(event) => onNewProductChange({ ...newProduct, price: Number(event.target.value) })} className="h-10 px-3 text-sm font-bold" />
                     <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
                       Categoría *
                       <select
-                        value={newProduct.categoryId || activeCategories[0]?.id || ''}
-                        onChange={(event) => onNewProductChange({ ...newProduct, categoryId: event.target.value })}
-                        className="h-14 rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
+                         value={newProduct.categoryId || activeCategories[0]?.id || ''}
+                         onChange={(event) => onNewProductChange({ ...newProduct, categoryId: event.target.value })}
+                         className="h-10 rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
                       >
                         {activeCategories.map((category) => (
                           <option key={category.id} value={category.id}>{category.name}</option>
@@ -383,7 +354,7 @@ export function ProductsAdmin({
                       </select>
                     </label>
                   </div>
-                  <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} placeholder="https://..." />
+                  <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} placeholder="https://..." className="h-10 px-3 text-sm" />
                   <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
                     Descripción
                     <textarea
@@ -407,6 +378,141 @@ export function ProductsAdmin({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Edit Product Modal */}
+      <AnimatePresence>
+        {editingProduct && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Editar ${editingProduct.name}`}
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="admin-gradient-border max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.55)]"
+            >
+              <div className="sticky top-0 z-10 border-b border-outline bg-surface/95 px-5 py-4 backdrop-blur rounded-t-2xl flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Modificación de producto</p>
+                  <h3 className="text-xl font-black uppercase tracking-wide text-white">Editar producto</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid gap-4 bg-surface p-5 md:grid-cols-[190px_minmax(0,1fr)]">
+                <div className="overflow-hidden rounded-xl border border-outline bg-background">
+                  <div className="aspect-square">
+                    {editingProduct.imageUrl ? (
+                      <img
+                        src={editingProduct.imageUrl}
+                        alt={editingProduct.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = defaultProductImage;
+                        }}
+                      />
+                    ) : (
+                      <div className="admin-skeleton flex h-full w-full items-center justify-center">
+                        <Image size={34} className="text-gray-600 relative z-10" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <Input
+                    label="Nombre *"
+                    value={editingProduct.name}
+                    onChange={(event) => setEditingProduct({ ...editingProduct, name: event.target.value })}
+                    className="h-10 px-3 text-sm"
+                  />
+                  <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+                    <Input
+                      label="Precio"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingProduct.price}
+                      onChange={(event) => setEditingProduct({ ...editingProduct, price: Number(event.target.value) })}
+                      className="h-10 px-3 text-sm font-bold"
+                    />
+                    <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                      Categoría *
+                      <select
+                        value={editingProduct.categoryId}
+                        onChange={(event) => setEditingProduct({ ...editingProduct, categoryId: event.target.value })}
+                        className="h-10 rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
+                      >
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>{category.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+                    <Input
+                      label="URL imagen"
+                      value={editingProduct.imageUrl ?? ''}
+                      onChange={(event) => setEditingProduct({ ...editingProduct, imageUrl: event.target.value })}
+                      placeholder="https://..."
+                      className="h-10 px-3 text-sm"
+                    />
+                    <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                      Estado
+                      <select
+                        value={editingProduct.status}
+                        onChange={(event) => setEditingProduct({ ...editingProduct, status: event.target.value as 'active' | 'inactive' })}
+                        className="h-10 rounded-lg border border-outline bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary"
+                      >
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Descripción
+                    <textarea
+                      value={editingProduct.description ?? ''}
+                      onChange={(event) => setEditingProduct({ ...editingProduct, description: event.target.value })}
+                      className="min-h-[110px] w-full resize-y rounded-lg border border-outline bg-background px-4 py-3 text-sm leading-5 text-white outline-none transition-colors focus:border-primary"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2 border-t border-outline bg-surface px-5 py-4 rounded-b-2xl">
+                <Button type="button" variant="outline" onClick={() => setEditingProduct(null)} disabled={isLoading}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!editingProduct.name) return;
+                    await onSaveProduct(editingProduct);
+                    setEditingProduct(null);
+                  }}
+                  disabled={isLoading || !editingProduct.name}
+                >
+                  <Save size={16} className="mr-2" /> Guardar cambios
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -420,6 +526,7 @@ interface CategoriesAdminProps {
   onCreateCategory: () => void;
   onCategoryChange: (id: string, patch: Partial<Category>) => void;
   onSaveCategory: (category: Category) => void;
+  onCancelChanges: () => void;
   onDeleteCategory: (category: Category) => void;
 }
 
@@ -431,8 +538,11 @@ export function CategoriesAdmin({
   onCreateCategory,
   onCategoryChange,
   onSaveCategory,
+  onCancelChanges,
   onDeleteCategory,
 }: CategoriesAdminProps) {
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+
   return (
     <div className="space-y-4">
       {/* Create form */}
@@ -441,16 +551,16 @@ export function CategoriesAdmin({
         animate={{ opacity: 1, y: 0 }}
         className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.2fr)] xl:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.2fr)_auto]"
       >
-        <Input label="Nueva categoría" value={newCategory.name} onChange={(event) => onNewCategoryChange({ ...newCategory, name: event.target.value })} />
-        <Input label="Orden" type="number" min="0" value={newCategory.order} onChange={(event) => onNewCategoryChange({ ...newCategory, order: Number(event.target.value) })} />
-        <Input label="URL imagen" value={newCategory.imageUrl} onChange={(event) => onNewCategoryChange({ ...newCategory, imageUrl: event.target.value })} />
-        <Button className="self-end animate-pulse-glow md:col-span-3 xl:col-span-1" onClick={onCreateCategory} disabled={isLoading || !newCategory.name}>
+        <Input label="Nueva categoría" value={newCategory.name} onChange={(event) => onNewCategoryChange({ ...newCategory, name: event.target.value })} className="h-10 px-3 text-sm" />
+        <Input label="Orden" type="number" min="0" value={newCategory.order} onChange={(event) => onNewCategoryChange({ ...newCategory, order: Number(event.target.value) })} className="h-10 px-3 text-sm font-semibold" />
+        <Input label="URL imagen" value={newCategory.imageUrl} onChange={(event) => onNewCategoryChange({ ...newCategory, imageUrl: event.target.value })} className="h-10 px-3 text-sm" />
+        <Button size="sm" className="self-end md:col-span-3 xl:col-span-1 h-10 px-4 text-xs font-bold uppercase tracking-wider" onClick={onCreateCategory} disabled={isLoading || !newCategory.name}>
           <Plus size={16} className="mr-2" /> Crear
         </Button>
       </motion.div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
+      {/* Table with max height and sticky headers */}
+      <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md max-h-[500px] overflow-y-auto">
         <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-surface-2/95 backdrop-blur text-xs uppercase tracking-wider text-gray-400">
             <tr>
@@ -463,61 +573,173 @@ export function CategoriesAdmin({
             </tr>
           </thead>
           <tbody>
-            {categories.map((category, index) => (
-              <motion.tr
-                key={category.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03, duration: 0.2 }}
-                className={cn(
-                  'admin-row-hover border-t border-outline/50 transition-colors',
-                  index % 2 === 1 && 'bg-surface/30',
-                )}
-              >
-                <td className="p-2">
-                  <input value={category.name} onChange={(event) => onCategoryChange(category.id, { name: event.target.value })} className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] text-white" />
-                </td>
-                <td className="p-2">
-                  <input type="number" min="0" value={category.order} onChange={(event) => onCategoryChange(category.id, { order: Number(event.target.value) })} className="h-10 w-28 rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] text-white font-semibold" />
-                </td>
-                <td className="p-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
-                      {category.imageUrl ? (
-                        <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-600">
-                          <Image size={15} />
-                        </div>
-                      )}
-                    </div>
-                    <input value={category.imageUrl ?? ''} onChange={(event) => onCategoryChange(category.id, { imageUrl: event.target.value })} placeholder="https://..." className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] text-white text-xs" />
-                  </div>
-                </td>
-                <td className="p-2 text-gray-300 font-semibold">{category._count?.products ?? 0}</td>
-                <td className="p-2">
-                  <button
-                    type="button"
-                    onClick={() => onCategoryChange(category.id, { status: category.status === 'active' ? 'inactive' : 'active' })}
-                    className={cn(
-                      'flex h-9 items-center gap-1.5 rounded-md px-3 text-xs font-bold uppercase transition-all duration-200',
-                      category.status === 'active'
-                        ? 'bg-green-500/15 text-green-300 border border-green-500/30'
-                        : 'bg-primary/15 text-primary border border-primary/30',
+            {categories.map((category, index) => {
+              const isEditing = editingCategoryId === category.id;
+
+              return (
+                <motion.tr
+                  key={category.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: Math.min(index * 0.02, 0.1), duration: 0.2 }}
+                  className={cn(
+                    'admin-row-hover border-t border-outline/50 transition-colors align-middle',
+                    index % 2 === 1 && 'bg-surface/30',
+                  )}
+                >
+                  {/* Category Name */}
+                  <td className="p-3">
+                    {isEditing ? (
+                      <input
+                        value={category.name}
+                        onChange={(event) => onCategoryChange(category.id, { name: event.target.value })}
+                        className="h-9 w-full rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] text-white text-sm"
+                      />
+                    ) : (
+                      <span className="font-sans font-bold text-white text-sm px-1.5">{category.name}</span>
                     )}
-                  >
-                    {category.status === 'active' && <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse-dot" />}
-                    {category.status === 'active' ? 'Activa' : 'Inactiva'}
-                  </button>
-                </td>
-                <td className="p-2">
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" onClick={() => onSaveCategory(category)} disabled={isLoading} className="bg-primary/90 hover:bg-primary"><Save size={15} /></Button>
-                    <Button size="sm" variant="outline" onClick={() => onDeleteCategory(category)} disabled={isLoading}><Trash2 size={15} /></Button>
-                  </div>
-                </td>
-              </motion.tr>
-            ))}
+                  </td>
+
+                  {/* Order */}
+                  <td className="p-3">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        min="0"
+                        value={category.order}
+                        onChange={(event) => onCategoryChange(category.id, { order: Number(event.target.value) })}
+                        className="h-9 w-24 rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] text-white font-semibold text-sm"
+                      />
+                    ) : (
+                      <span className="text-gray-300 font-semibold px-2">{category.order}</span>
+                    )}
+                  </td>
+
+                  {/* Image Preview & URL */}
+                  <td className="p-3">
+                    {isEditing ? (
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
+                          {category.imageUrl ? (
+                            <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-gray-600">
+                              <Image size={15} />
+                            </div>
+                          )}
+                        </div>
+                        <input
+                          value={category.imageUrl ?? ''}
+                          onChange={(event) => onCategoryChange(category.id, { imageUrl: event.target.value })}
+                          placeholder="https://..."
+                          className="h-9 w-full rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] text-white text-xs"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
+                          {category.imageUrl ? (
+                            <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-gray-600">
+                              <Image size={15} />
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-400 truncate max-w-[200px] font-sans">
+                          {category.imageUrl || <span className="italic text-gray-600">Sin imagen</span>}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Products Count */}
+                  <td className="p-3 text-gray-300 font-semibold text-sm">{category._count?.products ?? 0}</td>
+
+                  {/* Status Toggle */}
+                  <td className="p-3">
+                    {isEditing ? (
+                      <button
+                        type="button"
+                        onClick={() => onCategoryChange(category.id, { status: category.status === 'active' ? 'inactive' : 'active' })}
+                        className={cn(
+                          'flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-bold uppercase transition-all duration-200',
+                          category.status === 'active'
+                            ? 'bg-green-500/15 text-green-300 border border-green-500/30'
+                            : 'bg-primary/15 text-primary border border-primary/30',
+                        )}
+                      >
+                        {category.status === 'active' && <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" />}
+                        {category.status === 'active' ? 'Activa' : 'Inactiva'}
+                      </button>
+                    ) : (
+                      <span className={cn(
+                        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                        category.status === 'active'
+                          ? 'bg-green-500/15 text-green-300 border-green-500/30'
+                          : 'bg-primary/15 text-primary border-primary/30'
+                      )}>
+                        {category.status === 'active' ? 'Activa' : 'Inactiva'}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="p-3 text-right">
+                    {isEditing ? (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            onSaveCategory(category);
+                            setEditingCategoryId(null);
+                          }}
+                          disabled={isLoading}
+                          className="bg-green-600 hover:bg-green-700 h-8 px-2.5 flex items-center justify-center"
+                          title="Guardar"
+                        >
+                          <Save size={14} className="mr-1" /> Guardar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            onCancelChanges();
+                            setEditingCategoryId(null);
+                          }}
+                          disabled={isLoading}
+                          className="h-8 px-2.5"
+                          title="Cancelar"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingCategoryId(category.id)}
+                          className="h-8 px-3"
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onDeleteCategory(category)}
+                          disabled={isLoading}
+                          className="border-primary/45 text-primary hover:bg-primary/10 h-8 px-2.5 flex items-center justify-center"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    )}
+                  </td>
+                </motion.tr>
+              );
+            })}
             {categories.length === 0 && (
               <tr>
                 <td colSpan={6}>
