@@ -9,6 +9,7 @@ import {
   FileText,
   Gift,
   Image,
+  MonitorSmartphone,
   RefreshCw,
   Settings,
   ShoppingBag,
@@ -29,6 +30,7 @@ const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { id: 'banners', label: 'Banners inicio', description: 'Contenido principal', icon: Image },
   { id: 'customers', label: 'Clientes', description: 'Datos y puntos', icon: Users },
   { id: 'orders', label: 'Pedidos', description: 'Operación web', icon: FileText },
+  { id: 'visits', label: 'Visitas', description: 'Vistas del menú', icon: MonitorSmartphone },
   { id: 'settings', label: 'Configuración', description: 'Canales y reseñas', icon: Settings },
   { id: 'feedback', label: 'Reseñas', description: 'Opiniones internas', icon: Star },
 ];

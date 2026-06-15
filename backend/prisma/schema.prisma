@@ -176,3 +176,12 @@ model Feedback {
 
   @@map("feedbacks")
 }
+
+model VisitCounter {
+  id        String   @id
+  count     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("visit_counters")
+}

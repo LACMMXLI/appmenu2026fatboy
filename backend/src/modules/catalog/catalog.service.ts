@@ -53,6 +53,8 @@ const FIXED_BRANCH_DETAILS = {
   },
 } as const;
 
+const MENU_VISIT_COUNTER_ID = 'menu';
+
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
@@ -468,6 +470,34 @@ export class CatalogService {
     return this.prisma.feedback.findMany({
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async trackMenuVisit() {
+    const counter = await this.prisma.visitCounter.upsert({
+      where: { id: MENU_VISIT_COUNTER_ID },
+      update: {
+        count: {
+          increment: 1,
+        },
+      },
+      create: {
+        id: MENU_VISIT_COUNTER_ID,
+        count: 1,
+      },
+    });
+
+    return { ok: true, count: counter.count };
+  }
+
+  async getMenuVisitStats() {
+    const counter = await this.prisma.visitCounter.findUnique({
+      where: { id: MENU_VISIT_COUNTER_ID },
+    });
+
+    return {
+      count: counter?.count ?? 0,
+      updatedAt: counter?.updatedAt ?? null,
+    };
   }
 
 

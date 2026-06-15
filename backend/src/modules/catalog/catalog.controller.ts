@@ -254,6 +254,17 @@ export class CatalogController {
     return this.catalogService.listFeedback();
   }
 
+  @Post('visits')
+  trackVisit() {
+    return this.catalogService.trackMenuVisit();
+  }
+
+  @Get('admin/visits')
+  adminVisits(@Headers('x-admin-key') adminKey: string | undefined) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.getMenuVisitStats();
+  }
+
   private assertAdmin(adminKey?: string) {
 
     const expectedKey = process.env.ADMIN_CATALOG_KEY;

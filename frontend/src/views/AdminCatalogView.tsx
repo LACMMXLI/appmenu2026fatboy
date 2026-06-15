@@ -35,6 +35,8 @@ import {
   updateAdminRedeemableProduct,
   deleteAdminRedeemableProduct,
   type RedeemableProduct,
+  getAdminVisitStats,
+  type VisitStats,
 } from '@/lib/api';
 import { AdminCatalogShell } from './admin-catalog/AdminCatalogShell';
 import {
@@ -47,6 +49,7 @@ import {
   PromotionsAdmin,
   RedeemableProductsAdmin,
   SettingsAdmin,
+  VisitsAdmin,
 } from './admin-catalog/AdminCatalogSections';
 import type { NewBanner, NewCategory, NewProduct, NewRedeemableProduct, Tab } from './admin-catalog/adminCatalogTypes';
 
@@ -76,6 +79,7 @@ export function AdminCatalogView() {
   const [banners, setBanners] = useState<HomeBanner[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [redeemableProducts, setRedeemableProducts] = useState<RedeemableProduct[]>([]);
+  const [visitStats, setVisitStats] = useState<VisitStats>({ count: 0, updatedAt: null });
 
   
   const [activeTab, setActiveTab] = useState<Tab>('products');
@@ -177,6 +181,10 @@ export function AdminCatalogView() {
       // Cargar productos canjeables
       const redeemablesList = await getAdminRedeemableProducts(key);
       setRedeemableProducts(redeemablesList);
+
+      // Cargar visitas del menu
+      const visits = await getAdminVisitStats(key);
+      setVisitStats(visits);
 
 
       setIsAuthorized(true);
@@ -373,9 +381,10 @@ export function AdminCatalogView() {
     banners: banners.length,
     customers: customers.length,
     orders: orders.length,
+    visits: visitStats.count,
     settings: 3,
     feedback: feedbacks.length,
-  }), [catalog.products, catalog.categories, redeemableProducts.length, banners.length, customers.length, orders.length, feedbacks.length]);
+  }), [catalog.products, catalog.categories, redeemableProducts.length, banners.length, customers.length, orders.length, visitStats.count, feedbacks.length]);
 
   const headerControls = useMemo(() => {
     if (activeTab === 'products') {
@@ -651,6 +660,8 @@ export function AdminCatalogView() {
           onUpdateStatus={updateOrderStatus}
         />
       )}
+
+      {activeTab === 'visits' && <VisitsAdmin stats={visitStats} isLoading={isLoading} />}
 
       {activeTab === 'settings' && (
         <SettingsAdmin

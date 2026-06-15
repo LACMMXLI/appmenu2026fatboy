@@ -72,6 +72,15 @@ export async function getRedeemableProducts(): Promise<RedeemableProduct[]> {
   return getJson<RedeemableProduct[]>('/redeemable-products');
 }
 
+export interface VisitStats {
+  count: number;
+  updatedAt: string | null;
+}
+
+export async function trackMenuVisit(): Promise<{ ok: boolean; count: number }> {
+  return postJson<{ ok: boolean; count: number }>('/visits', {});
+}
+
 export interface AdminCatalog {
   categories: Category[];
   products: Product[];
@@ -99,6 +108,10 @@ export interface ProductPayload {
 
 export async function getAdminCatalog(adminKey: string): Promise<AdminCatalog> {
   return adminJson<AdminCatalog>('/admin/catalog', adminKey);
+}
+
+export async function getAdminVisitStats(adminKey: string): Promise<VisitStats> {
+  return adminJson<VisitStats>('/admin/visits', adminKey);
 }
 
 export async function createAdminCategory(adminKey: string, payload: CategoryPayload): Promise<Category> {

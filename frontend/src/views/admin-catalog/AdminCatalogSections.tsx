@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Eye,
   Flame,
   Gift,
   Image,
@@ -38,6 +39,7 @@ import {
   type Order,
   type Product,
   type RedeemableProduct,
+  type VisitStats,
 } from '@/lib/api';
 import type { NewBanner, NewProduct, NewRedeemableProduct } from './adminCatalogTypes';
 
@@ -71,6 +73,54 @@ function SectionHeader({ tag, title, subtitle, children }: { tag: string; title:
       </div>
       <div className="flex items-center gap-2">{children}</div>
     </div>
+  );
+}
+
+interface VisitsAdminProps {
+  stats: VisitStats;
+  isLoading: boolean;
+}
+
+export function VisitsAdmin({ stats, isLoading }: VisitsAdminProps) {
+  const updatedAt = stats.updatedAt
+    ? new Intl.DateTimeFormat('es-MX', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(stats.updatedAt))
+    : 'Sin registros todavia';
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <SectionHeader
+        tag="Analitica"
+        title="Visitas del menu"
+        subtitle="Total de sesiones que han abierto el menu digital."
+      />
+
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
+        <section className="admin-premium-panel rounded-xl border border-outline p-5 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/35 bg-primary/15 text-primary">
+              <Eye size={24} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Visualizaciones acumuladas</p>
+              <p className="mt-1 font-display text-5xl leading-none text-white">
+                {isLoading ? '...' : stats.count.toLocaleString('es-MX')}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-outline bg-surface p-5 shadow-lg">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Ultima actualizacion</p>
+          <p className="mt-2 text-sm font-semibold text-white">{updatedAt}</p>
+          <p className="mt-3 text-xs font-medium leading-relaxed text-gray-400">
+            Este dato se registra en el backend y no aparece en la experiencia del cliente.
+          </p>
+        </section>
+      </div>
+    </motion.div>
   );
 }
 

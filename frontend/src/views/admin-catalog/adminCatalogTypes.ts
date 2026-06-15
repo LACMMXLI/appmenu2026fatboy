@@ -7,6 +7,7 @@ export type Tab =
   | 'rewards'
   | 'customers'
   | 'orders'
+  | 'visits'
   | 'banners'
   | 'settings'
   | 'feedback';

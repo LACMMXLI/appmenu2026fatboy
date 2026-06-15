@@ -20,7 +20,7 @@ import { TopBar, BottomNav } from './components/layout/Navigation';
 import { GoogleReviewPrompt } from './components/layout/GoogleReviewPrompt';
 import { AppSplash } from './components/layout/AppSplash';
 import { useUser } from './context/UserContext';
-import { getSystemSettings, type Product } from './lib/api';
+import { getSystemSettings, trackMenuVisit, type Product } from './lib/api';
 import { GOOGLE_REVIEW_ROUTE, getGoogleReviewCooldown, isGoogleReviewRoutePath } from './lib/googleReviews';
 
 const variants = {
@@ -34,6 +34,8 @@ const fullScreenVariants = {
   animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
   exit: { opacity: 0, scale: 1.02, transition: { duration: 0.3, ease: 'easeInOut' } }
 };
+
+const VISIT_TRACKED_SESSION_KEY = 'fatboy-menu-visit-tracked';
 
 export default function App() {
   const { isAuthenticated } = useUser();
@@ -50,6 +52,18 @@ export default function App() {
   // Google Review prompt state & config URL
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+
+  useEffect(() => {
+    if (isAdminCatalogPath || isBranchOrdersPath || sessionStorage.getItem(VISIT_TRACKED_SESSION_KEY)) {
+      return;
+    }
+
+    sessionStorage.setItem(VISIT_TRACKED_SESSION_KEY, 'true');
+    trackMenuVisit().catch((err) => {
+      sessionStorage.removeItem(VISIT_TRACKED_SESSION_KEY);
+      console.error('Error tracking menu visit:', err);
+    });
+  }, [isAdminCatalogPath, isBranchOrdersPath]);
 
   useEffect(() => {
     if (!showSplash) return;
