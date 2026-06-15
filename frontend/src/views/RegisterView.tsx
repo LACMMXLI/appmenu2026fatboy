@@ -79,7 +79,7 @@ export function RegisterView({ onNavigate, onRegister }: RegisterViewProps) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 pb-32">
+      <div className="flex-1 overflow-y-auto px-6 py-6 pb-10 no-scrollbar">
         <div className="text-center mb-8">
           <h1 className="font-display text-4xl tracking-wide mb-2 text-white">CREAR CUENTA</h1>
           <p className="text-gray-400 text-sm">Únete a la familia Fatboy.</p>
@@ -144,16 +144,16 @@ export function RegisterView({ onNavigate, onRegister }: RegisterViewProps) {
               ))}
             </div>
           </div>
-        </form>
-      </div>
 
-      <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-background via-background to-transparent pt-12 pb-safe z-20">
-        <Button size="lg" className="w-full flex items-center justify-center gap-2" onClick={handleSubmit} isLoading={loading}>
-          REGISTRARME <span className="text-xl">→</span>
-        </Button>
-        <p className="text-center text-sm text-gray-400 mt-6 pb-2">
-          ¿Ya tienes cuenta? <button onClick={() => onNavigate('auth')} className="text-white font-semibold hover:underline">Inicia sesión</button>
-        </p>
+          <div className="mt-6">
+            <Button type="submit" size="lg" className="w-full flex items-center justify-center gap-2" isLoading={loading}>
+              REGISTRARME <span className="text-xl">→</span>
+            </Button>
+            <p className="text-center text-sm text-gray-400 mt-6 pb-2">
+              ¿Ya tienes cuenta? <button type="button" onClick={() => onNavigate('auth')} className="text-white font-semibold hover:underline">Inicia sesión</button>
+            </p>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -65,7 +65,7 @@ export function PromosView({ onNavigate }: PromosViewProps) {
   return (
     <div
       className="flex-1 overflow-y-auto no-scrollbar"
-      style={{ paddingTop: 36, paddingBottom: 38 }}
+      style={{ paddingTop: 36, paddingBottom: 72 }}
     >
       {/* Header */}
       <div
