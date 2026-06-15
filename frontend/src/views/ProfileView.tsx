@@ -39,7 +39,7 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
   const missingPoints = Math.max(0, targetPoints - points);
 
   return (
-    <div className="flex-1 overflow-y-auto pt-[20px] pb-[42px] px-3">
+    <div className={cn('flex-1 px-3', isAuthenticated ? 'overflow-y-auto pt-[20px] pb-[42px]' : 'overflow-hidden pt-[10px] pb-2')}>
       {/* User Info Card */}
       {isAuthenticated ? (
         <div className="bg-surface border border-outline/50 p-3 rounded-xl flex items-center gap-3 mb-2 relative overflow-hidden">
@@ -58,34 +58,34 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          <section className="relative overflow-hidden rounded-[28px] border border-white/12 bg-[radial-gradient(circle_at_50%_18%,rgba(232,0,10,0.34),transparent_34%),linear-gradient(135deg,rgba(232,0,10,0.12),rgba(255,255,255,0.025))] px-5 py-7 text-center shadow-[0_18px_55px_rgba(0,0,0,0.45)]">
-            <div className="pointer-events-none absolute left-8 top-16 h-10 w-10 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_24px_rgba(232,0,10,0.45)] rotate-[-18deg]" />
-            <div className="pointer-events-none absolute right-10 top-20 h-8 w-8 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_22px_rgba(232,0,10,0.4)] rotate-[18deg]" />
-            <div className="pointer-events-none absolute right-20 bottom-24 h-7 w-7 rounded-full border border-primary/30 bg-primary/20 shadow-[0_0_18px_rgba(232,0,10,0.35)]" />
+        <div className="flex h-full min-h-0 flex-col gap-2.5">
+          <section className="relative shrink-0 overflow-hidden rounded-2xl border border-white/12 bg-[radial-gradient(circle_at_50%_15%,rgba(232,0,10,0.30),transparent_32%),linear-gradient(135deg,rgba(232,0,10,0.12),rgba(255,255,255,0.025))] px-4 py-4 text-center shadow-[0_14px_36px_rgba(0,0,0,0.4)]">
+            <div className="pointer-events-none absolute left-7 top-12 h-7 w-7 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_18px_rgba(232,0,10,0.38)] rotate-[-18deg]" />
+            <div className="pointer-events-none absolute right-9 top-14 h-6 w-6 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_16px_rgba(232,0,10,0.35)] rotate-[18deg]" />
+            <div className="pointer-events-none absolute right-16 bottom-16 h-5 w-5 rounded-full border border-primary/30 bg-primary/20 shadow-[0_0_14px_rgba(232,0,10,0.3)]" />
 
-            <div className="relative mx-auto mb-5 flex h-[108px] w-[108px] items-center justify-center rounded-full border border-primary/70 bg-primary/10 shadow-[0_0_34px_rgba(232,0,10,0.55)]">
-              <div className="absolute inset-4 rounded-full border border-primary/40" />
-              <Star size={58} className="relative text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.65)]" strokeWidth={2.2} />
+            <div className="relative mx-auto mb-3 flex h-[72px] w-[72px] items-center justify-center rounded-full border border-primary/70 bg-primary/10 shadow-[0_0_26px_rgba(232,0,10,0.48)]">
+              <div className="absolute inset-3 rounded-full border border-primary/40" />
+              <Star size={39} className="relative text-white drop-shadow-[0_0_14px_rgba(255,255,255,0.58)]" strokeWidth={2.2} />
             </div>
 
-            <h2 className="mx-auto max-w-[300px] text-[30px] font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
+            <h2 className="mx-auto max-w-[280px] text-[24px] font-black leading-[1.02] tracking-tight text-white drop-shadow-md">
               Gana puntos en cada compra
             </h2>
-            <p className="mx-auto mt-3 max-w-[305px] text-sm font-semibold leading-snug text-gray-300">
+            <p className="mx-auto mt-2 max-w-[295px] text-xs font-semibold leading-snug text-gray-300">
               Regístrate para acumular puntos y obtener beneficios cada vez que ordenas en Fatboy.
             </p>
             <Button
               onClick={() => onNavigate('auth')}
-              className="mt-6 h-14 w-full rounded-2xl bg-primary text-sm font-black uppercase tracking-wide text-white shadow-[0_0_24px_rgba(232,0,10,0.42)] animate-pulse-glow"
+              className="mt-4 h-11 w-full rounded-xl bg-primary text-xs font-black uppercase tracking-wide text-white shadow-[0_0_20px_rgba(232,0,10,0.38)] animate-pulse-glow"
             >
               INICIAR SESIÓN / REGISTRARSE
             </Button>
           </section>
 
-          <section>
-            <h3 className="mb-3 text-[22px] font-black tracking-tight text-white">¿Por qué registrarte?</h3>
-            <div className="grid gap-2.5">
+          <section className="min-h-0 shrink-0">
+            <h3 className="mb-2 text-[18px] font-black tracking-tight text-white">¿Por qué registrarte?</h3>
+            <div className="grid gap-2">
               {[
                 { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
                 { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
@@ -95,28 +95,28 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
                   key={item.title}
                   type="button"
                   onClick={() => onNavigate('auth')}
-                  className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-surface/80 p-3.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover"
+                  className="group flex w-full items-center gap-3 rounded-xl border border-white/10 bg-surface/80 px-3 py-2.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover"
                 >
-                  <span className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_20px_rgba(232,0,10,0.22)]">
-                    <item.icon size={28} className={item.tone} strokeWidth={2.2} />
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_16px_rgba(232,0,10,0.20)]">
+                    <item.icon size={22} className={item.tone} strokeWidth={2.2} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-base font-black leading-tight text-white">{item.title}</span>
-                    <span className="mt-1 block text-sm font-semibold leading-snug text-gray-400">{item.description}</span>
+                    <span className="block text-[14px] font-black leading-tight text-white">{item.title}</span>
+                    <span className="mt-0.5 block text-xs font-semibold leading-snug text-gray-400">{item.description}</span>
                   </span>
-                  <ChevronRight size={24} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
+                  <ChevronRight size={20} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
                 </button>
               ))}
             </div>
           </section>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-surface/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/8 text-white">
-              <ShieldCheck size={31} strokeWidth={1.9} />
+          <div className="flex shrink-0 items-center gap-3 rounded-xl border border-white/10 bg-surface/80 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/8 text-white">
+              <ShieldCheck size={25} strokeWidth={1.9} />
             </div>
             <div className="min-w-0">
-              <p className="text-base font-black leading-tight text-white">Registrarte es gratis.</p>
-              <p className="mt-1 text-sm font-semibold leading-snug text-gray-400">
+              <p className="text-[14px] font-black leading-tight text-white">Registrarte es gratis.</p>
+              <p className="mt-0.5 text-xs font-semibold leading-snug text-gray-400">
                 Puedes seguir explorando el menú sin crear una cuenta.
               </p>
             </div>
