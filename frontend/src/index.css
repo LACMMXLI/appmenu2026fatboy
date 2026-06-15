@@ -92,6 +92,19 @@ body {
   font-size: 13px;           /* base font smaller */
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
 /* ── Scrollbars ──────────────────────── */
 .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
 .no-scrollbar::-webkit-scrollbar { display:none; }
@@ -423,6 +436,27 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255,255,255,0.06);
+}
+
+.admin-premium-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(232,0,10,0.14), rgba(24,24,24,0.96) 42%, rgba(250,189,0,0.08)),
+    var(--color-surface);
+}
+
+.admin-premium-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), transparent 22%, transparent 78%, rgba(255,255,255,0.04));
+  opacity: 0.45;
+}
+
+.admin-premium-panel > * {
+  position: relative;
 }
 
 /* Admin card hover lift */

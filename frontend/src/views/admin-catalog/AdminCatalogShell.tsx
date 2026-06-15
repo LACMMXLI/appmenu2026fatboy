@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   Check,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   FileText,
   Gift,
   Image,
@@ -51,23 +53,45 @@ export function AdminCatalogShell({
   onRefresh,
   onTabChange,
 }: AdminCatalogShellProps) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const activeItem = ADMIN_NAV_ITEMS.find((item) => item.id === activeTab) ?? ADMIN_NAV_ITEMS[0];
 
   return (
-    <main className="min-h-[100dvh] bg-background text-white">
-      <div className="mx-auto grid min-h-[100dvh] w-full max-w-[1560px] gap-0 md:grid-cols-[286px_minmax(0,1fr)]">
+    <main className="min-h-[100dvh] overflow-x-hidden bg-[radial-gradient(circle_at_12%_8%,rgba(232,0,10,0.15),transparent_30%),radial-gradient(circle_at_84%_0%,rgba(250,189,0,0.10),transparent_28%),var(--color-background)] text-white">
+      <div
+        className={cn(
+          'mx-auto grid min-h-[100dvh] w-full max-w-[1680px] gap-0 transition-[grid-template-columns] duration-300 md:grid-cols-[286px_minmax(0,1fr)]',
+          isSidebarCollapsed && 'md:grid-cols-[88px_minmax(0,1fr)]',
+        )}
+      >
         {/* ── Sidebar ─────────────────────── */}
         <aside className="border-b border-outline bg-[#111111]/95 backdrop-blur-xl md:sticky md:top-0 md:h-[100dvh] md:border-b-0 md:border-r md:border-r-outline/60">
           <div className="flex h-full flex-col">
             {/* Logo Area */}
-            <div className="border-b border-outline/60 px-5 py-5">
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Fatboy POS</p>
-              <h1 className="admin-shimmer font-display text-4xl leading-none tracking-wide">ADMIN</h1>
-              <p className="mt-1 text-xs font-medium text-gray-400">Panel global de control</p>
+            <div className={cn('border-b border-outline/60 px-5 py-5', isSidebarCollapsed && 'md:px-3')}>
+              <div className="flex items-start gap-3">
+                <div className={cn('min-w-0 flex-1 transition-opacity duration-200', isSidebarCollapsed && 'md:hidden')}>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Fatboy POS</p>
+                  <h1 className="admin-shimmer font-display text-4xl leading-none tracking-wide">ADMIN</h1>
+                  <p className="mt-1 text-xs font-medium text-gray-400">Panel global de control</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarCollapsed((value) => !value)}
+                  className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline bg-surface text-gray-300 transition-colors hover:border-primary/45 hover:text-white md:flex"
+                  aria-label={isSidebarCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
+                  title={isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'}
+                >
+                  {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                </button>
+                <span className={cn('hidden h-10 w-10 items-center justify-center rounded-lg bg-primary font-black text-white', isSidebarCollapsed && 'md:flex')}>
+                  A
+                </span>
+              </div>
             </div>
 
             {/* Navigation */}
-            <nav className="grid gap-1.5 overflow-x-auto px-3 py-3 md:overflow-y-auto md:overflow-x-hidden">
+            <nav className={cn('grid gap-1.5 overflow-x-auto px-3 py-3 md:overflow-y-auto md:overflow-x-hidden', isSidebarCollapsed && 'md:px-2')}>
               <div className="flex gap-2 md:grid md:gap-1.5">
                 {ADMIN_NAV_ITEMS.map((item, index) => {
                   const Icon = item.icon;
@@ -82,7 +106,8 @@ export function AdminCatalogShell({
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.03, duration: 0.25 }}
                       className={cn(
-                        'group grid min-w-[190px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-200 md:min-w-0',
+                        'group relative grid min-w-[190px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-200 md:min-w-0',
+                        isSidebarCollapsed && 'md:min-w-0 md:grid-cols-1 md:justify-items-center md:px-2',
                         isActive
                           ? 'border-primary/50 bg-primary/15 text-white shadow-[0_0_20px_rgba(232,0,10,0.12),inset_3px_0_0_var(--color-primary)]'
                           : 'border-transparent bg-transparent text-gray-400 hover:translate-x-0.5 hover:border-outline hover:bg-surface hover:shadow-[inset_3px_0_0_rgba(232,0,10,0.3)]',
@@ -98,7 +123,7 @@ export function AdminCatalogShell({
                       >
                         <Icon size={17} />
                       </span>
-                      <span className="min-w-0">
+                      <span className={cn('min-w-0', isSidebarCollapsed && 'md:hidden')}>
                         <span className="block truncate text-xs font-black uppercase tracking-wide">{item.label}</span>
                         <span className="block truncate text-[10px] font-semibold text-gray-500">{item.description}</span>
                       </span>
@@ -109,6 +134,7 @@ export function AdminCatalogShell({
                         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                         className={cn(
                           'rounded-full px-2 py-0.5 text-[10px] font-black transition-colors duration-200',
+                          isSidebarCollapsed && 'md:absolute md:right-1 md:top-1 md:px-1.5',
                           isActive ? 'bg-white text-background' : 'bg-surface-2 text-gray-500 group-hover:bg-surface-2/80 group-hover:text-gray-400',
                         )}
                       >
@@ -121,18 +147,18 @@ export function AdminCatalogShell({
             </nav>
 
             {/* Footer */}
-            <div className="mt-auto hidden border-t border-outline/60 px-5 py-4 md:block">
+            <div className={cn('mt-auto hidden border-t border-outline/60 px-5 py-4 md:block', isSidebarCollapsed && 'md:px-3')}>
               <div className="flex items-center gap-2">
                 <span className="inline-block h-2 w-2 rounded-full bg-green animate-pulse-dot" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Modo administrador</p>
+                <p className={cn('text-[10px] font-bold uppercase tracking-widest text-gray-500', isSidebarCollapsed && 'md:hidden')}>Modo administrador</p>
               </div>
-              <p className="mt-1 text-xs text-gray-400">Diseñado para escritorio y tabletas.</p>
+              <p className={cn('mt-1 text-xs text-gray-400', isSidebarCollapsed && 'md:hidden')}>Diseñado para escritorio y tabletas.</p>
             </div>
           </div>
         </aside>
 
         {/* ── Content Area ─────────────────── */}
-        <section className="min-w-0 bg-[radial-gradient(circle_at_top_right,rgba(232,0,10,0.10),transparent_34%),var(--color-background)]">
+        <section className="min-w-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),transparent_220px)]">
           {/* Header */}
           <header className="sticky top-0 z-20 border-b border-outline bg-background/92 px-4 py-3 backdrop-blur-lg md:px-6 relative">
             <div className="flex flex-wrap items-center gap-3">
@@ -186,7 +212,7 @@ export function AdminCatalogShell({
             {isLoading && <div className="admin-progress-bar" />}
           </header>
 
-          <div className="px-4 py-5 md:px-6">{children}</div>
+          <div className="mx-auto w-full max-w-[1360px] px-4 py-5 md:px-6 xl:px-8">{children}</div>
         </section>
       </div>
     </main>

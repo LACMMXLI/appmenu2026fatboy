@@ -47,7 +47,7 @@ const [veneciaReviewBranch, sanMarcosReviewBranch] = GOOGLE_REVIEW_BRANCHES;
 ═══════════════════════════════════════════ */
 function AdminEmptyState({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
   return (
-    <div className="admin-empty-pattern rounded-xl border border-dashed border-outline bg-surface p-12 text-center">
+    <div className="admin-empty-pattern rounded-xl border border-dashed border-outline bg-surface p-8 text-center sm:p-12">
       <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl border border-outline bg-background text-gray-500">
         <Icon size={24} />
       </div>
@@ -65,10 +65,10 @@ function SectionHeader({ tag, title, subtitle, children }: { tag: string; title:
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-outline bg-[linear-gradient(135deg,rgba(232,0,10,0.13),rgba(24,24,24,0.96)_42%,rgba(250,189,0,0.08))] p-4 shadow-[0_18px_45px_rgba(0,0,0,0.28)]"
+      className="admin-premium-panel rounded-xl border border-outline p-4 shadow-[0_18px_45px_rgba(0,0,0,0.28)]"
     >
       <div className="flex flex-wrap items-center gap-3">
-        <div className="mr-auto min-w-[220px]">
+        <div className="mr-auto min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">{tag}</p>
           <h3 className="text-lg font-black uppercase tracking-wide text-white">{title}</h3>
           <p className="text-xs font-medium text-gray-400">{subtitle}</p>
@@ -204,7 +204,7 @@ export function ProductsAdmin({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: 0.18, delay: Math.min(index * 0.018, 0.08) }}
-              className="admin-card-hover group grid gap-4 rounded-xl border border-outline bg-surface p-4 shadow-[0_12px_32px_rgba(0,0,0,0.22)] hover:border-primary/35 hover:bg-surface-2/60 xl:grid-cols-[116px_minmax(0,1.25fr)_minmax(280px,1fr)_210px]"
+              className="admin-card-hover group grid min-w-0 gap-4 rounded-xl border border-outline bg-surface p-4 shadow-[0_12px_32px_rgba(0,0,0,0.22)] hover:border-primary/35 hover:bg-surface-2/60 2xl:grid-cols-[116px_minmax(0,1.05fr)_minmax(0,1fr)_minmax(180px,210px)]"
             >
               {/* Thumbnail */}
               <div className="flex gap-3 xl:block">
@@ -302,7 +302,7 @@ export function ProductsAdmin({
                     {product.status === 'active' ? 'Activo' : 'Inactivo'}
                   </button>
                 </div>
-                <div className="grid min-w-[260px] grid-cols-3 gap-2 xl:w-full">
+                <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-1">
                   <Button size="sm" onClick={() => onSaveProduct(product)} disabled={isLoading} className="bg-primary/90 hover:bg-primary" title="Guardar cambios">
                     <Save size={15} className="mr-1.5" /> Guardar
                   </Button>
@@ -437,19 +437,19 @@ export function CategoriesAdmin({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1fr_140px_1.4fr_auto]"
+        className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.2fr)] xl:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.2fr)_auto]"
       >
         <Input label="Nueva categoría" value={newCategory.name} onChange={(event) => onNewCategoryChange({ ...newCategory, name: event.target.value })} />
         <Input label="Orden" type="number" min="0" value={newCategory.order} onChange={(event) => onNewCategoryChange({ ...newCategory, order: Number(event.target.value) })} />
         <Input label="URL imagen" value={newCategory.imageUrl} onChange={(event) => onNewCategoryChange({ ...newCategory, imageUrl: event.target.value })} />
-        <Button className="self-end animate-pulse-glow" onClick={onCreateCategory} disabled={isLoading || !newCategory.name}>
+        <Button className="self-end animate-pulse-glow md:col-span-3 xl:col-span-1" onClick={onCreateCategory} disabled={isLoading || !newCategory.name}>
           <Plus size={16} className="mr-2" /> Crear
         </Button>
       </motion.div>
 
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
-        <table className="w-full min-w-[980px] border-collapse text-sm">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-surface-2/95 backdrop-blur text-xs uppercase tracking-wider text-gray-400">
             <tr>
               <th className="p-3 text-left">Categoría</th>
@@ -479,7 +479,7 @@ export function CategoriesAdmin({
                   <input type="number" min="0" value={category.order} onChange={(event) => onCategoryChange(category.id, { order: Number(event.target.value) })} className="h-10 w-28 rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] text-white font-semibold" />
                 </td>
                 <td className="p-2">
-                  <div className="flex min-w-[260px] items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
                       {category.imageUrl ? (
                         <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" />
@@ -547,7 +547,7 @@ export function PromotionsAdmin({ products, isLoading, onProductChange, onSavePr
       </motion.div>
 
       <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
-        <table className="w-full min-w-[900px] border-collapse text-sm">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-surface-2/95 backdrop-blur text-xs uppercase tracking-wider text-gray-400">
             <tr>
               <th className="p-3 text-left">Producto</th>
@@ -650,7 +650,7 @@ export function RedeemableProductsAdmin({
         </p>
       </motion.div>
 
-      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[1.2fr_130px_1.5fr_90px_auto]">
+      <div className="grid gap-3 rounded-xl border border-outline bg-surface p-4 md:grid-cols-[minmax(0,1.1fr)_120px_minmax(0,1.2fr)_90px] xl:grid-cols-[minmax(0,1.1fr)_120px_minmax(0,1.2fr)_90px_auto]">
         <Input
           label="Nuevo canjeable"
           value={newProduct.name}
@@ -675,10 +675,10 @@ export function RedeemableProductsAdmin({
           value={newProduct.order}
           onChange={(event) => onNewProductChange({ ...newProduct, order: Number(event.target.value) })}
         />
-        <Button className="self-end animate-pulse-glow" onClick={onCreateProduct} disabled={isLoading || !newProduct.name}>
+        <Button className="self-end animate-pulse-glow md:col-span-4 xl:col-span-1" onClick={onCreateProduct} disabled={isLoading || !newProduct.name}>
           <Plus size={16} className="mr-2" /> Crear
         </Button>
-        <div className="md:col-span-5">
+        <div className="md:col-span-4 xl:col-span-5">
           <Input
             label="Descripción"
             value={newProduct.description}
@@ -688,7 +688,7 @@ export function RedeemableProductsAdmin({
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
-        <table className="w-full min-w-[1050px] border-collapse text-sm">
+        <table className="w-full min-w-[820px] border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-surface-2/95 backdrop-blur text-xs uppercase tracking-wider text-gray-400">
             <tr>
               <th className="p-3 text-left">Producto</th>
@@ -729,7 +729,7 @@ export function RedeemableProductsAdmin({
                   />
                 </td>
                 <td className="p-2">
-                  <div className="flex min-w-[250px] items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-outline bg-background">
                       {product.imageUrl ? (
                         <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
@@ -824,20 +824,20 @@ export function CustomersAdmin({
 }: CustomersAdminProps) {
   return (
     <div className="space-y-4">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 rounded-xl border border-outline bg-surface px-4 py-2 shadow-md transition-all focus-within:border-primary/40 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.08)]">
-        <Search size={18} className="text-gray-500" />
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-3 rounded-xl border border-outline bg-surface px-4 py-2 shadow-md transition-all focus-within:border-primary/40 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.08)]">
+        <Search size={18} className="shrink-0 text-gray-500" />
         <input
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Buscar cliente por nombre o teléfono..."
-          className="h-10 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
+          className="h-10 min-w-[220px] flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
           onKeyDown={(e) => e.key === 'Enter' && onSearchSubmit()}
         />
         <Button size="sm" onClick={onSearchSubmit} disabled={isLoading}>Buscar</Button>
       </motion.div>
 
       <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
-        <table className="w-full min-w-[800px] border-collapse text-sm">
+        <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-surface-2/95 backdrop-blur text-xs uppercase tracking-wider text-gray-400">
             <tr>
               <th className="p-3 text-left">Nombre</th>
@@ -971,8 +971,8 @@ export function OrdersAdmin({
 
   return (
     <div className="space-y-4">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 rounded-xl border border-outline bg-surface p-4 shadow-md">
-        <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-4 rounded-xl border border-outline bg-surface p-4 shadow-md">
+        <label className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
           Filtrar por Sucursal:
           <select
             value={branchFilter}
@@ -1016,8 +1016,8 @@ export function OrdersAdmin({
               >
                 {/* Header */}
                 <div className="flex justify-between items-start flex-wrap gap-4 border-b border-outline/30 pb-3 mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="font-display text-lg tracking-wider text-white">PEDIDO #{shortId}</span>
                       <span className={cn('flex items-center gap-1 text-xs font-bold border px-2 py-0.5 rounded-full uppercase', getStatusBadgeClass(order.status))}>
                         <StatusIcon size={12} />
@@ -1027,7 +1027,7 @@ export function OrdersAdmin({
                         )}
                       </span>
                     </div>
-                    <span className="text-xs text-gray-400 block mt-0.5">Fatboy {order.branchName} • {new Date(order.createdAt).toLocaleString()}</span>
+                    <span className="mt-0.5 block break-words text-xs text-gray-400">Fatboy {order.branchName} - {new Date(order.createdAt).toLocaleString()}</span>
 
                     {/* Progress Timeline */}
                     {order.status !== 'cancelled' && (
@@ -1053,12 +1053,12 @@ export function OrdersAdmin({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex min-w-0 flex-wrap items-center justify-end gap-4">
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-gray-500 block uppercase tracking-widest leading-none">TOTAL</span>
                       <span className="font-display text-2xl text-gold font-bold bg-gradient-to-r from-gold to-gold-dark bg-clip-text">${order.total}</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       {order.status === 'pending' && (
                         <Button size="sm" onClick={() => onUpdateStatus(order.id, 'preparing')} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">Aceptar / Cocinar</Button>
                       )}
@@ -1075,7 +1075,7 @@ export function OrdersAdmin({
                 </div>
 
                 {/* Content */}
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid min-w-0 gap-4 md:grid-cols-2">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Cliente</span>
                     <p className="font-semibold text-white text-sm">{order.customerName}</p>
@@ -1112,7 +1112,7 @@ export function OrdersAdmin({
                       )}
                     </AnimatePresence>
 
-                    <div className="flex gap-4 text-[11px] text-gray-400 font-semibold mt-3 pt-2 border-t border-outline/10">
+                    <div className="mt-3 flex flex-wrap gap-4 border-t border-outline/10 pt-2 text-[11px] font-semibold text-gray-400">
                       {order.pointsRedeemed > 0 && <span>Puntos Redimidos: <strong className="text-primary">{order.pointsRedeemed} pts</strong></span>}
                       {order.pointsEarned > 0 && <span>Puntos Ganados: <strong className="text-gold">{order.pointsEarned} pts</strong></span>}
                     </div>
@@ -1156,7 +1156,7 @@ export function BannersAdmin({
   return (
     <div className="space-y-6">
       {/* Create form */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-outline bg-surface p-5 shadow-lg space-y-4">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="admin-premium-panel space-y-4 rounded-xl border border-outline p-5 shadow-lg">
         <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
           <Plus size={16} /> Crear Nuevo Banner de Inicio
         </h3>
@@ -1235,10 +1235,10 @@ export function BannersAdmin({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.2, delay: index * 0.04 }}
-                className="admin-card-hover bg-surface border border-outline rounded-xl p-5 shadow-lg grid md:grid-cols-[180px_1fr] gap-6"
+                className="admin-card-hover grid min-w-0 gap-5 rounded-xl border border-outline bg-surface p-4 shadow-lg md:grid-cols-[160px_minmax(0,1fr)] xl:p-5"
               >
                 {/* Image preview */}
-                <div className="relative aspect-video md:aspect-square rounded-lg overflow-hidden bg-black border border-outline/30 flex items-center justify-center">
+                <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-outline/30 bg-black md:aspect-square">
                   {banner.imageUrl ? (
                     <img 
                       src={banner.imageUrl} 
@@ -1260,8 +1260,8 @@ export function BannersAdmin({
                 </div>
 
                 {/* Edit fields */}
-                <div className="flex flex-col justify-between gap-4">
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="flex min-w-0 flex-col justify-between gap-4">
+                  <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
                     <div className="sm:col-span-2">
                       <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1">URL de la Imagen</label>
                       <input 
@@ -1320,7 +1320,7 @@ export function BannersAdmin({
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 border-t border-outline/30 pt-3">
+                  <div className="flex flex-wrap justify-end gap-2 border-t border-outline/30 pt-3">
                     <Button 
                       size="sm" 
                       onClick={() => onSaveBanner(banner)} 
@@ -1415,7 +1415,7 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto rounded-xl border border-outline bg-surface p-6 shadow-md">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="admin-premium-panel mx-auto w-full max-w-3xl rounded-xl border border-outline p-6 shadow-md">
       <h2 className="text-xl font-bold mb-4 uppercase tracking-wide flex items-center gap-2">
         <Settings size={20} className="text-primary" />
         Configuraciones Generales
@@ -1475,7 +1475,7 @@ export function FeedbackAdmin({ feedbacks, isLoading }: FeedbackAdminProps) {
 
   return (
     <div className="space-y-4">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-4xl rounded-xl border border-outline bg-surface p-6 shadow-md">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full max-w-5xl rounded-xl border border-outline bg-surface p-5 shadow-md sm:p-6">
         <h2 className="text-xl font-bold mb-4 uppercase tracking-wide flex items-center gap-2">
           <Star size={20} className="text-[#F4B400]" fill="currentColor" />
           Reseñas y Comentarios Recibidos
@@ -1485,7 +1485,7 @@ export function FeedbackAdmin({ feedbacks, isLoading }: FeedbackAdminProps) {
         </p>
 
         <div className="overflow-x-auto rounded-xl border border-outline bg-background/50">
-          <table className="w-full min-w-[700px] border-collapse text-sm text-left">
+          <table className="w-full min-w-[620px] border-collapse text-left text-sm">
             <thead className="sticky top-0 z-10 bg-surface-2/95 backdrop-blur text-xs uppercase tracking-wider text-gray-400">
               <tr>
                 <th className="p-4">Fecha</th>
