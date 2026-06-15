@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { Download, Smartphone, X } from 'lucide-react';
 import { AuthView } from './views/AuthView';
 import { RegisterView } from './views/RegisterView';
 import { HomeView } from './views/HomeView';
@@ -36,6 +37,13 @@ const fullScreenVariants = {
 };
 
 const VISIT_TRACKED_SESSION_KEY = 'fatboy-menu-visit-tracked';
+const INSTALL_PROMPT_DISMISSED_KEY = 'fatboy-pwa-install-dismissed-at';
+const INSTALL_PROMPT_DISMISS_MS = 24 * 60 * 60 * 1000;
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
 
 export default function App() {
   const { isAuthenticated } = useUser();
@@ -52,6 +60,8 @@ export default function App() {
   // Google Review prompt state & config URL
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
     if (isAdminCatalogPath || isBranchOrdersPath || sessionStorage.getItem(VISIT_TRACKED_SESSION_KEY)) {
@@ -87,18 +97,48 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (isAdminCatalogPath || isBranchOrdersPath) return;
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone) {
+      return;
+    }
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+
+      const dismissedAt = Number(localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY) || 0);
+      if (Date.now() - dismissedAt < INSTALL_PROMPT_DISMISS_MS) return;
+
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+      window.setTimeout(() => setShowInstallPrompt(true), 1800);
+    };
+
+    const handleAppInstalled = () => {
+      setShowInstallPrompt(false);
+      setInstallPromptEvent(null);
+      localStorage.removeItem(INSTALL_PROMPT_DISMISSED_KEY);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [isAdminCatalogPath, isBranchOrdersPath]);
+
+  useEffect(() => {
     if (currentView === 'google-review' || getGoogleReviewCooldown().blocked) {
       setShowReviewPrompt(false);
       return;
     }
 
-    const dismissed = localStorage.getItem('fatboy-google-review-dismissed');
     const lastPrompted = localStorage.getItem('fatboy-google-review-last-prompted');
     
     const now = Date.now();
     const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours
     
-    const shouldPrompt = !dismissed && (!lastPrompted || (now - parseInt(lastPrompted, 10) > cooldownPeriod));
+    const shouldPrompt = !lastPrompted || (now - parseInt(lastPrompted, 10) > cooldownPeriod);
     
     if (shouldPrompt) {
       const timer = setTimeout(() => {
@@ -117,8 +157,25 @@ export default function App() {
 
   const handleRedirectToGoogle = () => {
     navigate('google-review');
-    localStorage.setItem('fatboy-google-review-dismissed', 'true');
+    localStorage.setItem('fatboy-google-review-last-prompted', Date.now().toString());
     setShowReviewPrompt(false);
+  };
+
+  const handleDismissInstallPrompt = () => {
+    localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, Date.now().toString());
+    setShowInstallPrompt(false);
+  };
+
+  const handleInstallApp = async () => {
+    if (!installPromptEvent) return;
+
+    setShowInstallPrompt(false);
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+    if (choice.outcome === 'dismissed') {
+      localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, Date.now().toString());
+    }
+    setInstallPromptEvent(null);
   };
 
   if (isAdminCatalogPath) {
@@ -245,6 +302,46 @@ export default function App() {
 
       <AnimatePresence>
         {showSplash && <AppSplash />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showInstallPrompt && installPromptEvent && (
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.98 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute bottom-5 left-4 right-4 z-[9998] rounded-2xl border border-white/10 bg-[#181818]/95 p-4 shadow-[0_18px_45px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          >
+            <button
+              type="button"
+              onClick={handleDismissInstallPrompt}
+              className="absolute right-3 top-3 rounded-full p-1 text-gray-500 transition-colors hover:text-white"
+              aria-label="Cerrar instalación"
+            >
+              <X size={16} />
+            </button>
+            <div className="flex gap-3 pr-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                <Smartphone size={22} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Instalar app</p>
+                <h3 className="mt-0.5 text-sm font-black text-white">Fatboy Menú en tu pantalla</h3>
+                <p className="mt-1 text-xs font-medium leading-snug text-gray-400">
+                  Accede más rápido al menú sin buscar la página en el navegador.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleInstallApp}
+              className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-black uppercase text-white shadow-[0_0_18px_rgba(232,0,10,0.25)] transition-transform active:scale-[0.98]"
+            >
+              <Download size={16} /> Descargar aplicación
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

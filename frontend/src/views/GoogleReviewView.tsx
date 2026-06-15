@@ -31,9 +31,6 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
   const isCooldownActive = cooldownRemainingMs > 0;
 
   useEffect(() => {
-    // Mark as permanently dismissed so the modal doesn't show again
-    localStorage.setItem('fatboy-google-review-dismissed', 'true');
-
     getSystemSettings()
       .then((data) => {
         setGoogleUrls(
