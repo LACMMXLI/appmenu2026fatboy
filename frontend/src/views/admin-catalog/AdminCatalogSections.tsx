@@ -139,7 +139,7 @@ export function ProductsAdmin({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       <SectionHeader
         tag="Inventario comercial"
         title="Productos por categoria"
@@ -151,7 +151,7 @@ export function ProductsAdmin({
       </SectionHeader>
 
       {/* Search + Category Filters */}
-      <div className="rounded-xl border border-outline bg-surface p-3 shadow-md">
+      <div className="shrink-0 rounded-xl border border-outline bg-surface p-3 shadow-md">
         <div className="flex items-center gap-3 rounded-lg border border-outline bg-background px-3 py-2 transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_12px_rgba(232,0,10,0.1)]">
           <Search size={18} className="shrink-0 text-gray-500" />
           <input
@@ -194,7 +194,10 @@ export function ProductsAdmin({
       </div>
 
       {/* Product Cards */}
-      <motion.div layout className="grid gap-3">
+      <motion.div
+        layout
+        className="grid min-h-[360px] flex-1 content-start gap-2 overflow-y-auto rounded-xl border border-outline bg-background/45 p-3 pr-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:min-h-0"
+      >
         <AnimatePresence initial={false}>
           {products.map((product, index) => (
             <motion.article

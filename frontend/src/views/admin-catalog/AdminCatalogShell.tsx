@@ -158,7 +158,7 @@ export function AdminCatalogShell({
         </aside>
 
         {/* ── Content Area ─────────────────── */}
-        <section className="min-w-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),transparent_220px)]">
+        <section className="flex min-h-0 min-w-0 flex-col bg-[linear-gradient(180deg,rgba(255,255,255,0.025),transparent_220px)] md:h-[100dvh] md:overflow-hidden">
           {/* Header */}
           <header className="sticky top-0 z-20 border-b border-outline bg-background/92 px-4 py-3 backdrop-blur-lg md:px-6 relative">
             <div className="flex flex-wrap items-center gap-3">
@@ -212,7 +212,7 @@ export function AdminCatalogShell({
             {isLoading && <div className="admin-progress-bar" />}
           </header>
 
-          <div className="mx-auto w-full max-w-[1360px] px-4 py-5 md:px-6 xl:px-8">{children}</div>
+          <div className="mx-auto min-h-0 w-full max-w-[1360px] flex-1 overflow-y-auto px-4 py-5 md:px-6 xl:px-8">{children}</div>
         </section>
       </div>
     </main>
