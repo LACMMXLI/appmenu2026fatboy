@@ -15,7 +15,14 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+const PWA_EXCLUDED_PATHS = ['/admin-catalog', '/branch-orders'];
+
+function isPwaExcludedPath(pathname: string) {
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+  return PWA_EXCLUDED_PATHS.some((path) => normalized === path || normalized.startsWith(`${path}/`));
+}
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator && !isPwaExcludedPath(window.location.pathname)) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')

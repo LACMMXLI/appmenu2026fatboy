@@ -1,6 +1,7 @@
-const CACHE_VERSION = 'fatboy-menu-v1';
+const CACHE_VERSION = 'fatboy-menu-v2';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
+const ADMIN_ROUTE_PREFIXES = ['/admin-catalog', '/branch-orders'];
 
 const APP_SHELL = [
   '/',
@@ -39,6 +40,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
   if (url.pathname.startsWith('/api') || url.hostname === 'bakendmenu.fatboymexicali.com') return;
+  if (isAdminRoute(url)) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirstNavigation(request));
@@ -49,6 +51,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(request));
   }
 });
+
+function isAdminRoute(url) {
+  if (url.origin !== self.location.origin) return false;
+  return ADMIN_ROUTE_PREFIXES.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`));
+}
 
 function isStaticAsset(url) {
   return (

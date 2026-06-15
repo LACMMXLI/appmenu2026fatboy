@@ -8,16 +8,29 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Fatboy" />
-    <meta name="application-name" content="Fatboy Menu" />
+    <meta name="apple-mobile-web-app-title" content="Fatboy Menú" />
+    <meta name="application-name" content="Fatboy Menú" />
     <meta name="description" content="Menú digital Fatboy Mexicali" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" />
+    <script>
+      (() => {
+        const adminPaths = ['/admin-catalog', '/branch-orders'];
+        const path = window.location.pathname.replace(/\/+$/, '') || '/';
+        const isAdminPath = adminPaths.some((adminPath) => path === adminPath || path.startsWith(`${adminPath}/`));
+        if (!isAdminPath) {
+          const manifest = document.createElement('link');
+          manifest.rel = 'manifest';
+          manifest.href = '/manifest.webmanifest';
+          document.head.appendChild(manifest);
+        }
+      })();
+    </script>
+    <link rel="icon" href="/icons/favicon.ico" />
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <title>FATBOY</title>
+    <title>Fatboy Menú</title>
   </head>
   <body class="bg-[#111111] text-white">
     <div id="root"></div>
