@@ -151,6 +151,21 @@ export async function getAdminRedeemableProducts(adminKey: string): Promise<Rede
   return adminJson<RedeemableProduct[]>('/admin/redeemable-products', adminKey);
 }
 
+export interface RewardRedemption {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  remainingPoints: number;
+  productName: string;
+  pointsCost: number;
+  createdAt: string;
+}
+
+export async function getAdminRewardRedemptions(adminKey: string): Promise<RewardRedemption[]> {
+  return adminJson<RewardRedemption[]>('/admin/reward-redemptions', adminKey);
+}
+
 export async function createAdminRedeemableProduct(adminKey: string, payload: RedeemableProductPayload): Promise<RedeemableProduct> {
   return adminJson<RedeemableProduct>('/admin/redeemable-products', adminKey, 'POST', payload);
 }

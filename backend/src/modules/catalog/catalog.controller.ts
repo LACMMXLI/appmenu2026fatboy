@@ -145,6 +145,12 @@ export class CatalogController {
     return this.catalogService.listAdminRedeemableProducts();
   }
 
+  @Get('admin/reward-redemptions')
+  adminRewardRedemptions(@Headers('x-admin-key') adminKey?: string) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.listRewardRedemptions();
+  }
+
   @Post('admin/redeemable-products')
   createRedeemableProduct(
     @Headers('x-admin-key') adminKey: string | undefined,

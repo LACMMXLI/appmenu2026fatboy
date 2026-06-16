@@ -247,6 +247,34 @@ export class CatalogService {
     });
   }
 
+  async listRewardRedemptions() {
+    const redemptions = await this.prisma.rewardRedemption.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 80,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            points: true,
+          },
+        },
+      },
+    });
+
+    return redemptions.map((redemption) => ({
+      id: redemption.id,
+      customerId: redemption.customerId,
+      customerName: redemption.customer?.name ?? 'Cliente eliminado',
+      customerPhone: redemption.customer?.phone ?? '',
+      remainingPoints: redemption.customer?.points ?? 0,
+      productName: redemption.productName,
+      pointsCost: redemption.pointsCost,
+      createdAt: redemption.createdAt,
+    }));
+  }
+
   async createRedeemableProduct(input: RedeemableProductInput) {
     return this.prisma.redeemableProduct.create({
       data: {
