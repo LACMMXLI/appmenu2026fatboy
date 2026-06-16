@@ -1,5 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MapPin, ChevronDown, ChevronRight, Plus, Zap } from 'lucide-react';
+import {
+  Beef,
+  CakeSlice,
+  ChevronRight,
+  Cookie,
+  CupSoda,
+  Drumstick,
+  Fish,
+  Flame,
+  GlassWater,
+  IceCream,
+  MapPin,
+  Package,
+  Popcorn,
+  Salad,
+  Sandwich,
+  Soup,
+  UtensilsCrossed,
+  Zap,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import {
@@ -35,30 +54,43 @@ const FALLBACK_BANNERS: HomeBanner[] = [
   },
 ];
 
-const CATEGORY_ICONS: Record<string, string> = {
-  'hamburguesa': '/images/category_icon_burger_1781279364406.png',
-  'combo':       '/images/category_icon_combo_1781279372441.png',
-  'dog':         '/images/category_icon_fries_1781279382390.png', /* Hot-dogs ahora usan icono de fries/snack para no repetir */
-  'burrito':     '/images/category_icon_combo_1781279372441.png',
-  'mexican':     '/images/category_icon_combo_1781279372441.png',
-  'sushi':       '/images/category_icon_combo_1781279372441.png',
-  'torta':       '/images/category_icon_combo_1781279372441.png',
-  'charola':     '/images/category_icon_combo_1781279372441.png',
-  'teriyaki':    '/images/category_icon_combo_1781279372441.png',
-  'extra':       '/images/category_icon_fries_1781279382390.png',
-  'pap':         '/images/category_icon_fries_1781279382390.png',
-  'snack':       '/images/category_icon_fries_1781279382390.png',
-  'nacho':       '/images/category_icon_fries_1781279382390.png',
-  'bebida':      '/images/category_icon_drink_1781279391532.png',
-  'postre':      '/images/category_icon_dessert_1781279400475.png',
+type CategoryVisual = {
+  Icon: typeof UtensilsCrossed;
+  accent: string;
+  bg: string;
 };
 
-function getCategoryIcon(name: string): string {
+const CATEGORY_VISUALS: Record<string, CategoryVisual> = {
+  hamburguesa: { Icon: Beef, accent: '#ff3f3f', bg: 'rgba(232,0,10,0.16)' },
+  burger: { Icon: Beef, accent: '#ff3f3f', bg: 'rgba(232,0,10,0.16)' },
+  combo: { Icon: Package, accent: '#fabd00', bg: 'rgba(250,189,0,0.16)' },
+  charola: { Icon: UtensilsCrossed, accent: '#fabd00', bg: 'rgba(250,189,0,0.16)' },
+  dog: { Icon: Sandwich, accent: '#ff8a2a', bg: 'rgba(255,138,42,0.16)' },
+  hot: { Icon: Sandwich, accent: '#ff8a2a', bg: 'rgba(255,138,42,0.16)' },
+  burrito: { Icon: Drumstick, accent: '#fb923c', bg: 'rgba(251,146,60,0.16)' },
+  mexican: { Icon: Flame, accent: '#ef4444', bg: 'rgba(239,68,68,0.16)' },
+  sushi: { Icon: Fish, accent: '#38bdf8', bg: 'rgba(56,189,248,0.16)' },
+  rollo: { Icon: Fish, accent: '#38bdf8', bg: 'rgba(56,189,248,0.16)' },
+  torta: { Icon: Sandwich, accent: '#f59e0b', bg: 'rgba(245,158,11,0.16)' },
+  teriyaki: { Icon: Soup, accent: '#c084fc', bg: 'rgba(192,132,252,0.16)' },
+  ensalada: { Icon: Salad, accent: '#22c55e', bg: 'rgba(34,197,94,0.16)' },
+  extra: { Icon: Popcorn, accent: '#facc15', bg: 'rgba(250,204,21,0.16)' },
+  pap: { Icon: Popcorn, accent: '#facc15', bg: 'rgba(250,204,21,0.16)' },
+  snack: { Icon: Popcorn, accent: '#facc15', bg: 'rgba(250,204,21,0.16)' },
+  nacho: { Icon: Popcorn, accent: '#facc15', bg: 'rgba(250,204,21,0.16)' },
+  bebida: { Icon: CupSoda, accent: '#60a5fa', bg: 'rgba(96,165,250,0.16)' },
+  drink: { Icon: GlassWater, accent: '#60a5fa', bg: 'rgba(96,165,250,0.16)' },
+  postre: { Icon: CakeSlice, accent: '#f472b6', bg: 'rgba(244,114,182,0.16)' },
+  dessert: { Icon: IceCream, accent: '#f472b6', bg: 'rgba(244,114,182,0.16)' },
+  dulce: { Icon: Cookie, accent: '#f97316', bg: 'rgba(249,115,22,0.16)' },
+};
+
+function getCategoryVisual(name: string): CategoryVisual {
   const n = name.toLowerCase();
-  for (const [key, img] of Object.entries(CATEGORY_ICONS)) {
-    if (n.includes(key)) return img;
+  for (const [key, visual] of Object.entries(CATEGORY_VISUALS)) {
+    if (n.includes(key)) return visual;
   }
-  return '/images/category_icon_burger_1781279364406.png';
+  return { Icon: UtensilsCrossed, accent: '#fabd00', bg: 'rgba(250,189,0,0.14)' };
 }
 
 const STATIC_PROMOS = [
@@ -231,20 +263,44 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       {/* ── HERO SLIDER ──────────────────────────── */}
       <HeroSlider banners={banners} onNavigate={onNavigate} />
 
-      {/* ── CATEGORY PILLS ───────────────────────── */}
-      <div className="flex gap-4 overflow-x-auto no-scrollbar px-4 py-3">
-        {categories.map(cat => (
-          <div
-            key={cat.id}
-            className="cat-item"
-            onClick={() => onNavigate('menu', cat.id)}
+      {/* ── CATEGORY SHORTCUTS ───────────────────── */}
+      <div className="px-3 py-3">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.18em] text-white/85">Categorías</h2>
+          <button
+            type="button"
+            onClick={() => onNavigate('menu')}
+            className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.12em] text-gold"
           >
-            <div className="cat-img-wrap">
-              <img src={cat.imageUrl || getCategoryIcon(cat.name)} alt={cat.name} className="w-full h-full object-cover" />
-            </div>
-            <span className="cat-label">{cat.name}</span>
-          </div>
-        ))}
+            Menú completo <ChevronRight size={10} strokeWidth={2.7} />
+          </button>
+        </div>
+
+        <div className="grid auto-cols-[74px] grid-flow-col grid-rows-2 gap-2 overflow-x-auto no-scrollbar pb-1">
+          {categories.map(cat => {
+            const visual = getCategoryVisual(cat.name);
+            const Icon = visual.Icon;
+
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                className="group flex h-[82px] w-[74px] flex-col items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-[#181818] px-1.5 text-center shadow-[0_6px_16px_rgba(0,0,0,0.22)] transition-all active:scale-[0.97]"
+                onClick={() => onNavigate('menu', cat.id)}
+              >
+                <span
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 transition-transform group-active:scale-95"
+                  style={{ background: visual.bg, color: visual.accent, boxShadow: `0 0 18px ${visual.bg}` }}
+                >
+                  <Icon size={22} strokeWidth={2.4} />
+                </span>
+                <span className="line-clamp-2 max-w-full text-[8.5px] font-black uppercase leading-[1.05] tracking-[0.03em] text-white/85">
+                  {cat.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── PROMOS DEL DÍA ───────────────────────── */}
