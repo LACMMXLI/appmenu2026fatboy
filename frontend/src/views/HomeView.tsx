@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Beef,
   CakeSlice,
   ChevronRight,
   Cookie,
@@ -9,6 +8,7 @@ import {
   Fish,
   Flame,
   GlassWater,
+  Hamburger,
   IceCream,
   MapPin,
   Package,
@@ -61,8 +61,8 @@ type CategoryVisual = {
 };
 
 const CATEGORY_VISUALS: Record<string, CategoryVisual> = {
-  hamburguesa: { Icon: Beef, accent: '#ff3f3f', bg: 'rgba(232,0,10,0.16)' },
-  burger: { Icon: Beef, accent: '#ff3f3f', bg: 'rgba(232,0,10,0.16)' },
+  hamburguesa: { Icon: Hamburger, accent: '#ff3f3f', bg: 'rgba(232,0,10,0.16)' },
+  burger: { Icon: Hamburger, accent: '#ff3f3f', bg: 'rgba(232,0,10,0.16)' },
   combo: { Icon: Package, accent: '#fabd00', bg: 'rgba(250,189,0,0.16)' },
   charola: { Icon: UtensilsCrossed, accent: '#fabd00', bg: 'rgba(250,189,0,0.16)' },
   dog: { Icon: Sandwich, accent: '#ff8a2a', bg: 'rgba(255,138,42,0.16)' },
@@ -267,16 +267,9 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       <div className="px-3 py-3">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-[10px] font-black uppercase tracking-[0.18em] text-white/85">Categorías</h2>
-          <button
-            type="button"
-            onClick={() => onNavigate('menu')}
-            className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.12em] text-gold"
-          >
-            Menú completo <ChevronRight size={10} strokeWidth={2.7} />
-          </button>
         </div>
 
-        <div className="grid auto-cols-[74px] grid-flow-col grid-rows-2 gap-2 overflow-x-auto no-scrollbar pb-1">
+        <div className="grid auto-cols-[64px] grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto no-scrollbar pb-1">
           {categories.map(cat => {
             const visual = getCategoryVisual(cat.name);
             const Icon = visual.Icon;
@@ -285,16 +278,16 @@ export function HomeView({ onNavigate }: HomeViewProps) {
               <button
                 key={cat.id}
                 type="button"
-                className="group flex h-[82px] w-[74px] flex-col items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-[#181818] px-1.5 text-center shadow-[0_6px_16px_rgba(0,0,0,0.22)] transition-all active:scale-[0.97]"
+                className="group flex h-[54px] w-[64px] flex-col items-center justify-center gap-1 rounded-lg border border-white/8 bg-[#181818] px-1 text-center shadow-[0_5px_12px_rgba(0,0,0,0.18)] transition-all active:scale-[0.97]"
                 onClick={() => onNavigate('menu', cat.id)}
               >
                 <span
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 transition-transform group-active:scale-95"
-                  style={{ background: visual.bg, color: visual.accent, boxShadow: `0 0 18px ${visual.bg}` }}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 transition-transform group-active:scale-95"
+                  style={{ background: visual.bg, color: visual.accent, boxShadow: `0 0 12px ${visual.bg}` }}
                 >
-                  <Icon size={22} strokeWidth={2.4} />
+                  <Icon size={16} strokeWidth={2.5} />
                 </span>
-                <span className="line-clamp-2 max-w-full text-[8.5px] font-black uppercase leading-[1.05] tracking-[0.03em] text-white/85">
+                <span className="line-clamp-2 max-w-full text-[7.5px] font-black uppercase leading-[1.02] tracking-[0.02em] text-white/85">
                   {cat.name}
                 </span>
               </button>
