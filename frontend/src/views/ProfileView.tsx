@@ -178,21 +178,21 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
               <Star size={14} className="relative text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]" strokeWidth={2.2} />
             </div>
 
-            <h2 className="mx-auto max-w-[245px] text-[13px] font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
+            <h2 className="mx-auto max-w-[265px] text-[16px] font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
               Gana puntos en cada compra
             </h2>
-            <p className="mx-auto mt-0.5 max-w-[250px] text-[8.5px] font-semibold leading-tight text-gray-300">
+            <p className="mx-auto mt-0.5 max-w-[280px] text-[10px] font-semibold leading-tight text-gray-300">
               Regístrate para acumular puntos y obtener beneficios cada vez que ordenas en Fatboy.
             </p>
             <Button
               onClick={() => onNavigate('auth')}
-              className="mt-1.5 h-6.5 w-full rounded-md bg-primary text-[8.5px] font-black uppercase tracking-wide text-white shadow-[0_0_12px_rgba(232,0,10,0.28)] animate-pulse-glow shrink-0"
+              className="mt-1.5 h-7 w-full rounded-md bg-primary text-[10px] font-black uppercase tracking-wide text-white shadow-[0_0_12px_rgba(232,0,10,0.28)] animate-pulse-glow shrink-0"
             >
               INICIAR SESIÓN / REGISTRARSE
             </Button>
           </section>
 
-          <div className="flex-1 grid grid-rows-4 gap-1 min-h-0">
+          <div className="grid gap-1 min-h-0">
             {[
               { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
               { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
@@ -203,14 +203,14 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
                 key={item.title}
                 type="button"
                 onClick={() => onNavigate('auth')}
-                className="group flex w-full items-center gap-2 rounded-md border border-white/10 bg-surface/80 px-2 py-1 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover min-h-0"
+                className="group flex w-full items-center gap-2 rounded-md border border-white/10 bg-surface/80 px-2 py-1 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_7px_rgba(232,0,10,0.14)]">
                   <item.icon size={12} className={item.tone} strokeWidth={2.2} />
                 </span>
                 <span className="min-w-0 flex-1 flex flex-col justify-center">
-                  <span className="block text-[9.5px] font-black leading-tight text-white uppercase">{item.title}</span>
-                  <span className="block text-[8px] font-semibold leading-tight text-gray-400 mt-0.5">{item.description}</span>
+                  <span className="block text-[11px] font-black leading-tight text-white uppercase">{item.title}</span>
+                  <span className="block text-[9.5px] font-semibold leading-tight text-gray-400 mt-0.5">{item.description}</span>
                 </span>
                 <ChevronRight size={12} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
               </button>
