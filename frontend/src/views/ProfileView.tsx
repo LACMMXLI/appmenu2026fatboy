@@ -167,32 +167,32 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col h-full min-h-0 gap-1.5">
-          <section className="relative shrink-0 overflow-hidden rounded-xl border border-white/12 bg-[radial-gradient(circle_at_50%_12%,rgba(232,0,10,0.24),transparent_30%),linear-gradient(135deg,rgba(232,0,10,0.11),rgba(255,255,255,0.025))] px-3 py-2 text-center shadow-[0_8px_22px_rgba(0,0,0,0.36)] flex flex-col justify-center">
-            <div className="pointer-events-none absolute left-7 top-9 h-4 w-4 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_12px_rgba(232,0,10,0.3)] rotate-[-18deg]" />
-            <div className="pointer-events-none absolute right-9 top-10 h-4 w-4 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_11px_rgba(232,0,10,0.3)] rotate-[18deg]" />
-            <div className="pointer-events-none absolute right-16 bottom-10 h-3.5 w-3.5 rounded-full border border-primary/30 bg-primary/20 shadow-[0_0_10px_rgba(232,0,10,0.25)]" />
+        <div className="flex flex-col h-full min-h-0 gap-1">
+          <section className="relative shrink-0 overflow-hidden rounded-lg border border-white/12 bg-[radial-gradient(circle_at_50%_12%,rgba(232,0,10,0.22),transparent_30%),linear-gradient(135deg,rgba(232,0,10,0.1),rgba(255,255,255,0.025))] px-2.5 py-1.5 text-center shadow-[0_6px_16px_rgba(0,0,0,0.3)] flex flex-col justify-center">
+            <div className="pointer-events-none absolute left-7 top-8 h-3 w-3 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_10px_rgba(232,0,10,0.28)] rotate-[-18deg]" />
+            <div className="pointer-events-none absolute right-9 top-8 h-3 w-3 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_9px_rgba(232,0,10,0.28)] rotate-[18deg]" />
+            <div className="pointer-events-none absolute right-16 bottom-8 h-2.5 w-2.5 rounded-full border border-primary/30 bg-primary/20 shadow-[0_0_8px_rgba(232,0,10,0.22)]" />
 
-            <div className="relative mx-auto mb-1 flex h-9 w-9 items-center justify-center rounded-full border border-primary/70 bg-primary/10 shadow-[0_0_18px_rgba(232,0,10,0.38)] shrink-0">
-              <div className="absolute inset-1.5 rounded-full border border-primary/40" />
-              <Star size={18} className="relative text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" strokeWidth={2.2} />
+            <div className="relative mx-auto mb-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-primary/70 bg-primary/10 shadow-[0_0_14px_rgba(232,0,10,0.34)] shrink-0">
+              <div className="absolute inset-1 rounded-full border border-primary/40" />
+              <Star size={14} className="relative text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]" strokeWidth={2.2} />
             </div>
 
-            <h2 className="mx-auto max-w-[265px] text-[16px] font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
+            <h2 className="mx-auto max-w-[245px] text-[13px] font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
               Gana puntos en cada compra
             </h2>
-            <p className="mx-auto mt-0.5 max-w-[280px] text-[10px] font-semibold leading-tight text-gray-300">
+            <p className="mx-auto mt-0.5 max-w-[250px] text-[8.5px] font-semibold leading-tight text-gray-300">
               Regístrate para acumular puntos y obtener beneficios cada vez que ordenas en Fatboy.
             </p>
             <Button
               onClick={() => onNavigate('auth')}
-              className="mt-2 h-7.5 w-full rounded-lg bg-primary text-[10px] font-black uppercase tracking-wide text-white shadow-[0_0_14px_rgba(232,0,10,0.32)] animate-pulse-glow shrink-0"
+              className="mt-1.5 h-6.5 w-full rounded-md bg-primary text-[8.5px] font-black uppercase tracking-wide text-white shadow-[0_0_12px_rgba(232,0,10,0.28)] animate-pulse-glow shrink-0"
             >
               INICIAR SESIÓN / REGISTRARSE
             </Button>
           </section>
 
-          <div className="flex-1 grid grid-rows-4 gap-1.5 min-h-0">
+          <div className="flex-1 grid grid-rows-4 gap-1 min-h-0">
             {[
               { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
               { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
@@ -203,16 +203,16 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
                 key={item.title}
                 type="button"
                 onClick={() => onNavigate('auth')}
-                className="group flex w-full items-center gap-3 rounded-lg border border-white/10 bg-surface/80 px-3 py-1.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover min-h-0"
+                className="group flex w-full items-center gap-2 rounded-md border border-white/10 bg-surface/80 px-2 py-1 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover min-h-0"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_8px_rgba(232,0,10,0.16)]">
-                  <item.icon size={15} className={item.tone} strokeWidth={2.2} />
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_7px_rgba(232,0,10,0.14)]">
+                  <item.icon size={12} className={item.tone} strokeWidth={2.2} />
                 </span>
                 <span className="min-w-0 flex-1 flex flex-col justify-center">
-                  <span className="block text-[11px] font-black leading-tight text-white uppercase">{item.title}</span>
-                  <span className="block text-[9.5px] font-semibold leading-tight text-gray-400 mt-0.5">{item.description}</span>
+                  <span className="block text-[9.5px] font-black leading-tight text-white uppercase">{item.title}</span>
+                  <span className="block text-[8px] font-semibold leading-tight text-gray-400 mt-0.5">{item.description}</span>
                 </span>
-                <ChevronRight size={14} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
+                <ChevronRight size={12} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
               </button>
             ))}
           </div>
