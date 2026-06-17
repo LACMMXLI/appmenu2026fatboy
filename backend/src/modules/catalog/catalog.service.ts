@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { CatalogStatus, Prisma } from '@prisma/client';
+import { CatalogStatus, Prisma, PromotionStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 interface ProductFilters {
@@ -38,6 +40,20 @@ interface RedeemableProductInput {
   order?: number;
 }
 
+interface PromotionInput {
+  title?: string;
+  promoText?: string;
+  description?: string;
+  price?: number | string;
+  imageUrl?: string | null;
+  status?: PromotionStatus;
+}
+
+interface PromotionImageInput {
+  fileName?: string;
+  imageData?: string;
+}
+
 const FIXED_BRANCH_DETAILS = {
   venecia: {
     phone: '+526861105191',
@@ -54,6 +70,8 @@ const FIXED_BRANCH_DETAILS = {
 } as const;
 
 const MENU_VISIT_COUNTER_ID = 'menu';
+const PROMOTION_LIFETIME_MS = 24 * 60 * 60 * 1000;
+const PROMOTION_UPLOAD_DIR = join(process.cwd(), 'uploads', 'promotions');
 
 @Injectable()
 export class CatalogService {
@@ -425,6 +443,144 @@ export class CatalogService {
     });
   }
 
+  async listActivePromotions() {
+    const now = new Date();
+
+    const promotions = await this.prisma.promotion.findMany({
+      where: {
+        status: 'PUBLISHED',
+        expiresAt: {
+          gt: now,
+        },
+      },
+      orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return promotions.map((promotion) => ({
+      ...promotion,
+      price: Number(promotion.price),
+    }));
+  }
+
+  async listAdminPromotions() {
+    await this.markExpiredPromotions();
+
+    const promotions = await this.prisma.promotion.findMany({
+      orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return promotions.map((promotion) => ({
+      ...promotion,
+      price: Number(promotion.price),
+    }));
+  }
+
+  async createPromotion(input: PromotionInput) {
+    const publishedAt = new Date();
+    const expiresAt = new Date(publishedAt.getTime() + PROMOTION_LIFETIME_MS);
+
+    return this.mapPromotion(
+      await this.prisma.promotion.create({
+        data: {
+          id: randomUUID(),
+          title: this.requiredText(input.title, 'título'),
+          promoText: this.requiredText(input.promoText, 'texto de promoción'),
+          description: this.requiredText(input.description, 'descripción'),
+          price: this.parsePositivePrice(input.price),
+          imageUrl: this.requiredText(input.imageUrl, 'imagen'),
+          status: 'PUBLISHED',
+          publishedAt,
+          expiresAt,
+        },
+      }),
+    );
+  }
+
+  async updatePromotion(id: string, input: PromotionInput) {
+    const promotion = await this.requirePromotion(id);
+    const currentStatus = this.effectivePromotionStatus(promotion.status, promotion.expiresAt);
+
+    if (currentStatus === 'EXPIRED') {
+      throw new BadRequestException('No se puede editar una promoción vencida. Queda guardada como historial.');
+    }
+
+    return this.mapPromotion(
+      await this.prisma.promotion.update({
+        where: { id },
+        data: {
+          ...(input.title !== undefined ? { title: this.requiredText(input.title, 'título') } : {}),
+          ...(input.promoText !== undefined ? { promoText: this.requiredText(input.promoText, 'texto de promoción') } : {}),
+          ...(input.description !== undefined ? { description: this.requiredText(input.description, 'descripción') } : {}),
+          ...(input.price !== undefined ? { price: this.parsePositivePrice(input.price) } : {}),
+          ...(input.imageUrl !== undefined ? { imageUrl: this.requiredText(input.imageUrl, 'imagen') } : {}),
+        },
+      }),
+    );
+  }
+
+  async updatePromotionStatus(id: string, status: PromotionStatus) {
+    const promotion = await this.requirePromotion(id);
+    const nextStatus = this.parsePromotionStatus(status);
+
+    if (nextStatus === 'EXPIRED') {
+      return this.mapPromotion(
+        await this.prisma.promotion.update({
+          where: { id },
+          data: { status: 'EXPIRED' },
+        }),
+      );
+    }
+
+    if (nextStatus === 'PAUSED' || nextStatus === 'DRAFT') {
+      return this.mapPromotion(
+        await this.prisma.promotion.update({
+          where: { id },
+          data: { status: nextStatus },
+        }),
+      );
+    }
+
+    const publishedAt = promotion.publishedAt ?? new Date();
+    return this.mapPromotion(
+      await this.prisma.promotion.update({
+        where: { id },
+        data: {
+          status: 'PUBLISHED',
+          publishedAt,
+          expiresAt: new Date(publishedAt.getTime() + PROMOTION_LIFETIME_MS),
+        },
+      }),
+    );
+  }
+
+  async savePromotionImage(input: PromotionImageInput) {
+    const imageData = this.requiredText(input.imageData, 'imagen');
+    const match = imageData.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/);
+
+    if (!match) {
+      throw new BadRequestException('Formato de imagen inválido. Usa PNG, JPG o WEBP.');
+    }
+
+    const mimeType = match[1];
+    const extension = this.imageExtension(input.fileName, mimeType);
+    const buffer = Buffer.from(match[2], 'base64');
+
+    if (!buffer.length) {
+      throw new BadRequestException('La imagen está vacía.');
+    }
+
+    if (buffer.length > 6 * 1024 * 1024) {
+      throw new BadRequestException('La imagen supera el límite de 6 MB.');
+    }
+
+    await mkdir(PROMOTION_UPLOAD_DIR, { recursive: true });
+
+    const fileName = `promo_${Date.now()}_${randomUUID()}${extension}`;
+    await writeFile(join(PROMOTION_UPLOAD_DIR, fileName), buffer);
+
+    return { imageUrl: `/api/uploads/promotions/${fileName}` };
+  }
+
   async createHomeBanner(input: any) {
     const imageUrl = this.requiredText(input.imageUrl, 'URL de la imagen');
     return this.prisma.homeBanner.create({
@@ -580,10 +736,28 @@ export class CatalogService {
     return status;
   }
 
+  private parsePromotionStatus(status?: string): PromotionStatus {
+    if (status !== 'DRAFT' && status !== 'PUBLISHED' && status !== 'PAUSED' && status !== 'EXPIRED') {
+      throw new BadRequestException('Estado de promoción inválido.');
+    }
+
+    return status;
+  }
+
   private parsePrice(value: number | string | undefined): Prisma.Decimal {
     const amount = Number(value);
 
     if (!Number.isFinite(amount) || amount < 0) {
+      throw new BadRequestException('Precio inválido.');
+    }
+
+    return new Prisma.Decimal(amount);
+  }
+
+  private parsePositivePrice(value: number | string | undefined): Prisma.Decimal {
+    const amount = Number(value);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
       throw new BadRequestException('Precio inválido.');
     }
 
@@ -630,6 +804,58 @@ export class CatalogService {
       ...product,
       price: Number(product.price),
     };
+  }
+
+  private mapPromotion(promotion: Prisma.PromotionGetPayload<Record<string, never>>) {
+    return {
+      ...promotion,
+      status: this.effectivePromotionStatus(promotion.status, promotion.expiresAt),
+      price: Number(promotion.price),
+    };
+  }
+
+  private async requirePromotion(id: string) {
+    const promotion = await this.prisma.promotion.findUnique({ where: { id } });
+
+    if (!promotion) {
+      throw new NotFoundException('Promoción no encontrada.');
+    }
+
+    return promotion;
+  }
+
+  private effectivePromotionStatus(status: PromotionStatus, expiresAt: Date | null): PromotionStatus {
+    if (status === 'PUBLISHED' && expiresAt && expiresAt <= new Date()) {
+      return 'EXPIRED';
+    }
+
+    return status;
+  }
+
+  private async markExpiredPromotions() {
+    await this.prisma.promotion.updateMany({
+      where: {
+        status: 'PUBLISHED',
+        expiresAt: {
+          lte: new Date(),
+        },
+      },
+      data: {
+        status: 'EXPIRED',
+      },
+    });
+  }
+
+  private imageExtension(fileName: string | undefined, mimeType: string) {
+    const safeExtension = extname(fileName ?? '').toLowerCase();
+
+    if (safeExtension === '.png' || safeExtension === '.jpg' || safeExtension === '.jpeg' || safeExtension === '.webp') {
+      return safeExtension;
+    }
+
+    if (mimeType === 'image/png') return '.png';
+    if (mimeType === 'image/webp') return '.webp';
+    return '.jpg';
   }
 
   private customerPublicSelect() {

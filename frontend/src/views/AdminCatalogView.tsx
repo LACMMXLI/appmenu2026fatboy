@@ -37,6 +37,12 @@ import {
   type RedeemableProduct,
   getAdminVisitStats,
   type VisitStats,
+  getAdminPromotions,
+  createAdminPromotion,
+  updateAdminPromotion,
+  updateAdminPromotionStatus,
+  uploadAdminPromotionImage,
+  type Promotion,
 } from '@/lib/api';
 import { AdminCatalogShell } from './admin-catalog/AdminCatalogShell';
 import {
@@ -51,7 +57,7 @@ import {
   SettingsAdmin,
   VisitsAdmin,
 } from './admin-catalog/AdminCatalogSections';
-import type { NewBanner, NewCategory, NewProduct, NewRedeemableProduct, Tab } from './admin-catalog/adminCatalogTypes';
+import type { NewBanner, NewCategory, NewProduct, NewPromotion, NewRedeemableProduct, Tab } from './admin-catalog/adminCatalogTypes';
 
 const emptyProduct = {
   name: '',
@@ -69,6 +75,13 @@ const emptyRedeemableProduct = {
   order: 999,
 };
 
+const emptyPromotion: NewPromotion = {
+  title: '',
+  promoText: '',
+  description: '',
+  price: '',
+  imageUrl: '',
+};
 
 export function AdminCatalogView() {
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('fatboy-admin-key') ?? '');
@@ -80,6 +93,7 @@ export function AdminCatalogView() {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [redeemableProducts, setRedeemableProducts] = useState<RedeemableProduct[]>([]);
   const [visitStats, setVisitStats] = useState<VisitStats>({ count: 0, updatedAt: null });
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
 
   
   const [activeTab, setActiveTab] = useState<Tab>('products');
@@ -97,6 +111,7 @@ export function AdminCatalogView() {
   const [newProduct, setNewProduct] = useState<NewProduct>(emptyProduct);
   const [newRedeemableProduct, setNewRedeemableProduct] = useState<NewRedeemableProduct>(emptyRedeemableProduct);
   const [newBanner, setNewBanner] = useState<NewBanner>({ imageUrl: '', title: '', subtitle: '', buttonText: '', linkView: 'menu', order: 999 });
+  const [newPromotion, setNewPromotion] = useState<NewPromotion>(emptyPromotion);
   const [isCreateProductOpen, setIsCreateProductOpen] = useState(false);
 
   const activeCategories = useMemo(
@@ -181,6 +196,10 @@ export function AdminCatalogView() {
       // Cargar productos canjeables
       const redeemablesList = await getAdminRedeemableProducts(key);
       setRedeemableProducts(redeemablesList);
+
+      // Cargar promociones administrables
+      const promotionsList = await getAdminPromotions(key);
+      setPromotions(promotionsList);
 
       // Cargar visitas del menu
       const visits = await getAdminVisitStats(key);
@@ -297,6 +316,54 @@ export function AdminCatalogView() {
     }, 'Producto canjeable eliminado.');
   }
 
+  async function uploadPromotionImage(file: File) {
+    try {
+      setIsLoading(true);
+      setError('');
+      const uploaded = await uploadAdminPromotionImage(adminKey, file);
+      setNewPromotion((current) => ({ ...current, imageUrl: uploaded.imageUrl }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo subir la imagen.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function createPromotion() {
+    await runAction(async () => {
+      await createAdminPromotion(adminKey, {
+        ...newPromotion,
+        price: Number(newPromotion.price),
+      });
+      setNewPromotion(emptyPromotion);
+      await refreshAll();
+    }, 'Promoción publicada.');
+  }
+
+  async function savePromotion(promotion: Promotion) {
+    await runAction(async () => {
+      await updateAdminPromotion(adminKey, promotion.id, {
+        title: promotion.title,
+        promoText: promotion.promoText,
+        description: promotion.description,
+        price: Number(promotion.price),
+        imageUrl: promotion.imageUrl,
+      });
+      await refreshAll();
+    }, 'Promoción guardada.');
+  }
+
+  async function changePromotionStatus(promotion: Promotion, status: Promotion['status']) {
+    await runAction(async () => {
+      await updateAdminPromotionStatus(adminKey, promotion.id, status);
+      await refreshAll();
+    }, status === 'PAUSED' ? 'Promoción pausada.' : 'Estado de promoción actualizado.');
+  }
+
+  function updateLocalPromotion(id: string, patch: Partial<Promotion>) {
+    setPromotions((current) => current.map((promotion) => (promotion.id === id ? { ...promotion, ...patch } : promotion)));
+  }
+
   // --- CATEGORIAS ---
   function updateLocalCategory(id: string, patch: Partial<Category>) {
     setCatalog((current) => ({
@@ -376,7 +443,7 @@ export function AdminCatalogView() {
   const tabCounts = useMemo(() => ({
     products: catalog.products.length,
     categories: catalog.categories.length,
-    promotions: catalog.products.filter((product) => product.isPromotion).length,
+    promotions: promotions.length,
     rewards: redeemableProducts.length,
     banners: banners.length,
     customers: customers.length,
@@ -384,7 +451,7 @@ export function AdminCatalogView() {
     visits: visitStats.count,
     settings: 3,
     feedback: feedbacks.length,
-  }), [catalog.products, catalog.categories, redeemableProducts.length, banners.length, customers.length, orders.length, visitStats.count, feedbacks.length]);
+  }), [catalog.products, catalog.categories, promotions.length, redeemableProducts.length, banners.length, customers.length, orders.length, visitStats.count, feedbacks.length]);
 
   const headerControls = useMemo(() => {
     if (activeTab === 'products') {
@@ -615,10 +682,15 @@ export function AdminCatalogView() {
 
       {activeTab === 'promotions' && (
         <PromotionsAdmin
-          products={catalog.products}
+          promotions={promotions}
+          newPromotion={newPromotion}
           isLoading={isLoading}
-          onProductChange={updateLocalProduct}
-          onSaveProduct={saveProduct}
+          onNewPromotionChange={setNewPromotion}
+          onUploadImage={uploadPromotionImage}
+          onCreatePromotion={createPromotion}
+          onPromotionChange={updateLocalPromotion}
+          onSavePromotion={savePromotion}
+          onStatusChange={changePromotionStatus}
         />
       )}
 

@@ -22,6 +22,8 @@ import {
   Truck,
   X,
   CheckCircle2,
+  PauseCircle,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -31,6 +33,7 @@ import {
   getSystemSettings,
   updateAdminSystemSettings,
   defaultProductImage,
+  resolveMediaUrl,
   type Branch,
   type Category,
   type Customer,
@@ -38,10 +41,11 @@ import {
   type HomeBanner,
   type Order,
   type Product,
+  type Promotion,
   type RedeemableProduct,
   type VisitStats,
 } from '@/lib/api';
-import type { NewBanner, NewProduct, NewRedeemableProduct } from './adminCatalogTypes';
+import type { NewBanner, NewProduct, NewPromotion, NewRedeemableProduct } from './adminCatalogTypes';
 
 const [veneciaReviewBranch, sanMarcosReviewBranch] = GOOGLE_REVIEW_BRANCHES;
 
@@ -757,89 +761,311 @@ export function CategoriesAdmin({
 
 // --- SUB-COMPONENTE PROMOCIONES ---
 interface PromotionsAdminProps {
-  products: Product[];
+  promotions: Promotion[];
+  newPromotion: NewPromotion;
   isLoading: boolean;
-  onProductChange: (id: string, patch: Partial<Product>) => void;
-  onSaveProduct: (product: Product) => void;
+  onNewPromotionChange: (value: NewPromotion) => void;
+  onUploadImage: (file: File) => void;
+  onCreatePromotion: () => Promise<void> | void;
+  onPromotionChange: (id: string, patch: Partial<Promotion>) => void;
+  onSavePromotion: (promotion: Promotion) => void;
+  onStatusChange: (promotion: Promotion, status: Promotion['status']) => void;
 }
 
-export function PromotionsAdmin({ products, isLoading, onProductChange, onSaveProduct }: PromotionsAdminProps) {
-  return (
-    <div className="space-y-4">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-surface border border-outline p-4 rounded-xl">
-        <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-2">Administrar Promociones</h3>
-        <p className="text-xs text-gray-400">Marca productos como promociones y especifica sus etiquetas promocionales que verán los usuarios.</p>
-      </motion.div>
+type PromotionFormErrors = Partial<Record<keyof NewPromotion, string>>;
 
-      <div className="overflow-x-auto rounded-xl border border-outline bg-surface shadow-md">
-        <table className="w-full min-w-[760px] border-collapse text-sm">
-          <thead className="sticky top-0 z-10 bg-surface-2/95 backdrop-blur text-xs uppercase tracking-wider text-gray-400">
-            <tr>
-              <th className="p-3 text-left">Producto</th>
-              <th className="p-3 text-left">Precio</th>
-              <th className="p-3 text-left">¿Es Promoción?</th>
-              <th className="p-3 text-left">Etiqueta de Promo (Tag)</th>
-              <th className="p-3 text-left">Color de Etiqueta</th>
-              <th className="p-3 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product, index) => (
-              <motion.tr
-                key={product.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.02, duration: 0.2 }}
+export function PromotionsAdmin({
+  promotions,
+  newPromotion,
+  isLoading,
+  onNewPromotionChange,
+  onUploadImage,
+  onCreatePromotion,
+  onPromotionChange,
+  onSavePromotion,
+  onStatusChange,
+}: PromotionsAdminProps) {
+  const [errors, setErrors] = useState<PromotionFormErrors>({});
+
+  const activePromotions = promotions.filter((promotion) => promotion.status === 'PUBLISHED' && promotion.expiresAt && new Date(promotion.expiresAt) > new Date());
+  const historyPromotions = promotions.filter((promotion) => !activePromotions.some((active) => active.id === promotion.id));
+
+  function validatePromotion(promotion: NewPromotion): PromotionFormErrors {
+    const nextErrors: PromotionFormErrors = {};
+    if (!promotion.title.trim()) nextErrors.title = 'Escribe el título de la promoción.';
+    if (!promotion.imageUrl.trim()) nextErrors.imageUrl = 'Sube una imagen desde galería o cámara.';
+    if (!promotion.promoText.trim()) nextErrors.promoText = 'Escribe el texto de promoción.';
+    if (!promotion.description.trim()) nextErrors.description = 'Agrega una descripción.';
+    if (!promotion.price.trim()) {
+      nextErrors.price = 'Escribe el precio.';
+    } else if (!Number.isFinite(Number(promotion.price)) || Number(promotion.price) <= 0) {
+      nextErrors.price = 'El precio debe ser numérico y mayor a cero.';
+    }
+    return nextErrors;
+  }
+
+  async function handleCreatePromotion() {
+    const nextErrors = validatePromotion(newPromotion);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+    await onCreatePromotion();
+  }
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setErrors((current) => ({ ...current, imageUrl: '' }));
+    onUploadImage(file);
+    event.target.value = '';
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-5">
+      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-outline bg-surface p-4 shadow-lg sm:p-5">
+        <SectionHeader
+          tag="Nueva promoción"
+          title="Publicar historia del día"
+          subtitle="Se publica por 24 horas y no reemplaza otras promociones activas."
+        />
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+          <div className="grid gap-4">
+            <Input
+              label="Título"
+              value={newPromotion.title}
+              error={errors.title}
+              onChange={(event) => onNewPromotionChange({ ...newPromotion, title: event.target.value })}
+              placeholder="Ej: Charola del día"
+            />
+
+            <div className="grid gap-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">Imagen obligatoria</label>
+              <label className={cn(
+                'flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-background p-4 text-center transition-colors active:scale-[0.99]',
+                errors.imageUrl ? 'border-red-500' : 'border-outline hover:border-primary/50',
+              )}>
+                <Upload size={24} className="text-primary" />
+                <span className="text-sm font-black text-white">Subir desde cámara o galería</span>
+                <span className="text-xs font-medium text-gray-500">PNG, JPG o WEBP hasta 6 MB</span>
+                <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
+              </label>
+              {errors.imageUrl && <span className="text-xs text-red-500">{errors.imageUrl}</span>}
+              {newPromotion.imageUrl && (
+                <div className="overflow-hidden rounded-xl border border-outline bg-black">
+                  <img src={resolveMediaUrl(newPromotion.imageUrl)} alt="Vista previa" className="h-auto w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
+                </div>
+              )}
+            </div>
+
+            <Input
+              label="Texto de promoción"
+              value={newPromotion.promoText}
+              error={errors.promoText}
+              onChange={(event) => onNewPromotionChange({ ...newPromotion, promoText: event.target.value })}
+              placeholder="Ej: Solo hoy"
+            />
+
+            <label className="grid gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Descripción</span>
+              <textarea
+                value={newPromotion.description}
+                onChange={(event) => onNewPromotionChange({ ...newPromotion, description: event.target.value })}
+                placeholder="Describe qué incluye la promoción"
                 className={cn(
-                  'admin-row-hover border-t border-outline/50 transition-colors',
-                  index % 2 === 1 && 'bg-surface/30',
+                  'min-h-28 rounded-lg border border-outline bg-surface px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-gray-500 focus:border-primary focus:ring-1 focus:ring-primary',
+                  errors.description && 'border-red-500 focus:border-red-500 focus:ring-red-500',
                 )}
-              >
-                <td className="p-3 font-semibold text-white">{product.name}</td>
-                <td className="p-3 text-gold font-bold">${product.price}</td>
-                <td className="p-3">
-                  <input
-                    type="checkbox"
-                    checked={product.isPromotion}
-                    onChange={(e) => onProductChange(product.id, { isPromotion: e.target.checked })}
-                    className="w-5 h-5 accent-primary cursor-pointer rounded"
-                  />
-                </td>
-                <td className="p-2">
-                  <input
-                    placeholder="Ej: 🔥 HOT"
-                    value={product.promotionTag || ''}
-                    disabled={!product.isPromotion}
-                    onChange={(e) => onProductChange(product.id, { promotionTag: e.target.value })}
-                    className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary focus:shadow-[0_0_8px_rgba(232,0,10,0.12)] disabled:opacity-40 text-white"
-                  />
-                </td>
-                <td className="p-2">
-                  <select
-                    value={product.promotionTagColor || 'red'}
-                    disabled={!product.isPromotion}
-                    onChange={(e) => onProductChange(product.id, { promotionTagColor: e.target.value })}
-                    className="h-10 w-full rounded-md border border-outline bg-background px-3 outline-none transition-colors focus:border-primary disabled:opacity-40 text-white"
-                  >
-                    <option value="red">Rojo (Primary)</option>
-                    <option value="yellow">Amarillo (Accent)</option>
-                    <option value="gray">Gris (Transparent)</option>
-                  </select>
-                </td>
-                <td className="p-2">
-                  <div className="flex justify-end">
-                    <Button size="sm" onClick={() => onSaveProduct(product)} disabled={isLoading} className="bg-primary/90 hover:bg-primary flex gap-1">
-                      <Save size={15} /> Guardar
-                    </Button>
-                  </div>
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              />
+              {errors.description && <span className="text-xs text-red-500">{errors.description}</span>}
+            </label>
+
+            <Input
+              label="Precio"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={newPromotion.price}
+              error={errors.price}
+              onChange={(event) => onNewPromotionChange({ ...newPromotion, price: event.target.value })}
+              placeholder="0.00"
+            />
+
+            <Button size="lg" onClick={handleCreatePromotion} isLoading={isLoading} className="sticky bottom-3 z-10 w-full shadow-[0_10px_35px_rgba(232,0,10,0.38)]">
+              <Plus size={20} className="mr-2" /> Guardar/Publicar
+            </Button>
+          </div>
+
+          <PromotionPreview promotion={newPromotion} />
+        </div>
+      </motion.section>
+
+      <PromotionList
+        title="Promociones activas"
+        subtitle="Viven 24 horas desde su publicación."
+        promotions={activePromotions}
+        isLoading={isLoading}
+        onPromotionChange={onPromotionChange}
+        onSavePromotion={onSavePromotion}
+        onStatusChange={onStatusChange}
+        editable
+      />
+
+      <PromotionList
+        title="Historial y pausadas"
+        subtitle="No se borran al vencer; quedan guardadas para referencia."
+        promotions={historyPromotions}
+        isLoading={isLoading}
+        onPromotionChange={onPromotionChange}
+        onSavePromotion={onSavePromotion}
+        onStatusChange={onStatusChange}
+      />
     </div>
   );
+}
+
+function PromotionPreview({ promotion }: { promotion: NewPromotion }) {
+  return (
+    <aside className="rounded-2xl border border-outline bg-background p-3 shadow-inner lg:sticky lg:top-4 lg:self-start">
+      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-primary">Vista previa</p>
+      <div className="overflow-hidden rounded-xl border border-outline bg-black shadow-lg">
+        {promotion.imageUrl ? (
+          <img src={resolveMediaUrl(promotion.imageUrl)} alt={promotion.title || 'Promoción'} className="w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
+        ) : (
+          <div className="flex aspect-[3/2] w-full items-center justify-center bg-surface-2 text-gray-600">
+            <Image size={32} />
+          </div>
+        )}
+        <div className="bg-surface p-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gold">{promotion.promoText || 'Texto de promoción'}</p>
+          <h4 className="mt-1 text-sm font-black uppercase leading-tight text-white">{promotion.title || 'Título'}</h4>
+          <p className="mt-1 text-xs font-medium leading-snug text-gray-400">{promotion.description || 'Descripción de la promoción.'}</p>
+          <p className="mt-2 text-lg font-black text-primary">${Number(promotion.price || 0).toFixed(2)}</p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function PromotionList({
+  title,
+  subtitle,
+  promotions,
+  isLoading,
+  onPromotionChange,
+  onSavePromotion,
+  onStatusChange,
+  editable = false,
+}: {
+  title: string;
+  subtitle: string;
+  promotions: Promotion[];
+  isLoading: boolean;
+  onPromotionChange: (id: string, patch: Partial<Promotion>) => void;
+  onSavePromotion: (promotion: Promotion) => void;
+  onStatusChange: (promotion: Promotion, status: Promotion['status']) => void;
+  editable?: boolean;
+}) {
+  return (
+    <section className="space-y-3">
+      <SectionHeader tag="Promociones" title={title} subtitle={subtitle} />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {promotions.map((promotion) => (
+          <article key={promotion.id} className="admin-card-hover overflow-hidden rounded-xl border border-outline bg-surface shadow-lg">
+            <div className="relative bg-black">
+              <img src={resolveMediaUrl(promotion.imageUrl)} alt={promotion.title} className="w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
+              <span className={cn(
+                'absolute left-2 top-2 rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-wider shadow-md',
+                promotion.status === 'PUBLISHED' && 'border-green-500/35 bg-green-500/15 text-green-300',
+                promotion.status === 'PAUSED' && 'border-yellow-500/35 bg-yellow-500/15 text-yellow-200',
+                promotion.status === 'EXPIRED' && 'border-gray-500/35 bg-gray-500/20 text-gray-300',
+                promotion.status === 'DRAFT' && 'border-blue-500/35 bg-blue-500/15 text-blue-200',
+              )}>
+                {promotionStatusLabel(promotion)}
+              </span>
+            </div>
+
+            <div className="grid gap-3 p-3">
+              {editable ? (
+                <>
+                  <input
+                    value={promotion.title}
+                    onChange={(event) => onPromotionChange(promotion.id, { title: event.target.value })}
+                    className="h-10 rounded-md border border-outline bg-background px-3 text-sm font-bold text-white outline-none focus:border-primary"
+                  />
+                  <input
+                    value={promotion.promoText}
+                    onChange={(event) => onPromotionChange(promotion.id, { promoText: event.target.value })}
+                    className="h-10 rounded-md border border-outline bg-background px-3 text-sm text-white outline-none focus:border-primary"
+                  />
+                  <textarea
+                    value={promotion.description}
+                    onChange={(event) => onPromotionChange(promotion.id, { description: event.target.value })}
+                    className="min-h-20 rounded-md border border-outline bg-background px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                  />
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={promotion.price}
+                    onChange={(event) => onPromotionChange(promotion.id, { price: Number(event.target.value) })}
+                    className="h-10 rounded-md border border-outline bg-background px-3 text-sm font-bold text-gold outline-none focus:border-primary"
+                  />
+                </>
+              ) : (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gold">{promotion.promoText}</p>
+                  <h4 className="mt-1 text-sm font-black uppercase text-white">{promotion.title}</h4>
+                  <p className="mt-1 text-xs font-medium leading-snug text-gray-400">{promotion.description}</p>
+                  <p className="mt-2 text-base font-black text-primary">${Number(promotion.price).toFixed(2)}</p>
+                </div>
+              )}
+
+              <div className="rounded-lg border border-outline/60 bg-background p-2 text-xs font-semibold text-gray-400">
+                {promotion.status === 'PUBLISHED' ? promotionTimeLeft(promotion.expiresAt) : promotionDateLabel(promotion)}
+              </div>
+
+              {editable && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button size="sm" onClick={() => onSavePromotion(promotion)} disabled={isLoading}>
+                    <Save size={15} className="mr-1.5" /> Guardar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => onStatusChange(promotion, 'PAUSED')} disabled={isLoading}>
+                    <PauseCircle size={15} className="mr-1.5" /> Pausar
+                  </Button>
+                </div>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {promotions.length === 0 && (
+        <AdminEmptyState icon={Inbox} title="Sin promociones" description="No hay promociones en esta sección todavía." />
+      )}
+    </section>
+  );
+}
+
+function promotionStatusLabel(promotion: Promotion) {
+  if (promotion.status === 'PUBLISHED') return 'Activa';
+  if (promotion.status === 'PAUSED') return 'Pausada';
+  if (promotion.status === 'EXPIRED') return 'Vencida';
+  return 'Borrador';
+}
+
+function promotionTimeLeft(expiresAt: string | null) {
+  if (!expiresAt) return 'Sin vencimiento configurado';
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return 'Vencida';
+  const hours = Math.floor(diff / (60 * 60 * 1000));
+  const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+  return `Vence en ${hours}h ${minutes}m`;
+}
+
+function promotionDateLabel(promotion: Promotion) {
+  const date = promotion.expiresAt ?? promotion.publishedAt ?? promotion.createdAt;
+  return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(date));
 }
 
 // --- SUB-COMPONENTE CANJEABLES ---

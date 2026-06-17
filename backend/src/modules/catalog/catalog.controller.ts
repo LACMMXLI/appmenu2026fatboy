@@ -8,8 +8,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import { join } from 'node:path';
 import { CatalogService } from './catalog.service.js';
 import { AuthService } from '../auth/auth.service.js';
 
@@ -40,6 +42,15 @@ interface RedeemableProductBody {
   imageUrl?: string | null;
   description?: string | null;
   order?: number;
+}
+
+interface PromotionBody {
+  title?: string;
+  promoText?: string;
+  description?: string;
+  price?: number | string;
+  imageUrl?: string | null;
+  status?: 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'EXPIRED';
 }
 
 @Controller()
@@ -213,6 +224,20 @@ export class CatalogController {
     return this.catalogService.listHomeBanners();
   }
 
+  @Get('promotions')
+  promotions() {
+    return this.catalogService.listActivePromotions();
+  }
+
+  @Get('uploads/promotions/:fileName')
+  promotionUpload(@Param('fileName') fileName: string, @Res() res: any) {
+    if (!/^[a-zA-Z0-9_.-]+$/.test(fileName)) {
+      throw new UnauthorizedException('Archivo inválido.');
+    }
+
+    return res.sendFile(join(process.cwd(), 'uploads', 'promotions', fileName));
+  }
+
   @Post('admin/home-banners')
   createHomeBanner(@Headers('x-admin-key') adminKey: string | undefined, @Body() body: any) {
     this.assertAdmin(adminKey);
@@ -233,6 +258,44 @@ export class CatalogController {
   deleteHomeBanner(@Headers('x-admin-key') adminKey: string | undefined, @Param('id') id: string) {
     this.assertAdmin(adminKey);
     return this.catalogService.deleteHomeBanner(id);
+  }
+
+  @Get('admin/promotions')
+  adminPromotions(@Headers('x-admin-key') adminKey?: string) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.listAdminPromotions();
+  }
+
+  @Post('admin/promotions')
+  createPromotion(@Headers('x-admin-key') adminKey: string | undefined, @Body() body: PromotionBody) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.createPromotion(body);
+  }
+
+  @Patch('admin/promotions/:id')
+  updatePromotion(
+    @Headers('x-admin-key') adminKey: string | undefined,
+    @Param('id') id: string,
+    @Body() body: PromotionBody,
+  ) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.updatePromotion(id, body);
+  }
+
+  @Patch('admin/promotions/:id/status')
+  updatePromotionStatus(
+    @Headers('x-admin-key') adminKey: string | undefined,
+    @Param('id') id: string,
+    @Body('status') status: PromotionBody['status'],
+  ) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.updatePromotionStatus(id, status ?? 'DRAFT');
+  }
+
+  @Post('admin/uploads/promotion-image')
+  uploadPromotionImage(@Headers('x-admin-key') adminKey: string | undefined, @Body() body: any) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.savePromotionImage(body);
   }
 
   @Get('settings')

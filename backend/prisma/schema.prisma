@@ -12,6 +12,13 @@ enum CatalogStatus {
   inactive
 }
 
+enum PromotionStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  EXPIRED
+}
+
 model Branch {
   id        String   @id @db.Uuid
   name      String
@@ -159,6 +166,24 @@ model HomeBanner {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("home_banners")
+}
+
+model Promotion {
+  id          String          @id @db.Uuid
+  title       String
+  promoText   String          @map("promo_text")
+  description String
+  price       Decimal         @db.Decimal(10, 2)
+  imageUrl    String          @map("image_url")
+  status      PromotionStatus @default(DRAFT)
+  publishedAt DateTime?       @map("published_at")
+  expiresAt   DateTime?       @map("expires_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([status, expiresAt])
+  @@index([publishedAt])
+  @@map("promotions")
 }
 
 model SystemSetting {

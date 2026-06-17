@@ -51,3 +51,11 @@ export interface NewBanner {
   linkView: string;
   order: number;
 }
+
+export interface NewPromotion {
+  title: string;
+  promoText: string;
+  description: string;
+  price: string;
+  imageUrl: string;
+}

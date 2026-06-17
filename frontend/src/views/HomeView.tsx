@@ -24,7 +24,9 @@ import { useCart } from '@/context/CartContext';
 import {
   getCategories, getProducts, getSystemSettings,
   defaultProductImage,
-  type HomeBanner, type Category, type Product,
+  getPromotions,
+  resolveMediaUrl,
+  type HomeBanner, type Category, type Product, type Promotion,
 } from '@/lib/api';
 
 
@@ -92,39 +94,6 @@ function getCategoryVisual(name: string): CategoryVisual {
   }
   return { Icon: UtensilsCrossed, accent: '#fabd00', bg: 'rgba(250,189,0,0.14)' };
 }
-
-const STATIC_PROMOS = [
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
-    img: '/images/promo_charola_futbolera.png',
-    label: 'CHAROLA LA FUTBOLERA',
-    price: 380,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4102',
-    img: '/images/promo_charola_fatgool.png',
-    label: 'CHAROLA FATGOOL',
-    price: 499,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4103',
-    img: '/images/promo_rollos_empanizados.png',
-    label: '2 ROLLOS CIELO, MAR Y TIERRA EMPANIZADOS',
-    price: 150,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4104',
-    img: '/images/promo_rollos_naturales.png',
-    label: '2 ROLLOS CIELO, MAR Y TIERRA NATURALES',
-    price: 100,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4105',
-    img: '/images/promo_urban_fatboy_charola.png',
-    label: 'CHAROLA URBAN FATBOY',
-    price: 350,
-  },
-];
 
 const FALLBACK_PRODUCTS = [
   { id: 'fp1', name: 'FATBOY CLÁSICA',  price: 139, description: 'Doble carne smash, queso americano, lechuga, tomate, cebolla, pepinillos y nuestra salsa Fatboy.', imageUrl: '/images/product_fatboy_clasica_1781279420825.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
@@ -220,6 +189,46 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
   );
 }
 
+function PromotionHeroSlider({ promotions, onPromoClick }: { promotions: Promotion[]; onPromoClick: (promotion: Promotion) => void }) {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (promotions.length <= 1) return;
+    const t = setInterval(() => setIdx(i => (i + 1) % promotions.length), 5000);
+    return () => clearInterval(t);
+  }, [promotions.length]);
+
+  if (promotions.length === 0) return null;
+
+  const promotion = promotions[idx] ?? promotions[0];
+
+  return (
+    <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio: '3 / 2' }}>
+      <button type="button" className="block h-full w-full text-left" onClick={() => onPromoClick(promotion)}>
+        <img src={resolveMediaUrl(promotion.imageUrl)} alt={promotion.title} className="h-full w-full object-contain animate-fade-in" />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/75 to-transparent p-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gold">{promotion.promoText}</p>
+          <h1 className="mt-1 text-lg font-black uppercase leading-none text-white">{promotion.title}</h1>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="line-clamp-1 text-xs font-medium text-white/75">{promotion.description}</p>
+            <span className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-black text-white">
+              ${Number(promotion.price).toFixed(2)}
+            </span>
+          </div>
+        </div>
+      </button>
+
+      {promotions.length > 1 && (
+        <div className="hero-slide-dots">
+          {promotions.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)} className={cn('hero-dot', i === idx && 'active')} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────────
    MAIN HOME VIEW
 ───────────────────────────────────────────────── */
@@ -227,28 +236,30 @@ export function HomeView({ onNavigate }: HomeViewProps) {
   const { addItem } = useCart();
   const [banners, setBanners]     = useState<HomeBanner[]>(FALLBACK_BANNERS);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [settings, setSettings]     = useState<Record<string, string>>({});
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     let m = true;
-    Promise.allSettled([getCategories(), getSystemSettings()])
-      .then(([cRes, sRes]) => {
+    Promise.allSettled([getCategories(), getSystemSettings(), getPromotions()])
+      .then(([cRes, sRes, pRes]) => {
         if (!m) return;
         if (cRes.status === 'fulfilled') setCategories(cRes.value);
         if (sRes.status === 'fulfilled') setSettings(sRes.value);
+        if (pRes.status === 'fulfilled') setPromotions(pRes.value);
       })
       .finally(() => { if (m) setLoading(false); });
     return () => { m = false; };
   }, []);
 
-  const addPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+  const addPromoToCart = (promo: Promotion) => {
     addItem({
       id: promo.id,
-      title: promo.label,
+      title: promo.title,
       price: promo.price,
       qty: 1,
-      img: promo.img,
+      img: resolveMediaUrl(promo.imageUrl),
       extras: [],
       removals: [],
       notes: '',
@@ -261,7 +272,11 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingTop: 44, paddingBottom: 60 }}>
 
       {/* ── HERO SLIDER ──────────────────────────── */}
-      <HeroSlider banners={banners} onNavigate={onNavigate} />
+      {promotions.length > 0 ? (
+        <PromotionHeroSlider promotions={promotions} onPromoClick={addPromoToCart} />
+      ) : (
+        <HeroSlider banners={banners} onNavigate={onNavigate} />
+      )}
 
       {/* ── CATEGORY SHORTCUTS ───────────────────── */}
       <div className="px-3 py-3">
@@ -297,7 +312,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       </div>
 
       {/* ── PROMOS DEL DÍA ───────────────────────── */}
-      <div>
+      {promotions.length > 0 && <div>
         <div className="section-heading">
           <h2 className="section-title">
             <Zap size={13} className="text-gold" fill="currentColor" style={{ color: 'var(--color-gold)' }} />
@@ -310,13 +325,13 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         </div>
 
         <div className="promos-container no-scrollbar">
-          {STATIC_PROMOS.map(promo => (
+          {promotions.map(promo => (
             <div
               key={promo.id}
               className="promo-card bg-black"
               onClick={() => addPromoToCart(promo)}
             >
-              <img src={promo.img} alt={promo.label} className="w-full h-full object-contain rounded-[10px] bg-black" />
+              <img src={resolveMediaUrl(promo.imageUrl)} alt={promo.title} className="w-full h-full object-contain rounded-[10px] bg-black" />
               <button
                 type="button"
                 onClick={(event) => {
@@ -330,7 +345,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* ── UBICACIONES Y REDES SOCIALES ───────────────────────── */}
       <div className="px-3 mt-4 mb-2 space-y-2.5">

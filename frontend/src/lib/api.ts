@@ -52,8 +52,34 @@ export interface RedeemableProduct {
   createdAt: string;
 }
 
+export type PromotionStatus = 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'EXPIRED';
+
+export interface Promotion {
+  id: string;
+  title: string;
+  promoText: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  status: PromotionStatus;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const defaultProductImage =
   'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=800&auto=format&fit=crop';
+
+export function resolveMediaUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+  if (url.startsWith('/api/')) {
+    const apiOrigin = API_BASE_URL.replace(/\/api$/, '');
+    return `${apiOrigin}${url}`;
+  }
+  return url;
+}
 
 export async function getBranches(): Promise<Branch[]> {
   return getJson<Branch[]>('/branches');
@@ -70,6 +96,10 @@ export async function getProducts(categoryId?: string): Promise<Product[]> {
 
 export async function getRedeemableProducts(): Promise<RedeemableProduct[]> {
   return getJson<RedeemableProduct[]>('/redeemable-products');
+}
+
+export async function getPromotions(): Promise<Promotion[]> {
+  return getJson<Promotion[]>('/promotions');
 }
 
 export interface VisitStats {
@@ -176,6 +206,47 @@ export async function updateAdminRedeemableProduct(adminKey: string, id: string,
 
 export async function deleteAdminRedeemableProduct(adminKey: string, id: string): Promise<{ ok: boolean }> {
   return adminJson<{ ok: boolean }>(`/admin/redeemable-products/${id}`, adminKey, 'DELETE');
+}
+
+export interface PromotionPayload {
+  title?: string;
+  promoText?: string;
+  description?: string;
+  price?: number | string;
+  imageUrl?: string | null;
+}
+
+export async function getAdminPromotions(adminKey: string): Promise<Promotion[]> {
+  return adminJson<Promotion[]>('/admin/promotions', adminKey);
+}
+
+export async function createAdminPromotion(adminKey: string, payload: PromotionPayload): Promise<Promotion> {
+  return adminJson<Promotion>('/admin/promotions', adminKey, 'POST', payload);
+}
+
+export async function updateAdminPromotion(adminKey: string, id: string, payload: PromotionPayload): Promise<Promotion> {
+  return adminJson<Promotion>(`/admin/promotions/${id}`, adminKey, 'PATCH', payload);
+}
+
+export async function updateAdminPromotionStatus(adminKey: string, id: string, status: PromotionStatus): Promise<Promotion> {
+  return adminJson<Promotion>(`/admin/promotions/${id}/status`, adminKey, 'PATCH', { status });
+}
+
+export async function uploadAdminPromotionImage(adminKey: string, file: File): Promise<{ imageUrl: string }> {
+  const imageData = await readFileAsDataUrl(file);
+  return adminJson<{ imageUrl: string }>('/admin/uploads/promotion-image', adminKey, 'POST', {
+    fileName: file.name,
+    imageData,
+  });
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function getJson<T>(path: string): Promise<T> {
