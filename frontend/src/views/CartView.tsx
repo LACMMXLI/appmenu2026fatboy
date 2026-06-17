@@ -166,13 +166,43 @@ export function CartView({ onNavigate }: CartViewProps) {
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 flex flex-col justify-center items-center pb-24 pt-4 px-5">
-        <ShoppingBag size={64} className="text-gray-600 mb-6 animate-fade-in-up stagger-1" />
-        <h2 className="font-display text-3xl text-gray-400 mb-2 animate-fade-in-up stagger-2">TU CARRITO ESTÁ VACÍO</h2>
-        <p className="text-gray-500 mb-8 animate-fade-in-up stagger-3">¡Agrega algo delicioso!</p>
-        <Button size="lg" className="w-[200px] animate-fade-in-up stagger-4" onClick={() => onNavigate('menu')}>
-          VER MENÚ
-        </Button>
+      <div className="flex-1 flex flex-col justify-center items-center pb-24 pt-4 px-5 relative overflow-hidden text-center min-h-[70vh]">
+        {/* Ambient background glows */}
+        <div className="absolute top-[20%] left-[-30%] w-[100%] h-[50%] rounded-full bg-primary/5 blur-[90px] pointer-events-none z-0 animate-pulse" style={{ animationDuration: '7s' }}></div>
+        <div className="absolute bottom-[20%] right-[-30%] w-[100%] h-[50%] rounded-full bg-gold/5 blur-[90px] pointer-events-none z-0"></div>
+
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Glowing Bag Icon */}
+          <div className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-surface/50 shadow-[0_15px_30px_rgba(0,0,0,0.5)] animate-fade-in-up stagger-1 backdrop-blur-md">
+            <div className="absolute inset-0 rounded-full bg-primary/10 blur-md scale-110"></div>
+            <ShoppingBag size={32} className="relative text-primary drop-shadow-[0_2px_8px_rgba(232,0,10,0.4)]" strokeWidth={1.8} />
+          </div>
+
+          {/* Eyebrow */}
+          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-primary mb-1 animate-fade-in-up stagger-2">
+            Tu Orden
+          </span>
+
+          {/* Main Title */}
+          <h2 className="font-display text-4xl tracking-wider text-white uppercase leading-none mb-2.5 animate-fade-in-up stagger-2 drop-shadow-md">
+            TU CARRITO ESTÁ VACÍO
+          </h2>
+
+          {/* Subtitle */}
+          <p className="text-gray-400 text-xs font-semibold max-w-[280px] leading-relaxed mb-6 animate-fade-in-up stagger-3">
+            ¡Agrega algo delicioso! Revisa nuestro menú y elige entre nuestras icónicas hamburguesas, combos y bebidas.
+          </p>
+
+          {/* Action Button */}
+          <Button 
+            size="lg" 
+            className="w-[200px] bg-gradient-to-r from-primary to-primary-dark hover:from-primary-hover hover:to-primary text-white rounded-xl shadow-[0_4px_15px_rgba(232,0,10,0.3)] active:scale-[0.98] transition-all duration-200 py-3.5 uppercase font-black tracking-wider text-xs flex items-center justify-center gap-2 animate-fade-in-up stagger-4 cursor-pointer" 
+            onClick={() => onNavigate('menu')}
+          >
+            <span>VER MENÚ</span>
+            <span className="text-sm">→</span>
+          </Button>
+        </div>
       </div>
     );
   }
