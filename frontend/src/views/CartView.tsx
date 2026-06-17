@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Trash2, MessageCircle, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { useUser } from '@/context/UserContext';
@@ -24,6 +25,9 @@ export function CartView({ onNavigate }: CartViewProps) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -61,18 +65,53 @@ export function CartView({ onNavigate }: CartViewProps) {
       return;
     }
 
+    setError('');
+    const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
+
     if (!isAuthenticated || !customer || !token) {
-      setError('Para realizar un pedido debes iniciar sesión o registrarte.');
-      onNavigate('auth');
+      if (!guestName.trim() || !guestPhone.trim()) {
+        setError('Por favor ingresa tu nombre y teléfono para el pedido.');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // WhatsApp message formatting for Guest
+        let text = `*NUEVO PEDIDO (INVITADO) - Fatboy ${selectedBranch?.name || ''}*\n\n`;
+        text += `*Cliente:* ${guestName.trim()}\n*Teléfono:* ${guestPhone.trim()}\n\n*Detalles del pedido:*\n`;
+        
+        items.forEach(item => {
+          let itemTotal = item.price;
+          item.extras?.forEach(ext => itemTotal += ext.price);
+          text += `- ${item.qty}x ${item.title} ($${itemTotal} c/u)\n`;
+          if (item.meatPrep) text += `  Término: ${item.meatPrep}\n`;
+          if (item.removals?.length) text += `  Sin: ${item.removals.join(', ')}\n`;
+          if (item.extras?.length) text += `  Extras: ${item.extras.map(e => e.name).join(', ')}\n`;
+          if (item.notes) text += `  Notas: ${item.notes}\n`;
+        });
+        
+        if (notes) {
+          text += `\n*Notas generales:* ${notes}\n`;
+        }
+        text += `\n*TOTAL: $${total}*\n`;
+        text += `\n_Pedido enviado directamente por WhatsApp._`;
+        
+        const destinationPhone = selectedBranch?.phone || '526860000000';
+        window.open(`https://wa.me/${destinationPhone}?text=${encodeURIComponent(text)}`, '_blank');
+        
+        clearCart();
+        onNavigate('home');
+      } catch (err) {
+        setError('Ocurrió un error al procesar el pedido.');
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
-    setError('');
     setIsLoading(true);
 
     try {
-      const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
-      
       const payload = {
         branchId: selectedBranchId,
         deliveryType: 'pickup' as const, // Default pickup
@@ -294,28 +333,50 @@ export function CartView({ onNavigate }: CartViewProps) {
               </div>
             </div>
           ) : (
-            <div className="bg-surface/55 border border-white/5 backdrop-blur-md rounded-2xl p-4 flex flex-col gap-3 shadow-lg text-center">
-              <p className="text-xs text-gray-300 font-semibold leading-relaxed">
-                Inicia sesión o crea tu cuenta para generar tu pedido y acumular puntos.
-              </p>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <Button 
-                  type="button" 
-                  size="sm" 
-                  onClick={() => onNavigate('auth')}
-                  className="rounded-xl text-xs font-bold py-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-hover hover:to-primary"
-                >
-                  INICIAR SESIÓN
-                </Button>
-                <Button 
-                  type="button" 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => onNavigate('register')}
-                  className="rounded-xl text-xs font-bold py-2 border-white/10 hover:bg-white/5"
-                >
-                  CREAR CUENTA
-                </Button>
+            <div className="bg-surface/55 border border-white/5 backdrop-blur-md rounded-2xl p-4 flex flex-col gap-4 shadow-lg">
+              <div className="flex flex-col gap-0.5 text-center mb-1">
+                <span className="text-[9px] font-black tracking-[0.2em] text-primary uppercase">Pedido rápido</span>
+                <h4 className="text-xs font-bold text-white uppercase">Comprar como Invitado</h4>
+                <p className="text-[10px] text-gray-400 font-medium">Ingresa tus datos para enviar tu pedido por WhatsApp.</p>
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                <Input
+                  label="Nombre Completo"
+                  placeholder="Ej. Juan Pérez"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 text-xs h-11"
+                />
+                <Input
+                  label="Teléfono"
+                  placeholder="686 123 4567"
+                  type="tel"
+                  value={guestPhone}
+                  onChange={(e) => setGuestPhone(e.target.value)}
+                  className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 text-xs h-11"
+                />
+              </div>
+
+              <div className="border-t border-white/5 pt-3 mt-1 flex flex-col items-center">
+                <p className="text-[10px] text-gray-400 font-semibold mb-2">¿Quieres acumular puntos?</p>
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => onNavigate('auth')} 
+                    className="text-primary text-[11px] font-extrabold hover:underline"
+                  >
+                    Iniciar sesión
+                  </button>
+                  <span className="text-gray-600 text-[10px]">•</span>
+                  <button 
+                    type="button" 
+                    onClick={() => onNavigate('register')} 
+                    className="text-white text-[11px] font-bold hover:underline"
+                  >
+                    Crear cuenta
+                  </button>
+                </div>
               </div>
             </div>
           )}
