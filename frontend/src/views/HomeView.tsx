@@ -95,6 +95,39 @@ function getCategoryVisual(name: string): CategoryVisual {
   return { Icon: UtensilsCrossed, accent: '#fabd00', bg: 'rgba(250,189,0,0.14)' };
 }
 
+const STATIC_PROMOS = [
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
+    img: '/images/promo_charola_futbolera.png',
+    label: 'CHAROLA LA FUTBOLERA',
+    price: 380,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4102',
+    img: '/images/promo_charola_fatgool.png',
+    label: 'CHAROLA FATGOOL',
+    price: 499,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4103',
+    img: '/images/promo_rollos_empanizados.png',
+    label: '2 ROLLOS CIELO, MAR Y TIERRA EMPANIZADOS',
+    price: 150,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4104',
+    img: '/images/promo_rollos_naturales.png',
+    label: '2 ROLLOS CIELO, MAR Y TIERRA NATURALES',
+    price: 100,
+  },
+  {
+    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4105',
+    img: '/images/promo_urban_fatboy_charola.png',
+    label: 'CHAROLA URBAN FATBOY',
+    price: 350,
+  },
+];
+
 const FALLBACK_PRODUCTS = [
   { id: 'fp1', name: 'FATBOY CLÁSICA',  price: 139, description: 'Doble carne smash, queso americano, lechuga, tomate, cebolla, pepinillos y nuestra salsa Fatboy.', imageUrl: '/images/product_fatboy_clasica_1781279420825.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
   { id: 'fp2', name: 'FATBOY BACON',    price: 159, description: 'Doble carne smash, queso americano, bacon crujiente, cebolla caramelizada y salsa Fatboy.', imageUrl: '/images/product_fatboy_bacon_1781279428950.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
@@ -267,6 +300,20 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     onNavigate('cart');
   };
 
+  const addStaticPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+    addItem({
+      id: promo.id,
+      title: promo.label,
+      price: promo.price,
+      qty: 1,
+      img: promo.img,
+      extras: [],
+      removals: [],
+      notes: '',
+    });
+    onNavigate('cart');
+  };
+
 
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingTop: 44, paddingBottom: 60 }}>
@@ -312,7 +359,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       </div>
 
       {/* ── PROMOS DEL DÍA ───────────────────────── */}
-      {promotions.length > 0 && <div>
+      <div>
         <div className="section-heading">
           <h2 className="section-title">
             <Zap size={13} className="text-gold" fill="currentColor" style={{ color: 'var(--color-gold)' }} />
@@ -325,18 +372,18 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         </div>
 
         <div className="promos-container no-scrollbar">
-          {promotions.map(promo => (
+          {STATIC_PROMOS.map(promo => (
             <div
               key={promo.id}
               className="promo-card bg-black"
-              onClick={() => addPromoToCart(promo)}
+              onClick={() => addStaticPromoToCart(promo)}
             >
-              <img src={resolveMediaUrl(promo.imageUrl)} alt={promo.title} className="w-full h-full object-contain rounded-[10px] bg-black" />
+              <img src={promo.img} alt={promo.label} className="w-full h-full object-contain rounded-[10px] bg-black" />
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  addPromoToCart(promo);
+                  addStaticPromoToCart(promo);
                 }}
                 className="absolute bottom-2 right-2 rounded-md bg-primary px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_0_12px_rgba(229,9,20,0.45)]"
               >
@@ -345,7 +392,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
             </div>
           ))}
         </div>
-      </div>}
+      </div>
 
       {/* ── UBICACIONES Y REDES SOCIALES ───────────────────────── */}
       <div className="px-3 mt-4 mb-2 space-y-2.5">
