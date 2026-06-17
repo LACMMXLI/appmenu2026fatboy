@@ -58,6 +58,7 @@ export default function App() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('fatboy-app-splash-shown'));
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
 
   // Google Review prompt state & config URL
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
@@ -90,10 +91,7 @@ export default function App() {
 
   useEffect(() => {
     if (!showSplash) {
-      const dismissed = localStorage.getItem('fatboy-americas-announcement-dismissed');
-      if (!dismissed) {
-        setShowAnnouncement(true);
-      }
+      setShowAnnouncement(true);
     }
   }, [showSplash]);
 
@@ -139,36 +137,20 @@ export default function App() {
   }, [isAdminCatalogPath, isBranchOrdersPath]);
 
   useEffect(() => {
-    if (currentView === 'google-review' || getGoogleReviewCooldown().blocked) {
-      setShowReviewPrompt(false);
-      return;
-    }
-
-    const lastPrompted = localStorage.getItem('fatboy-google-review-last-prompted');
-    
-    const now = Date.now();
-    const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 hours
-    
-    const shouldPrompt = !lastPrompted || (now - parseInt(lastPrompted, 10) > cooldownPeriod);
-    
-    if (shouldPrompt) {
+    if (announcementDismissed) {
       const timer = setTimeout(() => {
         setShowReviewPrompt(true);
-      }, 2500); // Show 2.5 seconds after mounting / log in
+      }, 1500);
       return () => clearTimeout(timer);
-    } else {
-      setShowReviewPrompt(false);
     }
-  }, [currentView]);
+  }, [announcementDismissed]);
 
   const handleDismissPrompt = () => {
-    localStorage.setItem('fatboy-google-review-last-prompted', Date.now().toString());
     setShowReviewPrompt(false);
   };
 
   const handleRedirectToGoogle = () => {
     navigate('google-review');
-    localStorage.setItem('fatboy-google-review-last-prompted', Date.now().toString());
     setShowReviewPrompt(false);
   };
 
@@ -319,8 +301,8 @@ export default function App() {
         {showAnnouncement && (
           <AnnouncementModal
             onClose={() => {
-              localStorage.setItem('fatboy-americas-announcement-dismissed', 'true');
               setShowAnnouncement(false);
+              setAnnouncementDismissed(true);
             }}
           />
         )}
