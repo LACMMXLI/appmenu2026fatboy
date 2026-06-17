@@ -20,6 +20,7 @@ import { GoogleReviewView } from './views/GoogleReviewView';
 import { TopBar, BottomNav } from './components/layout/Navigation';
 import { GoogleReviewPrompt } from './components/layout/GoogleReviewPrompt';
 import { AppSplash } from './components/layout/AppSplash';
+import { AnnouncementModal } from './components/layout/AnnouncementModal';
 import { useUser } from './context/UserContext';
 import { getSystemSettings, trackMenuVisit, type Product } from './lib/api';
 import { GOOGLE_REVIEW_ROUTE, getGoogleReviewCooldown, isGoogleReviewRoutePath } from './lib/googleReviews';
@@ -56,6 +57,7 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('fatboy-app-splash-shown'));
+  const [showAnnouncement, setShowAnnouncement] = useState(false);
 
   // Google Review prompt state & config URL
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
@@ -84,6 +86,15 @@ export default function App() {
     }, 1200);
 
     return () => window.clearTimeout(timer);
+  }, [showSplash]);
+
+  useEffect(() => {
+    if (!showSplash) {
+      const dismissed = localStorage.getItem('fatboy-americas-announcement-dismissed');
+      if (!dismissed) {
+        setShowAnnouncement(true);
+      }
+    }
   }, [showSplash]);
 
   useEffect(() => {
@@ -302,6 +313,17 @@ export default function App() {
 
       <AnimatePresence>
         {showSplash && <AppSplash />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAnnouncement && (
+          <AnnouncementModal
+            onClose={() => {
+              localStorage.setItem('fatboy-americas-announcement-dismissed', 'true');
+              setShowAnnouncement(false);
+            }}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
