@@ -65,95 +65,138 @@ export function RegisterView({ onNavigate, onRegister }: RegisterViewProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-background w-full max-w-md mx-auto pb-safe overflow-hidden relative">
-      <header className="px-6 py-4 flex items-center relative h-16 w-full shrink-0">
-        <button onClick={() => onNavigate('auth')} className="absolute left-6 text-white hover:text-gray-300 transition-colors p-2 -ml-2 rounded-full hover:bg-surface">
-          <ArrowLeft size={24} />
+    <div className="h-full flex flex-col bg-background w-full max-w-md mx-auto pb-safe overflow-hidden relative px-5">
+      {/* Premium ambient glows */}
+      <div className="absolute top-[-10%] right-[-15%] w-[80%] h-[40%] rounded-full bg-primary/10 blur-[80px] pointer-events-none z-0 animate-pulse" style={{ animationDuration: '9s' }}></div>
+      <div className="absolute bottom-[-10%] left-[-15%] w-[80%] h-[40%] rounded-full bg-gold/5 blur-[90px] pointer-events-none z-0"></div>
+
+      {/* Header */}
+      <header className="py-4 flex items-center relative h-16 w-full shrink-0 z-10">
+        <button 
+          onClick={() => onNavigate('auth')} 
+          className="text-white/80 hover:text-white transition-all p-2 rounded-xl bg-surface/60 border border-white/5 shadow-md active:scale-95 flex items-center justify-center backdrop-blur-md"
+        >
+          <ArrowLeft size={18} />
         </button>
-        <div className="w-full flex justify-center items-center">
+        <div className="flex-1 flex justify-center items-center -ml-9">
           <img 
             src="/images/logo.png" 
             alt="FATBOY" 
-            className="h-8 w-auto object-contain"
+            className="h-7 w-auto object-contain relative drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]"
           />
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 pb-10 no-scrollbar">
-        <div className="text-center mb-8">
-          <h1 className="font-display text-4xl tracking-wide mb-2 text-white">CREAR CUENTA</h1>
-          <p className="text-gray-400 text-sm">Únete a la familia Fatboy.</p>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto no-scrollbar py-4 pb-8 z-10">
+        <div className="text-center mb-6 animate-fade-in-up s1">
+          <span className="text-[9px] font-black tracking-[0.25em] text-primary uppercase mb-1 block">
+            Únete al Club
+          </span>
+          <h1 className="font-display text-4xl tracking-wider text-white uppercase leading-none mb-1">
+            CREAR CUENTA
+          </h1>
+          <p className="text-gray-400 text-xs font-semibold leading-tight">
+            Únete a la familia Fatboy y empieza a ganar puntos
+          </p>
         </div>
 
-        {error && <p className="w-full text-xs text-primary mb-4 text-center border border-primary/20 bg-primary/5 rounded-lg py-2">{error}</p>}
+        {error && (
+          <div className="w-full flex items-center gap-2 text-xs text-primary border border-primary/20 bg-primary/5 rounded-xl px-4 py-3 mb-4 animate-fade-in-up">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0"></div>
+            <p className="font-bold">{error}</p>
+          </div>
+        )}
 
-        <form className="flex flex-col gap-5 w-full" onSubmit={handleSubmit}>
-          <Input 
-            label="NOMBRE COMPLETO" 
-            placeholder="Ej. Juan Pérez" 
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input 
-            label="TELÉFONO" 
-            placeholder="10 dígitos" 
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <Input 
-            label="CONTRASEÑA" 
-            placeholder="Mínimo 8 caracteres" 
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <Input 
-            label="CONFIRMAR CONTRASEÑA" 
-            placeholder="Repite tu contraseña" 
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-
-          <div className="mt-4">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">
-              SUCURSAL FAVORITA
-            </label>
-            <p className="text-xs text-gray-500 mb-3">Selecciona la sucursal de donde normalmente pedirás.</p>
+        {/* Form in Glass Card */}
+        <div className="w-full bg-surface/55 border border-white/5 backdrop-blur-xl rounded-2xl p-5 shadow-[0_15px_30px_rgba(0,0,0,0.5)] animate-fade-in-up s2">
+          <form className="flex flex-col gap-4 w-full" onSubmit={handleSubmit}>
+            <Input 
+              label="Nombre completo" 
+              placeholder="Ej. Juan Pérez" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 focus-visible:ring-primary/40 focus-visible:border-primary/40 text-xs h-11"
+            />
             
-            <div className="grid grid-cols-2 gap-3">
-              {branches.map((branch) => (
-                <button
-                  key={branch.id}
-                  type="button"
-                  onClick={() => setSelectedBranchId(branch.id)}
-                  className={cn(
-                    "relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all h-28",
-                    selectedBranchId === branch.id 
-                      ? "border-primary bg-surface/50 shadow-[0_0_15px_rgba(229,9,20,0.15)]" 
-                      : "border-outline bg-surface hover:bg-surface-hover"
-                  )}
-                >
-                  {selectedBranchId === branch.id && (
-                    <CheckCircle2 size={16} className="absolute top-2 right-2 text-primary" />
-                  )}
-                  <Store size={24} className={cn("mb-2", selectedBranchId === branch.id ? 'text-white' : 'text-gray-400')} />
-                  <span className="font-bold text-center text-sm leading-tight text-white">Fatboy<br/>{branch.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+            <Input 
+              label="Teléfono" 
+              placeholder="10 dígitos" 
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 focus-visible:ring-primary/40 focus-visible:border-primary/40 text-xs h-11"
+            />
+            
+            <Input 
+              label="Contraseña" 
+              placeholder="Mínimo 8 caracteres" 
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 focus-visible:ring-primary/40 focus-visible:border-primary/40 text-xs h-11"
+            />
+            
+            <Input 
+              label="Confirmar contraseña" 
+              placeholder="Repite tu contraseña" 
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 focus-visible:ring-primary/40 focus-visible:border-primary/40 text-xs h-11"
+            />
 
-          <div className="mt-6">
-            <Button type="submit" size="lg" className="w-full flex items-center justify-center gap-2" isLoading={loading}>
-              REGISTRARME <span className="text-xl">→</span>
+            {/* Favorite Branch Selection */}
+            <div className="mt-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
+                SUCURSAL FAVORITA
+              </label>
+              <p className="text-[10.5px] text-gray-500 mb-3 leading-snug font-medium">Selecciona la sucursal de donde normalmente pedirás.</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                {branches.map((branch) => (
+                  <button
+                    key={branch.id}
+                    type="button"
+                    onClick={() => setSelectedBranchId(branch.id)}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all h-24 backdrop-blur-md active:scale-95",
+                      selectedBranchId === branch.id 
+                        ? "border-primary bg-primary/5 shadow-[0_0_15px_rgba(232,0,10,0.1)]" 
+                        : "border-white/5 bg-black/20 hover:bg-surface-hover hover:border-white/10"
+                    )}
+                  >
+                    {selectedBranchId === branch.id && (
+                      <CheckCircle2 size={14} className="absolute top-2 right-2 text-primary" />
+                    )}
+                    <Store size={20} className={cn("mb-1.5", selectedBranchId === branch.id ? 'text-primary' : 'text-gray-500')} />
+                    <span className="font-extrabold text-center text-xs leading-tight text-white uppercase tracking-wide">Fatboy<br/>{branch.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              size="lg" 
+              className="w-full mt-4 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-hover hover:to-primary text-white rounded-xl shadow-[0_4px_15px_rgba(232,0,10,0.3)] active:scale-[0.98] transition-all duration-200 py-3 uppercase font-extrabold tracking-wider text-xs flex items-center justify-center gap-2" 
+              isLoading={loading}
+            >
+              REGISTRARME <span className="text-sm">→</span>
             </Button>
-            <p className="text-center text-sm text-gray-400 mt-6 pb-2">
-              ¿Ya tienes cuenta? <button type="button" onClick={() => onNavigate('auth')} className="text-white font-semibold hover:underline">Inicia sesión</button>
-            </p>
-          </div>
-        </form>
+          </form>
+        </div>
+
+        <p className="text-center text-xs text-gray-400 mt-6 animate-fade-in-up s3 font-semibold">
+          ¿Ya tienes cuenta?{' '}
+          <button 
+            type="button" 
+            onClick={() => onNavigate('auth')} 
+            className="text-primary font-extrabold hover:underline ml-1"
+          >
+            Inicia sesión
+          </button>
+        </p>
       </div>
     </div>
   );

@@ -167,32 +167,35 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col h-full min-h-0 gap-1">
-          <section className="relative shrink-0 overflow-hidden rounded-lg border border-white/12 bg-[radial-gradient(circle_at_50%_12%,rgba(232,0,10,0.22),transparent_30%),linear-gradient(135deg,rgba(232,0,10,0.1),rgba(255,255,255,0.025))] px-2.5 py-1.5 text-center shadow-[0_6px_16px_rgba(0,0,0,0.3)] flex flex-col justify-center">
-            <div className="pointer-events-none absolute left-7 top-8 h-3 w-3 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_10px_rgba(232,0,10,0.28)] rotate-[-18deg]" />
-            <div className="pointer-events-none absolute right-9 top-8 h-3 w-3 rounded-full border border-primary/35 bg-primary/25 shadow-[0_0_9px_rgba(232,0,10,0.28)] rotate-[18deg]" />
-            <div className="pointer-events-none absolute right-16 bottom-8 h-2.5 w-2.5 rounded-full border border-primary/30 bg-primary/20 shadow-[0_0_8px_rgba(232,0,10,0.22)]" />
+        <div className="flex flex-col h-full min-h-0 gap-2 px-1">
+          {/* Main CTA Section */}
+          <section className="relative shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_12%,rgba(232,0,10,0.22),transparent_35%),linear-gradient(135deg,rgba(232,0,10,0.12),rgba(255,255,255,0.03))] px-4 py-5 text-center shadow-[0_8px_24px_rgba(0,0,0,0.45)] flex flex-col justify-center">
+            {/* Ambient decorative elements */}
+            <div className="pointer-events-none absolute left-7 top-8 h-3.5 w-3.5 rounded-full border border-primary/25 bg-primary/15 shadow-[0_0_10px_rgba(232,0,10,0.2)] rotate-[-18deg]" />
+            <div className="pointer-events-none absolute right-9 top-8 h-3.5 w-3.5 rounded-full border border-primary/25 bg-primary/15 shadow-[0_0_9px_rgba(232,0,10,0.2)] rotate-[18deg]" />
+            <div className="pointer-events-none absolute right-16 bottom-8 h-3 w-3 rounded-full border border-primary/20 bg-primary/10 shadow-[0_0_8px_rgba(232,0,10,0.15)]" />
 
-            <div className="relative mx-auto mb-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-primary/70 bg-primary/10 shadow-[0_0_14px_rgba(232,0,10,0.34)] shrink-0">
-              <div className="absolute inset-1 rounded-full border border-primary/40" />
-              <Star size={14} className="relative text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]" strokeWidth={2.2} />
+            <div className="relative mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-primary/50 bg-primary/10 shadow-[0_0_12px_rgba(232,0,10,0.25)] shrink-0">
+              <div className="absolute inset-1 rounded-full border border-primary/35" />
+              <Star size={16} className="relative text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" strokeWidth={2.2} />
             </div>
 
-            <h2 className="mx-auto max-w-[265px] text-[16px] font-black leading-[1.05] tracking-tight text-white drop-shadow-md">
+            <h2 className="mx-auto max-w-[265px] text-lg font-black leading-tight tracking-wide text-white drop-shadow-md uppercase">
               Gana puntos en cada compra
             </h2>
-            <p className="mx-auto mt-0.5 max-w-[280px] text-[10px] font-semibold leading-tight text-gray-300">
-              Regístrate para acumular puntos y obtener beneficios cada vez que ordenas en Fatboy.
+            <p className="mx-auto mt-1 max-w-[280px] text-xs font-medium leading-relaxed text-gray-300">
+              Únete al club Fatboy para acumular puntos, obtener recompensas y acceder a promociones exclusivas.
             </p>
             <Button
               onClick={() => onNavigate('auth')}
-              className="mt-1.5 h-7 w-full rounded-md bg-primary text-[10px] font-black uppercase tracking-wide text-white shadow-[0_0_12px_rgba(232,0,10,0.28)] animate-pulse-glow shrink-0"
+              className="mt-3.5 h-10 w-full rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:from-primary-hover hover:to-primary text-xs font-black uppercase tracking-wider text-white shadow-[0_4px_15px_rgba(232,0,10,0.3)] active:scale-[0.98] transition-all shrink-0 cursor-pointer"
             >
               INICIAR SESIÓN / REGISTRARSE
             </Button>
           </section>
 
-          <div className="grid gap-1 min-h-0">
+          {/* Benefits Grid */}
+          <div className="grid gap-1.5 min-h-0 overflow-y-auto no-scrollbar">
             {[
               { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
               { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
@@ -203,20 +206,21 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
                 key={item.title}
                 type="button"
                 onClick={() => onNavigate('auth')}
-                className="group flex w-full items-center gap-2 rounded-md border border-white/10 bg-surface/80 px-2 py-1 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-primary/35 hover:bg-surface-hover"
+                className="group flex w-full items-center gap-3 rounded-xl border border-white/5 bg-surface/60 px-3.5 py-2.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-md transition-all duration-200 hover:border-primary/20 hover:bg-surface-hover active:scale-[0.99]"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primary/10 shadow-[0_0_7px_rgba(232,0,10,0.14)]">
-                  <item.icon size={12} className={item.tone} strokeWidth={2.2} />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/5 shadow-md group-hover:border-primary/40 transition-colors">
+                  <item.icon size={15} className={item.tone} strokeWidth={2.2} />
                 </span>
                 <span className="min-w-0 flex-1 flex flex-col justify-center">
-                  <span className="block text-[11px] font-black leading-tight text-white uppercase">{item.title}</span>
-                  <span className="block text-[9.5px] font-semibold leading-tight text-gray-400 mt-0.5">{item.description}</span>
+                  <span className="block text-xs font-extrabold leading-tight text-white uppercase tracking-wide">{item.title}</span>
+                  <span className="block text-[10.5px] font-semibold leading-normal text-gray-400 mt-0.5">{item.description}</span>
                 </span>
-                <ChevronRight size={12} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
+                <ChevronRight size={14} className="shrink-0 text-gray-600 transition-colors group-hover:text-primary" />
               </button>
             ))}
           </div>
         </div>
+
       )}
     </div>
   );

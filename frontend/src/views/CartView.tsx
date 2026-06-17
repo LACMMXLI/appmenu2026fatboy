@@ -294,15 +294,26 @@ export function CartView({ onNavigate }: CartViewProps) {
               </div>
             </div>
           ) : (
-            <div className="bg-surface border border-primary/30 rounded-xl p-3 flex flex-col gap-2.5">
-              <p className="text-xs text-white font-semibold text-center">
-                Inicia sesión o crea tu cuenta para generar el pedido.
+            <div className="bg-surface/55 border border-white/5 backdrop-blur-md rounded-2xl p-4 flex flex-col gap-3 shadow-lg text-center">
+              <p className="text-xs text-gray-300 font-semibold leading-relaxed">
+                Inicia sesión o crea tu cuenta para generar tu pedido y acumular puntos.
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" size="sm" onClick={() => onNavigate('auth')}>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  onClick={() => onNavigate('auth')}
+                  className="rounded-xl text-xs font-bold py-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-hover hover:to-primary"
+                >
                   INICIAR SESIÓN
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => onNavigate('register')}>
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => onNavigate('register')}
+                  className="rounded-xl text-xs font-bold py-2 border-white/10 hover:bg-white/5"
+                >
                   CREAR CUENTA
                 </Button>
               </div>
