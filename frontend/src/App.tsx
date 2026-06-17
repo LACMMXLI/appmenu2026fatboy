@@ -180,7 +180,7 @@ export default function App() {
   }
 
   const isFullScreen = ['auth', 'register', 'product-detail', 'order-tracking', 'rewards', 'change-password', 'payment-methods', 'branches', 'google-review'].includes(currentView);
-  const privateViews = ['cart', 'rewards', 'change-password', 'payment-methods'];
+  const privateViews = ['rewards', 'change-password', 'payment-methods'];
 
   const navigate = (view: string, extra?: any) => {
     if (view === 'google-review' && !isGoogleReviewRoutePath(window.location.pathname)) {
