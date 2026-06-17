@@ -27,7 +27,25 @@ function isPwaExcludedPath(pathname: string) {
 function reloadForAppUpdate() {
   if (sessionStorage.getItem(APP_UPDATE_RELOAD_KEY) === __APP_BUILD_ID__) return;
   sessionStorage.setItem(APP_UPDATE_RELOAD_KEY, __APP_BUILD_ID__);
-  window.location.reload();
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    const messageChannel = new MessageChannel();
+    messageChannel.port1.onmessage = (event) => {
+      if (event.data?.type === 'CACHE_CLEARED') {
+        window.location.reload();
+      }
+    };
+    navigator.serviceWorker.controller.postMessage(
+      { type: 'CLEAR_CACHE' },
+      [messageChannel.port2]
+    );
+    // Timeout fallback after 1.5 seconds if the service worker fails to respond
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  } else {
+    window.location.reload();
+  }
 }
 
 async function fetchLatestBuildId() {

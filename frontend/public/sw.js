@@ -38,6 +38,19 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  if (event.data?.type === 'CLEAR_CACHE') {
+    event.waitUntil(
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => caches.delete(key))
+        );
+      }).then(() => {
+        if (event.ports && event.ports[0]) {
+          event.ports[0].postMessage({ type: 'CACHE_CLEARED' });
+        }
+      })
+    );
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -79,7 +92,13 @@ async function networkFirstNavigation(request) {
   const cache = await caches.open(APP_SHELL_CACHE);
 
   try {
-    const response = await fetch(request);
+    const response = await fetch(request.url, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
     if (response.ok) {
       cache.put('/index.html', response.clone());
     }
