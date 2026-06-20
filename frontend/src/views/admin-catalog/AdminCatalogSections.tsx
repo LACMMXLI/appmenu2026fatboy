@@ -26,7 +26,6 @@ import {
   Upload,
   ClipboardList,
   MessageSquareText,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -1901,11 +1900,49 @@ interface SurveysAdminProps {
 const surveyReturnLabels = { yes: 'Sí', no: 'No', maybe: 'Tal vez' } as const;
 
 export function SurveysAdmin({ result, filters, isLoading, onFiltersChange, onApplyFilters }: SurveysAdminProps) {
-  const [showDetails, setShowDetails] = useState(false);
   const metrics = result.metrics;
+
+  function selectBranch(branch: string) {
+    const nextFilters = branch ? { branch } : {};
+    onFiltersChange(nextFilters);
+    void onApplyFilters(nextFilters);
+  }
 
   return (
     <div className="space-y-4">
+      <section className="rounded-xl border border-outline bg-surface p-3 shadow-md sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Selección rápida</p>
+            <h3 className="mt-0.5 text-sm font-black uppercase tracking-wide">Sucursal</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-outline bg-background/70 p-1.5 sm:min-w-[410px]">
+            {[
+              ['', 'Todas'],
+              ['Venecia', 'Venecia'],
+              ['San Marcos', 'San Marcos'],
+            ].map(([value, label]) => {
+              const selected = (filters.branch ?? '') === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={isLoading}
+                  aria-pressed={selected}
+                  onClick={() => selectBranch(value)}
+                  className={cn(
+                    'h-10 rounded-lg px-2 text-[10px] font-black uppercase tracking-wide transition-colors disabled:opacity-60',
+                    selected ? 'bg-primary text-white shadow-[0_0_14px_rgba(232,0,10,0.25)]' : 'text-gray-400 hover:bg-surface hover:text-white',
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       <motion.section
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1977,54 +2014,24 @@ export function SurveysAdmin({ result, filters, isLoading, onFiltersChange, onAp
         )}
       </section>
 
-      <section className="rounded-xl border border-outline bg-surface shadow-md">
-        <button
-          type="button"
-          onClick={() => setShowDetails((value) => !value)}
-          className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-5"
-        >
-          <span className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline bg-background text-gray-400"><ClipboardList size={17} /></span>
-            <span>
-              <span className="block text-xs font-black uppercase tracking-wide">Detalle de respuestas</span>
-              <span className="mt-0.5 block text-[10px] font-semibold text-gray-500">Consulta respuestas individuales y aplica filtros cuando los necesites</span>
-            </span>
-          </span>
-          {showDetails ? <ChevronUp size={18} className="text-primary" /> : <ChevronDown size={18} className="text-gray-500" />}
-        </button>
+      <section className="rounded-xl border border-outline bg-surface p-4 shadow-md sm:p-5">
+        <div className="mb-4 flex items-center gap-3 border-b border-outline/60 pb-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline bg-background text-gray-400"><ClipboardList size={17} /></span>
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-wide">Todas las respuestas</h3>
+            <p className="mt-0.5 text-[10px] font-semibold text-gray-500">{result.responses.length} respuestas de {filters.branch || 'todas las sucursales'}</p>
+          </div>
+        </div>
 
-        <AnimatePresence initial={false}>
-          {showDetails && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="border-t border-outline p-4 sm:p-5">
-                <div className="mb-4 rounded-xl border border-outline bg-background/45 p-3">
-                  <div className="mb-3 flex items-center gap-2"><SlidersHorizontal size={15} className="text-primary" /><p className="text-[10px] font-black uppercase tracking-wider text-gray-400">Filtrar respuestas</p></div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto_auto]">
-                    <SurveyFilterSelect label="Sucursal" value={filters.branch ?? ''} onChange={(branch) => onFiltersChange({ ...filters, branch })} options={[['', 'Todas'], ['Venecia', 'Venecia'], ['San Marcos', 'San Marcos']]} />
-                    <SurveyFilterInput label="Desde" value={filters.dateFrom ?? ''} onChange={(dateFrom) => onFiltersChange({ ...filters, dateFrom })} />
-                    <SurveyFilterInput label="Hasta" value={filters.dateTo ?? ''} onChange={(dateTo) => onFiltersChange({ ...filters, dateTo })} />
-                    <SurveyFilterSelect label="Calificación" value={filters.ratingGeneral ?? ''} onChange={(ratingGeneral) => onFiltersChange({ ...filters, ratingGeneral })} options={[['', 'Todas'], ['5', '5 estrellas'], ['4', '4 estrellas'], ['3', '3 estrellas'], ['2', '2 estrellas'], ['1', '1 estrella']]} />
-                    <label className="flex h-10 items-center gap-2 rounded-lg border border-outline bg-surface px-3 text-[10px] font-bold text-gray-300 lg:mt-[17px]">
-                      <input type="checkbox" checked={filters.hasComment ?? false} onChange={(event) => onFiltersChange({ ...filters, hasComment: event.target.checked })} className="accent-primary" /> Comentario
-                    </label>
-                    <Button size="sm" className="h-10 lg:mt-[17px]" isLoading={isLoading} onClick={() => void onApplyFilters(filters)}>Aplicar</Button>
-                  </div>
-                  <button type="button" onClick={() => { onFiltersChange({}); void onApplyFilters({}); }} className="mt-2 text-[10px] font-bold text-gray-500 hover:text-white">Limpiar filtros</button>
-                </div>
-
-                {isLoading && result.responses.length === 0 ? (
-                  <div className="flex justify-center p-10"><RefreshCw className="animate-spin text-primary" size={22} /></div>
-                ) : result.responses.length === 0 ? (
-                  <AdminEmptyState icon={ClipboardList} title="Sin respuestas" description="No hay resultados para los filtros aplicados." />
-                ) : (
-                  <div className="space-y-2">
-                    {result.responses.map((response) => <SurveyResponseCard key={response.id} response={response} />)}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isLoading && result.responses.length === 0 ? (
+          <div className="flex justify-center p-10"><RefreshCw className="animate-spin text-primary" size={22} /></div>
+        ) : result.responses.length === 0 ? (
+          <AdminEmptyState icon={ClipboardList} title="Sin respuestas" description="No hay respuestas registradas para esta sucursal." />
+        ) : (
+          <div className="space-y-2">
+            {result.responses.map((response) => <SurveyResponseCard key={response.id} response={response} />)}
+          </div>
+        )}
       </section>
     </div>
   );
@@ -2057,14 +2064,6 @@ function SurveyResponseCard({ response }: { response: SurveyResponseItem }) {
       {response.comment && <p className="mt-3 rounded-lg border-l-2 border-gold bg-gold/5 px-3 py-2 text-xs leading-relaxed text-gray-300">{response.comment}</p>}
     </article>
   );
-}
-
-function SurveyFilterInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="text-[9px] font-bold uppercase tracking-wider text-gray-500">{label}<input type="date" value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-outline bg-surface px-2 text-[10px] text-white outline-none focus:border-primary" /></label>;
-}
-
-function SurveyFilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
-  return <label className="text-[9px] font-bold uppercase tracking-wider text-gray-500">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-outline bg-surface px-2 text-[10px] text-white outline-none focus:border-primary">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>;
 }
 
 function formatSurveyDate(value: string) {
