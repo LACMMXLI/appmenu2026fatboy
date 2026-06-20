@@ -440,26 +440,33 @@ export class CatalogService {
         contents: [
           `Producto: ${product.name}`,
           `Categoría: ${product.category.name}`,
-          `Descripción actual: ${currentDescription || '(sin descripción)'}`,
-          'Redacta una versión mejorada.',
+          `Descripción corta existente: ${product.shortDescription || '(sin descripción corta)'}`,
+          `Información e ingredientes obligatorios: ${currentDescription || '(no hay ingredientes registrados)'}`,
+          `Etiqueta comercial existente: ${product.promotionTag || '(sin etiqueta)'}`,
+          'Redacta una versión mejorada que aproveche toda la información disponible.',
         ].join('\n'),
         config: {
           abortSignal: AbortSignal.timeout(20_000),
-          temperature: 0.65,
-          maxOutputTokens: 180,
+          temperature: 0.75,
+          maxOutputTokens: 320,
           systemInstruction: [
-            'Eres redactor de menús para un restaurante mexicano llamado Fatboy.',
-            'Devuelve solamente una descripción comercial en español de México, sin título, comillas, listas ni Markdown.',
-            'Debe ser clara, apetecible y natural, con máximo 320 caracteres.',
-            'Conserva los datos de la descripción original y nunca inventes ingredientes, tamaños, promociones, precios ni afirmaciones.',
-            'Si no hay descripción previa, usa solo el nombre y la categoría sin asumir ingredientes.',
+            'Eres un redactor gastronómico profesional para el menú de un restaurante mexicano llamado Fatboy.',
+            'Devuelve únicamente la descripción final en español de México, sin título, comillas, listas, emojis ni Markdown.',
+            'Escribe dos oraciones completas, comerciales y apetitosas, entre 45 y 70 palabras.',
+            'La primera oración debe presentar el producto e integrar explícitamente todos los ingredientes, complementos, tamaños y opciones proporcionados.',
+            'La segunda debe comunicar la experiencia del producto de manera natural y convincente.',
+            'No omitas información concreta de la descripción actual y no sustituyas ingredientes por frases genéricas.',
+            'Evita descripciones vacías como "jugosa carne", "deliciosa hamburguesa", "sabor irresistible" o equivalentes sin información específica.',
+            'Nunca inventes ingredientes, métodos de preparación, tamaños, promociones, precios ni afirmaciones que no aparezcan en los datos.',
+            'Si no existen ingredientes registrados, describe solo lo verificable por el nombre y la categoría y señala de forma atractiva que puede personalizarse, sin inventar componentes.',
           ].join(' '),
         },
       });
 
       const description = response.text?.trim().replace(/^["“]|["”]$/g, '');
       if (!description) throw new Error('Respuesta vacía');
-      return { description: description.slice(0, 320) };
+      if (description.length > 800) throw new Error('Respuesta demasiado extensa');
+      return { description };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       throw new ServiceUnavailableException('La IA no pudo generar una descripción en este momento. Intenta nuevamente.');
