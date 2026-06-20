@@ -10,7 +10,8 @@ export type Tab =
   | 'visits'
   | 'banners'
   | 'settings'
-  | 'feedback';
+  | 'feedback'
+  | 'surveys';
 
 export type AdminTabCounts = Record<Tab, number>;
 

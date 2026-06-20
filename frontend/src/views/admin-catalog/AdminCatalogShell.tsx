@@ -17,6 +17,7 @@ import {
   Store,
   Tag,
   Users,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { id: 'customers', label: 'Clientes', description: 'Datos y puntos', icon: Users },
   { id: 'orders', label: 'Pedidos', description: 'Operación web', icon: FileText },
   { id: 'visits', label: 'Visitas', description: 'Vistas del menú', icon: MonitorSmartphone },
+  { id: 'surveys', label: 'Encuestas', description: 'Satisfacción del cliente', icon: ClipboardCheck },
   { id: 'settings', label: 'Configuración', description: 'Canales y reseñas', icon: Settings },
   { id: 'feedback', label: 'Reseñas', description: 'Opiniones internas', icon: Star },
 ];

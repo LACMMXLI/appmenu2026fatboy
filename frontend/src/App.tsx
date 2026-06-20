@@ -18,7 +18,6 @@ import { AdminCatalogView } from './views/AdminCatalogView';
 import { BranchOrdersView } from './views/BranchOrdersView';
 import { GoogleReviewView } from './views/GoogleReviewView';
 import { SurveyView } from './views/SurveyView';
-import { AdminSurveysView } from './views/AdminSurveysView';
 import { TopBar, BottomNav } from './components/layout/Navigation';
 import { GoogleReviewPrompt } from './components/layout/GoogleReviewPrompt';
 import { AppSplash } from './components/layout/AppSplash';
@@ -53,7 +52,6 @@ export default function App() {
   const isAdminCatalogPath = window.location.pathname === '/admin-catalog';
   const isBranchOrdersPath = window.location.pathname === '/branch-orders';
   const isSurveyPath = window.location.pathname === '/encuesta';
-  const isAdminSurveysPath = window.location.pathname === '/admin/encuestas';
   const [currentView, setCurrentView] = useState(() =>
     isGoogleReviewRoutePath(window.location.pathname) ? 'google-review' : 'home'
   );
@@ -71,7 +69,7 @@ export default function App() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
-    if (isAdminCatalogPath || isBranchOrdersPath || isSurveyPath || isAdminSurveysPath || sessionStorage.getItem(VISIT_TRACKED_SESSION_KEY)) {
+    if (isAdminCatalogPath || isBranchOrdersPath || isSurveyPath || sessionStorage.getItem(VISIT_TRACKED_SESSION_KEY)) {
       return;
     }
 
@@ -80,7 +78,7 @@ export default function App() {
       sessionStorage.removeItem(VISIT_TRACKED_SESSION_KEY);
       console.error('Error tracking menu visit:', err);
     });
-  }, [isAdminCatalogPath, isBranchOrdersPath, isSurveyPath, isAdminSurveysPath]);
+  }, [isAdminCatalogPath, isBranchOrdersPath, isSurveyPath]);
 
   useEffect(() => {
     if (!showSplash) return;
@@ -110,7 +108,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isAdminCatalogPath || isBranchOrdersPath || isSurveyPath || isAdminSurveysPath) return;
+    if (isAdminCatalogPath || isBranchOrdersPath || isSurveyPath) return;
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone) {
       return;
     }
@@ -138,7 +136,7 @@ export default function App() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [isAdminCatalogPath, isBranchOrdersPath, isSurveyPath, isAdminSurveysPath]);
+  }, [isAdminCatalogPath, isBranchOrdersPath, isSurveyPath]);
 
   useEffect(() => {
     if (announcementDismissed) {
@@ -187,9 +185,6 @@ export default function App() {
     return <SurveyView />;
   }
 
-  if (isAdminSurveysPath) {
-    return <AdminSurveysView />;
-  }
 
   const isFullScreen = ['auth', 'register', 'product-detail', 'order-tracking', 'rewards', 'change-password', 'payment-methods', 'branches', 'google-review'].includes(currentView);
   const privateViews = ['rewards', 'change-password', 'payment-methods'];

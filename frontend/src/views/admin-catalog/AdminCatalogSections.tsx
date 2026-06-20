@@ -24,6 +24,9 @@ import {
   CheckCircle2,
   PauseCircle,
   Upload,
+  ClipboardList,
+  MessageSquareText,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -44,6 +47,9 @@ import {
   type Promotion,
   type RedeemableProduct,
   type VisitStats,
+  type SurveyAdminResult,
+  type SurveyFilters,
+  type SurveyResponseItem,
 } from '@/lib/api';
 import type { NewBanner, NewProduct, NewPromotion, NewRedeemableProduct } from './adminCatalogTypes';
 
@@ -1881,6 +1887,188 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
       </form>
     </motion.div>
   );
+}
+
+// --- SUB-COMPONENTE ENCUESTAS ---
+interface SurveysAdminProps {
+  result: SurveyAdminResult;
+  filters: SurveyFilters;
+  isLoading: boolean;
+  onFiltersChange: (filters: SurveyFilters) => void;
+  onApplyFilters: (filters?: SurveyFilters) => Promise<void>;
+}
+
+const surveyReturnLabels = { yes: 'Sí', no: 'No', maybe: 'Tal vez' } as const;
+
+export function SurveysAdmin({ result, filters, isLoading, onFiltersChange, onApplyFilters }: SurveysAdminProps) {
+  const [showDetails, setShowDetails] = useState(false);
+  const metrics = result.metrics;
+
+  return (
+    <div className="space-y-4">
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="overflow-hidden rounded-xl border border-outline bg-surface shadow-lg"
+      >
+        <div className="grid gap-0 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
+          <div className="relative flex min-h-[210px] flex-col justify-between overflow-hidden border-b border-outline bg-[radial-gradient(circle_at_85%_10%,rgba(250,189,0,0.15),transparent_36%),linear-gradient(135deg,rgba(232,0,10,0.16),transparent_55%)] p-5 lg:border-b-0 lg:border-r">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Panorama general</p>
+              <p className="mt-1 text-xs font-semibold text-gray-400">Resultado de las respuestas seleccionadas</p>
+            </div>
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="font-display text-7xl leading-none tracking-wide text-white">{metrics.averageGeneral.toFixed(1)}</p>
+                <div className="mt-1 flex gap-1" aria-label={`${metrics.averageGeneral.toFixed(1)} de 5 estrellas`}>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <Star key={value} size={16} className={value <= Math.round(metrics.averageGeneral) ? 'text-gold' : 'text-gray-700'} fill="currentColor" />
+                  ))}
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-black text-white">{metrics.total}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Respuestas</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5">
+            <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-green/20 bg-green/8 px-4 py-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-green">Intención de regreso</p>
+                <p className="mt-0.5 text-xs text-gray-400">Clientes que respondieron “Sí”</p>
+              </div>
+              <p className="text-3xl font-black text-white">{metrics.wouldReturnPercent.toFixed(0)}%</p>
+            </div>
+            <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+              <SurveyScoreBar label="Comida" value={metrics.averageFood} />
+              <SurveyScoreBar label="Atención" value={metrics.averageService} />
+              <SurveyScoreBar label="Tiempo de espera" value={metrics.averageWaitTime} />
+              <SurveyScoreBar label="Limpieza" value={metrics.averageCleanliness} />
+            </div>
+          </div>
+        </div>
+      </motion.section>
+
+      <section className="rounded-xl border border-outline bg-surface p-4 shadow-md sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Voz del cliente</p>
+            <h3 className="mt-0.5 text-sm font-black uppercase tracking-wide">Comentarios recientes</h3>
+          </div>
+          <MessageSquareText size={20} className="text-gold" />
+        </div>
+        {result.recentComments.length === 0 ? (
+          <AdminEmptyState icon={MessageSquareText} title="Sin comentarios" description="Todavía no hay comentarios para mostrar en esta selección." />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {result.recentComments.slice(0, 6).map((response) => (
+              <article key={response.id} className="flex min-h-32 flex-col justify-between rounded-xl border border-outline bg-background/55 p-4">
+                <p className="text-xs font-medium leading-relaxed text-gray-200">“{response.comment}”</p>
+                <div className="mt-4 flex items-center justify-between border-t border-outline/60 pt-3 text-[10px] font-bold text-gray-500">
+                  <span>{response.branch}</span>
+                  <span className="flex items-center gap-1 text-gold"><Star size={11} fill="currentColor" /> {response.ratingGeneral}/5</span>
+                  <span>{formatSurveyDate(response.createdAt)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-outline bg-surface shadow-md">
+        <button
+          type="button"
+          onClick={() => setShowDetails((value) => !value)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-5"
+        >
+          <span className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline bg-background text-gray-400"><ClipboardList size={17} /></span>
+            <span>
+              <span className="block text-xs font-black uppercase tracking-wide">Detalle de respuestas</span>
+              <span className="mt-0.5 block text-[10px] font-semibold text-gray-500">Consulta respuestas individuales y aplica filtros cuando los necesites</span>
+            </span>
+          </span>
+          {showDetails ? <ChevronUp size={18} className="text-primary" /> : <ChevronDown size={18} className="text-gray-500" />}
+        </button>
+
+        <AnimatePresence initial={false}>
+          {showDetails && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+              <div className="border-t border-outline p-4 sm:p-5">
+                <div className="mb-4 rounded-xl border border-outline bg-background/45 p-3">
+                  <div className="mb-3 flex items-center gap-2"><SlidersHorizontal size={15} className="text-primary" /><p className="text-[10px] font-black uppercase tracking-wider text-gray-400">Filtrar respuestas</p></div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto_auto]">
+                    <SurveyFilterSelect label="Sucursal" value={filters.branch ?? ''} onChange={(branch) => onFiltersChange({ ...filters, branch })} options={[['', 'Todas'], ['Venecia', 'Venecia'], ['San Marcos', 'San Marcos']]} />
+                    <SurveyFilterInput label="Desde" value={filters.dateFrom ?? ''} onChange={(dateFrom) => onFiltersChange({ ...filters, dateFrom })} />
+                    <SurveyFilterInput label="Hasta" value={filters.dateTo ?? ''} onChange={(dateTo) => onFiltersChange({ ...filters, dateTo })} />
+                    <SurveyFilterSelect label="Calificación" value={filters.ratingGeneral ?? ''} onChange={(ratingGeneral) => onFiltersChange({ ...filters, ratingGeneral })} options={[['', 'Todas'], ['5', '5 estrellas'], ['4', '4 estrellas'], ['3', '3 estrellas'], ['2', '2 estrellas'], ['1', '1 estrella']]} />
+                    <label className="flex h-10 items-center gap-2 rounded-lg border border-outline bg-surface px-3 text-[10px] font-bold text-gray-300 lg:mt-[17px]">
+                      <input type="checkbox" checked={filters.hasComment ?? false} onChange={(event) => onFiltersChange({ ...filters, hasComment: event.target.checked })} className="accent-primary" /> Comentario
+                    </label>
+                    <Button size="sm" className="h-10 lg:mt-[17px]" isLoading={isLoading} onClick={() => void onApplyFilters(filters)}>Aplicar</Button>
+                  </div>
+                  <button type="button" onClick={() => { onFiltersChange({}); void onApplyFilters({}); }} className="mt-2 text-[10px] font-bold text-gray-500 hover:text-white">Limpiar filtros</button>
+                </div>
+
+                {isLoading && result.responses.length === 0 ? (
+                  <div className="flex justify-center p-10"><RefreshCw className="animate-spin text-primary" size={22} /></div>
+                ) : result.responses.length === 0 ? (
+                  <AdminEmptyState icon={ClipboardList} title="Sin respuestas" description="No hay resultados para los filtros aplicados." />
+                ) : (
+                  <div className="space-y-2">
+                    {result.responses.map((response) => <SurveyResponseCard key={response.id} response={response} />)}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+    </div>
+  );
+}
+
+function SurveyScoreBar({ label, value }: { label: string; value: number }) {
+  const percent = Math.max(0, Math.min(100, (value / 5) * 100));
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-[10px] font-bold"><span className="text-gray-400">{label}</span><span className="text-white">{value.toFixed(1)} / 5</span></div>
+      <div className="h-2 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-gradient-to-r from-primary to-gold" style={{ width: `${percent}%` }} /></div>
+    </div>
+  );
+}
+
+function SurveyResponseCard({ response }: { response: SurveyResponseItem }) {
+  const scores = [
+    ['General', response.ratingGeneral], ['Comida', response.ratingFood], ['Atención', response.ratingService],
+    ['Espera', response.ratingWaitTime], ['Limpieza', response.ratingCleanliness],
+  ] as const;
+  return (
+    <article className="rounded-xl border border-outline bg-background/45 p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline/60 pb-2.5">
+        <div className="flex items-center gap-2"><span className="rounded-md bg-primary/12 px-2 py-1 text-[10px] font-black text-primary">{response.branch}</span><span className="text-[10px] font-semibold text-gray-500">{formatSurveyDate(response.createdAt)}</span></div>
+        <span className="text-[10px] font-bold text-gray-400">Volvería: <strong className="text-white">{surveyReturnLabels[response.wouldReturn]}</strong></span>
+      </div>
+      <div className="mt-3 grid grid-cols-5 gap-1.5">
+        {scores.map(([label, score]) => <div key={label} className="rounded-lg border border-outline/70 bg-surface px-1 py-2 text-center"><p className="text-base font-black text-white">{score}</p><p className="truncate text-[8px] font-bold uppercase text-gray-500">{label}</p></div>)}
+      </div>
+      {response.comment && <p className="mt-3 rounded-lg border-l-2 border-gold bg-gold/5 px-3 py-2 text-xs leading-relaxed text-gray-300">{response.comment}</p>}
+    </article>
+  );
+}
+
+function SurveyFilterInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <label className="text-[9px] font-bold uppercase tracking-wider text-gray-500">{label}<input type="date" value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-outline bg-surface px-2 text-[10px] text-white outline-none focus:border-primary" /></label>;
+}
+
+function SurveyFilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
+  return <label className="text-[9px] font-bold uppercase tracking-wider text-gray-500">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-outline bg-surface px-2 text-[10px] text-white outline-none focus:border-primary">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>;
+}
+
+function formatSurveyDate(value: string) {
+  return new Date(value).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 // --- SUB-COMPONENTE RESEÑAS ---

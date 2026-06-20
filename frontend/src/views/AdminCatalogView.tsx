@@ -43,6 +43,9 @@ import {
   updateAdminPromotionStatus,
   uploadAdminPromotionImage,
   type Promotion,
+  getAdminSurveyResponses,
+  type SurveyAdminResult,
+  type SurveyFilters,
 } from '@/lib/api';
 import { AdminCatalogShell } from './admin-catalog/AdminCatalogShell';
 import {
@@ -55,6 +58,7 @@ import {
   PromotionsAdmin,
   RedeemableProductsAdmin,
   SettingsAdmin,
+  SurveysAdmin,
   VisitsAdmin,
 } from './admin-catalog/AdminCatalogSections';
 import type { NewBanner, NewCategory, NewProduct, NewPromotion, NewRedeemableProduct, Tab } from './admin-catalog/adminCatalogTypes';
@@ -83,6 +87,20 @@ const emptyPromotion: NewPromotion = {
   imageUrl: '',
 };
 
+const emptySurveyResult: SurveyAdminResult = {
+  metrics: {
+    total: 0,
+    averageGeneral: 0,
+    averageFood: 0,
+    averageService: 0,
+    averageWaitTime: 0,
+    averageCleanliness: 0,
+    wouldReturnPercent: 0,
+  },
+  recentComments: [],
+  responses: [],
+};
+
 export function AdminCatalogView() {
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('fatboy-admin-key') ?? '');
   const [catalog, setCatalog] = useState<AdminCatalog>({ categories: [], products: [] });
@@ -94,6 +112,9 @@ export function AdminCatalogView() {
   const [redeemableProducts, setRedeemableProducts] = useState<RedeemableProduct[]>([]);
   const [visitStats, setVisitStats] = useState<VisitStats>({ count: 0, updatedAt: null });
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [surveyResult, setSurveyResult] = useState<SurveyAdminResult>(emptySurveyResult);
+  const [surveyFilters, setSurveyFilters] = useState<SurveyFilters>({});
+  const [isSurveyLoading, setIsSurveyLoading] = useState(false);
 
   
   const [activeTab, setActiveTab] = useState<Tab>('products');
@@ -205,6 +226,9 @@ export function AdminCatalogView() {
       const visits = await getAdminVisitStats(key);
       setVisitStats(visits);
 
+      const surveys = await getAdminSurveyResponses(key);
+      setSurveyResult(surveys);
+
 
       setIsAuthorized(true);
       sessionStorage.setItem('fatboy-admin-key', key);
@@ -213,6 +237,19 @@ export function AdminCatalogView() {
       setError(err instanceof Error ? err.message : 'No se pudo abrir el panel.');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function loadSurveys(filters = surveyFilters) {
+    try {
+      setIsSurveyLoading(true);
+      setError('');
+      const surveys = await getAdminSurveyResponses(adminKey, filters);
+      setSurveyResult(surveys);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar las encuestas.');
+    } finally {
+      setIsSurveyLoading(false);
     }
   }
 
@@ -451,7 +488,8 @@ export function AdminCatalogView() {
     visits: visitStats.count,
     settings: 3,
     feedback: feedbacks.length,
-  }), [catalog.products, catalog.categories, promotions.length, redeemableProducts.length, banners.length, customers.length, orders.length, visitStats.count, feedbacks.length]);
+    surveys: surveyResult.metrics.total,
+  }), [catalog.products, catalog.categories, promotions.length, redeemableProducts.length, banners.length, customers.length, orders.length, visitStats.count, feedbacks.length, surveyResult.metrics.total]);
 
   const headerControls = useMemo(() => {
     if (activeTab === 'products') {
@@ -734,6 +772,16 @@ export function AdminCatalogView() {
       )}
 
       {activeTab === 'visits' && <VisitsAdmin stats={visitStats} isLoading={isLoading} />}
+
+      {activeTab === 'surveys' && (
+        <SurveysAdmin
+          result={surveyResult}
+          filters={surveyFilters}
+          isLoading={isSurveyLoading}
+          onFiltersChange={setSurveyFilters}
+          onApplyFilters={loadSurveys}
+        />
+      )}
 
       {activeTab === 'settings' && (
         <SettingsAdmin
