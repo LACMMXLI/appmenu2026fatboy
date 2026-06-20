@@ -426,7 +426,9 @@ export class CatalogService {
     });
     if (!product) throw new NotFoundException('Producto no encontrado.');
 
-    const currentDescription = this.optionalText(input.description) ?? product.description ?? '';
+    const currentDescription = input.description !== undefined
+      ? this.optionalText(input.description) ?? ''
+      : product.description ?? '';
     if (currentDescription.length > 1500) {
       throw new BadRequestException('La descripción actual es demasiado extensa para mejorarla.');
     }
