@@ -8,6 +8,8 @@ const corsOrigin = parseCorsOrigin(process.env.CORS_ORIGIN);
 
 const app = await NestFactory.create(AppModule);
 
+app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
 app.setGlobalPrefix('api');
 app.use((req: any, res: any, next: () => void) => {
   if (req.path?.startsWith('/api')) {

@@ -202,6 +202,26 @@ model Feedback {
   @@map("feedbacks")
 }
 
+model SurveyResponse {
+  id                String   @id @default(uuid()) @db.Uuid
+  branch            String
+  ratingGeneral     Int      @map("rating_general")
+  ratingFood        Int      @map("rating_food")
+  ratingService     Int      @map("rating_service")
+  ratingWaitTime    Int      @map("rating_wait_time")
+  ratingCleanliness Int      @map("rating_cleanliness")
+  wouldReturn       String   @map("would_return")
+  comment           String?
+  ipHash            String   @map("ip_hash")
+  userAgent         String?  @map("user_agent")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([branch])
+  @@index([createdAt])
+  @@index([ratingGeneral])
+  @@map("survey_responses")
+}
+
 model VisitCounter {
   id        String   @id
   count     Int      @default(0)

@@ -543,3 +543,59 @@ export async function submitFeedback(rating: number, comment: string): Promise<{
 export async function getAdminFeedback(adminKey: string): Promise<FeedbackItem[]> {
   return adminJson<FeedbackItem[]>('/admin/feedback', adminKey);
 }
+
+export type SurveyWouldReturn = 'yes' | 'no' | 'maybe';
+
+export interface SurveyPayload {
+  branch: 'Venecia' | 'San Marcos';
+  ratingGeneral: number;
+  ratingFood: number;
+  ratingService: number;
+  ratingWaitTime: number;
+  ratingCleanliness: number;
+  wouldReturn: SurveyWouldReturn;
+  comment?: string;
+}
+
+export interface SurveyResponseItem extends SurveyPayload {
+  id: string;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface SurveyAdminResult {
+  metrics: {
+    total: number;
+    averageGeneral: number;
+    averageFood: number;
+    averageService: number;
+    averageWaitTime: number;
+    averageCleanliness: number;
+    wouldReturnPercent: number;
+  };
+  recentComments: SurveyResponseItem[];
+  responses: SurveyResponseItem[];
+}
+
+export interface SurveyFilters {
+  branch?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  ratingGeneral?: string;
+  hasComment?: boolean;
+}
+
+export async function submitSurvey(payload: SurveyPayload): Promise<{ ok: boolean; id: string; createdAt: string }> {
+  return postJson<{ ok: boolean; id: string; createdAt: string }>('/survey-responses', payload);
+}
+
+export async function getAdminSurveyResponses(adminKey: string, filters: SurveyFilters = {}): Promise<SurveyAdminResult> {
+  const query = new URLSearchParams();
+  if (filters.branch) query.set('branch', filters.branch);
+  if (filters.dateFrom) query.set('dateFrom', filters.dateFrom);
+  if (filters.dateTo) query.set('dateTo', filters.dateTo);
+  if (filters.ratingGeneral) query.set('ratingGeneral', filters.ratingGeneral);
+  if (filters.hasComment) query.set('hasComment', 'true');
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return adminJson<SurveyAdminResult>(`/admin/survey-responses${suffix}`, adminKey);
+}
