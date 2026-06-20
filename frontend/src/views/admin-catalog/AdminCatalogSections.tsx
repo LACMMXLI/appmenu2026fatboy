@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   PauseCircle,
   Upload,
+  Download,
   ClipboardList,
   MessageSquareText,
 } from 'lucide-react';
@@ -152,6 +153,8 @@ interface ProductsAdminProps {
   onDeleteProduct: (product: Product) => void;
   isCreateOpen: boolean;
   setIsCreateOpen: (value: boolean) => void;
+  onExportCatalog: () => Promise<void>;
+  onImportCatalog: (file: File) => Promise<void>;
 }
 
 export function ProductsAdmin({
@@ -172,8 +175,11 @@ export function ProductsAdmin({
   onDeleteProduct,
   isCreateOpen,
   setIsCreateOpen,
+  onExportCatalog,
+  onImportCatalog,
 }: ProductsAdminProps) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const importInputRef = React.useRef<HTMLInputElement>(null);
 
   const selectedCategoryName = selectedCategoryId
     ? categories.find((category) => category.id === selectedCategoryId)?.name
@@ -199,6 +205,37 @@ export function ProductsAdmin({
 
   return (
     <div className="space-y-4">
+
+      <section className="flex flex-col gap-3 rounded-xl border border-outline bg-surface p-4 shadow-md lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Edición por archivo</p>
+          <h3 className="mt-0.5 text-sm font-black uppercase tracking-wide text-white">Exportar e importar catálogo</h3>
+          <p className="mt-1 max-w-2xl text-[11px] font-medium leading-relaxed text-gray-400">
+            Descarga un Excel con una hoja por categoría, edítalo y vuelve a subirlo. Solo se actualizarán productos existentes; no se eliminan ni duplican registros.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={isLoading} onClick={() => void onExportCatalog()}>
+            <Download size={15} className="mr-1.5" /> Descargar Excel
+          </Button>
+          <Button type="button" size="sm" disabled={isLoading} onClick={() => importInputRef.current?.click()}>
+            <Upload size={15} className="mr-1.5" /> Importar Excel
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (!file) return;
+              if (!window.confirm(`¿Actualizar el catálogo usando "${file.name}"? Los productos incluidos serán modificados.`)) return;
+              await onImportCatalog(file);
+            }}
+          />
+        </div>
+      </section>
 
       {/* Product Grid */}
       <motion.div

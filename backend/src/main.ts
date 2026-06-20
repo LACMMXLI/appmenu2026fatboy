@@ -1,12 +1,16 @@
 import 'reflect-metadata';
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 
 const port = Number(process.env.PORT ?? 8372);
 const corsOrigin = parseCorsOrigin(process.env.CORS_ORIGIN);
 
-const app = await NestFactory.create(AppModule);
+const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+
+app.useBodyParser('json', { limit: '12mb' });
+app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
 
 app.getHttpAdapter().getInstance().set('trust proxy', 1);
 

@@ -106,6 +106,26 @@ export class CatalogController {
     return this.catalogService.listAdminCatalog();
   }
 
+  @Get('admin/catalog/export')
+  async exportCatalog(@Headers('x-admin-key') adminKey: string | undefined, @Res() res: any) {
+    this.assertAdmin(adminKey);
+    const file = await this.catalogService.exportCatalogWorkbook();
+    const date = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="catalogo-fatboy-${date}.xlsx"`);
+    res.setHeader('Content-Length', file.length);
+    return res.send(file);
+  }
+
+  @Post('admin/catalog/import')
+  importCatalog(
+    @Headers('x-admin-key') adminKey: string | undefined,
+    @Body() body: { fileName?: string; fileData?: string },
+  ) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.importCatalogWorkbook(body);
+  }
+
   @Post('admin/categories')
   createCategory(@Headers('x-admin-key') adminKey: string | undefined, @Body() body: CategoryBody) {
     this.assertAdmin(adminKey);

@@ -38,6 +38,7 @@ export interface Product {
   isPromotion: boolean;
   promotionTag?: string | null;
   promotionTagColor?: string | null;
+  order: number;
   category: Category;
 }
 
@@ -138,6 +139,30 @@ export interface ProductPayload {
 
 export async function getAdminCatalog(adminKey: string): Promise<AdminCatalog> {
   return adminJson<AdminCatalog>('/admin/catalog', adminKey);
+}
+
+export async function exportAdminCatalogWorkbook(adminKey: string): Promise<{ blob: Blob; fileName: string }> {
+  const response = await fetch(`${API_BASE_URL}/admin/catalog/export`, {
+    cache: NO_STORE,
+    headers: { 'x-admin-key': adminKey },
+  });
+  if (!response.ok) {
+    const message = await readApiMessage(response);
+    throw new Error(message || 'No se pudo exportar el catálogo.');
+  }
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const fileName = disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? 'catalogo-fatboy.xlsx';
+  return { blob: await response.blob(), fileName };
+}
+
+export async function importAdminCatalogWorkbook(adminKey: string, file: File): Promise<{ ok: boolean; updated: number }> {
+  if (!file.name.toLowerCase().endsWith('.xlsx')) throw new Error('Selecciona un archivo .xlsx.');
+  if (file.size > 8 * 1024 * 1024) throw new Error('El archivo supera el límite de 8 MB.');
+  const fileData = await fileToBase64(file);
+  return adminJson<{ ok: boolean; updated: number }>('/admin/catalog/import', adminKey, 'POST', {
+    fileName: file.name,
+    fileData,
+  });
 }
 
 export async function getAdminVisitStats(adminKey: string): Promise<VisitStats> {
@@ -292,6 +317,20 @@ async function readApiMessage(response: Response): Promise<string> {
   } catch {
     return '';
   }
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.onload = () => {
+      const value = typeof reader.result === 'string' ? reader.result : '';
+      const comma = value.indexOf(',');
+      if (comma < 0) reject(new Error('El archivo no es válido.'));
+      else resolve(value.slice(comma + 1));
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // Auth API

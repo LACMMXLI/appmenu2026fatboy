@@ -46,6 +46,8 @@ import {
   getAdminSurveyResponses,
   type SurveyAdminResult,
   type SurveyFilters,
+  exportAdminCatalogWorkbook,
+  importAdminCatalogWorkbook,
 } from '@/lib/api';
 import { AdminCatalogShell } from './admin-catalog/AdminCatalogShell';
 import {
@@ -310,6 +312,35 @@ export function AdminCatalogView() {
       setNewProduct({ ...emptyProduct, categoryId: catalog.categories[0]?.id || '' });
       await refreshAll();
     }, 'Producto creado.');
+  }
+
+  async function exportCatalogWorkbook() {
+    try {
+      setIsLoading(true);
+      setError('');
+      const { blob, fileName } = await exportAdminCatalogWorkbook(adminKey);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMessage('Catálogo exportado por categorías.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo exportar el catálogo.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function importCatalogWorkbook(file: File) {
+    await runAction(async () => {
+      const result = await importAdminCatalogWorkbook(adminKey, file);
+      await refreshAll();
+      setMessage(`${result.updated} productos actualizados desde Excel.`);
+    }, 'Catálogo actualizado desde Excel.');
   }
 
   // --- CANJEABLES ---
@@ -653,6 +684,8 @@ export function AdminCatalogView() {
           }
           isCreateOpen={isCreateProductOpen}
           setIsCreateOpen={setIsCreateProductOpen}
+          onExportCatalog={exportCatalogWorkbook}
+          onImportCatalog={importCatalogWorkbook}
         />
       )}
 

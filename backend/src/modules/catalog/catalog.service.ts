@@ -3,6 +3,7 @@ import { CatalogStatus, Prisma, PromotionStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
+import ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 interface ProductFilters {
@@ -52,6 +53,11 @@ interface PromotionInput {
 interface PromotionImageInput {
   fileName?: string;
   imageData?: string;
+}
+
+interface CatalogWorkbookInput {
+  fileName?: string;
+  fileData?: string;
 }
 
 const FIXED_BRANCH_DETAILS = {
@@ -147,6 +153,164 @@ export class CatalogService {
         price: Number(product.price),
       })),
     };
+  }
+
+  async exportCatalogWorkbook() {
+    const catalog = await this.listAdminCatalog();
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Fatboy Menu Admin';
+    workbook.created = new Date();
+
+    const instructions = workbook.addWorksheet('INSTRUCCIONES');
+    instructions.columns = [{ width: 24 }, { width: 90 }];
+    instructions.addRows([
+      ['ARCHIVO', 'Catálogo de productos Fatboy'],
+      ['USO', 'Modifica los valores en las hojas de categorías y vuelve a importar este mismo archivo desde el panel administrativo.'],
+      ['IMPORTANTE', 'No cambies ni elimines las columnas ocultas ID_NO_MODIFICAR y CATEGORIA_ID_NO_MODIFICAR.'],
+      ['SEGURIDAD', 'La importación solo actualiza productos existentes. No crea, duplica ni elimina productos.'],
+      ['CAMPOS', 'Puedes modificar nombre, precio, estado, descripciones, URL de imagen, orden y datos de promoción.'],
+      ['ESTADO', 'Usa active o inactive. Para Es_promocion usa SI o NO.'],
+    ]);
+    instructions.getColumn(1).font = { bold: true, color: { argb: 'FFE8000A' } };
+    instructions.getRow(1).font = { bold: true, size: 14 };
+    instructions.views = [{ state: 'frozen', ySplit: 1 }];
+
+    const usedNames = new Set<string>(['INSTRUCCIONES']);
+    for (const category of catalog.categories) {
+      const worksheet = workbook.addWorksheet(this.uniqueWorksheetName(category.name, usedNames));
+      worksheet.columns = [
+        { header: 'ID_NO_MODIFICAR', key: 'id', width: 38, hidden: true },
+        { header: 'CATEGORIA_ID_NO_MODIFICAR', key: 'categoryId', width: 38, hidden: true },
+        { header: 'Categoría', key: 'category', width: 24 },
+        { header: 'Nombre', key: 'name', width: 32 },
+        { header: 'Precio', key: 'price', width: 13 },
+        { header: 'Estado', key: 'status', width: 13 },
+        { header: 'Descripción', key: 'description', width: 52 },
+        { header: 'Descripción corta', key: 'shortDescription', width: 38 },
+        { header: 'URL imagen', key: 'imageUrl', width: 48 },
+        { header: 'Orden', key: 'order', width: 10 },
+        { header: 'Es promoción', key: 'isPromotion', width: 15 },
+        { header: 'Etiqueta promoción', key: 'promotionTag', width: 22 },
+        { header: 'Color etiqueta', key: 'promotionTagColor', width: 18 },
+      ];
+
+      for (const product of catalog.products.filter((item) => item.categoryId === category.id)) {
+        worksheet.addRow({
+          id: product.id,
+          categoryId: product.categoryId,
+          category: category.name,
+          name: product.name,
+          price: Number(product.price),
+          status: product.status,
+          description: product.description ?? '',
+          shortDescription: product.shortDescription ?? '',
+          imageUrl: product.imageUrl ?? '',
+          order: product.order,
+          isPromotion: product.isPromotion ? 'SI' : 'NO',
+          promotionTag: product.promotionTag ?? '',
+          promotionTagColor: product.promotionTagColor ?? '',
+        });
+      }
+
+      worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+      worksheet.autoFilter = { from: 'C1', to: 'M1' };
+      worksheet.getRow(1).height = 28;
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8000A' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      worksheet.getColumn('price').numFmt = '$#,##0.00';
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) row.alignment = { vertical: 'top', wrapText: true };
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
+
+  async importCatalogWorkbook(input: CatalogWorkbookInput) {
+    const fileName = this.requiredText(input.fileName, 'nombre del archivo');
+    if (!fileName.toLowerCase().endsWith('.xlsx')) {
+      throw new BadRequestException('El archivo debe tener formato .xlsx.');
+    }
+    if (!input.fileData || typeof input.fileData !== 'string') {
+      throw new BadRequestException('No se recibió el archivo del catálogo.');
+    }
+
+    const buffer = Buffer.from(input.fileData, 'base64');
+    if (!buffer.length || buffer.length > 8 * 1024 * 1024) {
+      throw new BadRequestException('El archivo está vacío o supera el límite de 8 MB.');
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(buffer);
+    } catch {
+      throw new BadRequestException('No se pudo leer el archivo Excel. Descarga una copia nueva e inténtalo otra vez.');
+    }
+
+    const rows: Array<{ id: string; categoryId: string; data: Prisma.ProductUpdateInput; row: number; sheet: string }> = [];
+    const seenIds = new Set<string>();
+    for (const worksheet of workbook.worksheets) {
+      if (worksheet.name === 'INSTRUCCIONES' || worksheet.rowCount < 2) continue;
+      const headers = worksheet.getRow(1).values as unknown[];
+      const expectedHeaders = ['ID_NO_MODIFICAR', 'CATEGORIA_ID_NO_MODIFICAR', 'Categoría', 'Nombre', 'Precio', 'Estado', 'Descripción', 'Descripción corta', 'URL imagen', 'Orden', 'Es promoción', 'Etiqueta promoción', 'Color etiqueta'];
+      if (expectedHeaders.some((header, index) => this.excelText(headers[index + 1]) !== header)) {
+        throw new BadRequestException(`La hoja "${worksheet.name}" no conserva el formato original.`);
+      }
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const id = this.excelText(row.getCell(1).value).trim();
+        if (!id) return;
+        if (seenIds.has(id)) throw new BadRequestException(`El producto ${id} aparece más de una vez en el archivo.`);
+        seenIds.add(id);
+
+        const categoryId = this.excelText(row.getCell(2).value).trim();
+        const name = this.requiredText(this.excelText(row.getCell(4).value), `nombre en ${worksheet.name}, fila ${rowNumber}`);
+        const status = this.parseCatalogStatus(this.excelText(row.getCell(6).value));
+        const promotionValue = this.excelText(row.getCell(11).value).trim().toUpperCase();
+        if (!['SI', 'SÍ', 'NO', 'TRUE', 'FALSE', '1', '0'].includes(promotionValue)) {
+          throw new BadRequestException(`Es promoción debe ser SI o NO en ${worksheet.name}, fila ${rowNumber}.`);
+        }
+        rows.push({
+          id,
+          categoryId,
+          row: rowNumber,
+          sheet: worksheet.name,
+          data: {
+            name,
+            price: this.parsePrice(this.excelText(row.getCell(5).value)),
+            category: { connect: { id: categoryId } },
+            status,
+            description: this.optionalText(this.excelText(row.getCell(7).value)),
+            shortDescription: this.optionalText(this.excelText(row.getCell(8).value)),
+            imageUrl: this.optionalText(this.excelText(row.getCell(9).value)),
+            order: this.parseOrder(this.excelText(row.getCell(10).value)),
+            isPromotion: ['SI', 'SÍ', 'TRUE', '1'].includes(promotionValue),
+            promotionTag: this.optionalText(this.excelText(row.getCell(12).value)),
+            promotionTagColor: this.optionalText(this.excelText(row.getCell(13).value)),
+          },
+        });
+      });
+    }
+
+    if (!rows.length) throw new BadRequestException('El archivo no contiene productos para actualizar.');
+    const [products, categories] = await Promise.all([
+      this.prisma.product.findMany({ where: { id: { in: rows.map((row) => row.id) } }, select: { id: true } }),
+      this.prisma.category.findMany({ where: { id: { in: rows.map((row) => row.categoryId) } }, select: { id: true } }),
+    ]);
+    const productIds = new Set(products.map((product) => product.id));
+    const categoryIds = new Set(categories.map((category) => category.id));
+    const missingProduct = rows.find((row) => !productIds.has(row.id));
+    if (missingProduct) throw new BadRequestException(`Producto desconocido en ${missingProduct.sheet}, fila ${missingProduct.row}. Descarga una copia nueva.`);
+    const missingCategory = rows.find((row) => !categoryIds.has(row.categoryId));
+    if (missingCategory) throw new BadRequestException(`Categoría inválida en ${missingCategory.sheet}, fila ${missingCategory.row}.`);
+
+    await this.prisma.$transaction(rows.map((row) => this.prisma.product.update({ where: { id: row.id }, data: row.data })));
+    return { ok: true, updated: rows.length };
   }
 
   async createCategory(input: CategoryInput) {
@@ -764,7 +928,7 @@ export class CatalogService {
     return new Prisma.Decimal(amount);
   }
 
-  private parseOrder(value: number | undefined): number {
+  private parseOrder(value: number | string | undefined): number {
     const order = Number(value ?? 999);
 
     if (!Number.isInteger(order) || order < 0) {
@@ -797,6 +961,31 @@ export class CatalogService {
   private optionalText(value: string | null | undefined): string | null {
     const text = value?.trim();
     return text || null;
+  }
+
+  private uniqueWorksheetName(categoryName: string, usedNames: Set<string>) {
+    const base = categoryName.replace(/[\\/*?:\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Categoría';
+    let candidate = base;
+    let suffix = 2;
+    while (usedNames.has(candidate.toUpperCase())) {
+      const marker = ` (${suffix++})`;
+      candidate = `${base.slice(0, 31 - marker.length)}${marker}`;
+    }
+    usedNames.add(candidate.toUpperCase());
+    return candidate;
+  }
+
+  private excelText(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'object') {
+      const cell = value as { result?: unknown; text?: unknown; richText?: Array<{ text?: string }> };
+      if (cell.result !== undefined) return this.excelText(cell.result);
+      if (typeof cell.text === 'string') return cell.text;
+      if (Array.isArray(cell.richText)) return cell.richText.map((part) => part.text ?? '').join('');
+    }
+    return '';
   }
 
   private mapProduct(product: Prisma.ProductGetPayload<{ include: { category: true } }>) {
