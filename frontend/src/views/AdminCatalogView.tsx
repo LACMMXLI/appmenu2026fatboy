@@ -336,11 +336,18 @@ export function AdminCatalogView() {
   }
 
   async function importCatalogWorkbook(file: File) {
-    await runAction(async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      setMessage('');
       const result = await importAdminCatalogWorkbook(adminKey, file);
       await refreshAll();
       setMessage(`${result.updated} productos actualizados desde Excel.`);
-    }, 'Catálogo actualizado desde Excel.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo importar el catálogo.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   // --- CANJEABLES ---
