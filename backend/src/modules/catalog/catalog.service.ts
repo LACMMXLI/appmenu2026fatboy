@@ -1,5 +1,6 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { CatalogStatus, Prisma, PromotionStatus } from '@prisma/client';
+import { GoogleGenAI } from '@google/genai';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
@@ -30,6 +31,10 @@ interface ProductInput {
   isPromotion?: boolean;
   promotionTag?: string | null;
   promotionTagColor?: string | null;
+}
+
+interface ImproveProductDescriptionInput {
+  description?: string | null;
 }
 
 interface RedeemableProductInput {
@@ -407,6 +412,56 @@ export class CatalogService {
         include: { category: true },
       }),
     );
+  }
+
+  async improveProductDescription(id: string, input: ImproveProductDescriptionInput) {
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      throw new ServiceUnavailableException('Configura GEMINI_API_KEY en el backend para usar la mejora con IA.');
+    }
+
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { category: { select: { name: true } } },
+    });
+    if (!product) throw new NotFoundException('Producto no encontrado.');
+
+    const currentDescription = this.optionalText(input.description) ?? product.description ?? '';
+    if (currentDescription.length > 1500) {
+      throw new BadRequestException('La descripción actual es demasiado extensa para mejorarla.');
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
+        contents: [
+          `Producto: ${product.name}`,
+          `Categoría: ${product.category.name}`,
+          `Descripción actual: ${currentDescription || '(sin descripción)'}`,
+          'Redacta una versión mejorada.',
+        ].join('\n'),
+        config: {
+          abortSignal: AbortSignal.timeout(20_000),
+          temperature: 0.65,
+          maxOutputTokens: 180,
+          systemInstruction: [
+            'Eres redactor de menús para un restaurante mexicano llamado Fatboy.',
+            'Devuelve solamente una descripción comercial en español de México, sin título, comillas, listas ni Markdown.',
+            'Debe ser clara, apetecible y natural, con máximo 320 caracteres.',
+            'Conserva los datos de la descripción original y nunca inventes ingredientes, tamaños, promociones, precios ni afirmaciones.',
+            'Si no hay descripción previa, usa solo el nombre y la categoría sin asumir ingredientes.',
+          ].join(' '),
+        },
+      });
+
+      const description = response.text?.trim().replace(/^["“]|["”]$/g, '');
+      if (!description) throw new Error('Respuesta vacía');
+      return { description: description.slice(0, 320) };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new ServiceUnavailableException('La IA no pudo generar una descripción en este momento. Intenta nuevamente.');
+    }
   }
 
   async deleteProduct(id: string) {

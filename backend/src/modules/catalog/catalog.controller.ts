@@ -164,6 +164,16 @@ export class CatalogController {
     return this.catalogService.updateProduct(id, body);
   }
 
+  @Post('admin/products/:id/improve-description')
+  improveProductDescription(
+    @Headers('x-admin-key') adminKey: string | undefined,
+    @Param('id') id: string,
+    @Body() body: { description?: string | null },
+  ) {
+    this.assertAdmin(adminKey);
+    return this.catalogService.improveProductDescription(id, body);
+  }
+
   @Delete('admin/products/:id')
   deleteProduct(@Headers('x-admin-key') adminKey: string | undefined, @Param('id') id: string) {
     this.assertAdmin(adminKey);

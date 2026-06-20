@@ -189,6 +189,10 @@ export async function updateAdminProduct(adminKey: string, id: string, payload: 
   return adminJson<Product>(`/admin/products/${id}`, adminKey, 'PATCH', payload);
 }
 
+export async function improveAdminProductDescription(adminKey: string, id: string, description: string | null): Promise<{ description: string }> {
+  return adminJson<{ description: string }>(`/admin/products/${id}/improve-description`, adminKey, 'POST', { description });
+}
+
 export async function deleteAdminProduct(adminKey: string, id: string): Promise<{ ok: boolean }> {
   return adminJson<{ ok: boolean }>(`/admin/products/${id}`, adminKey, 'DELETE');
 }
