@@ -436,7 +436,7 @@ export class CatalogService {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash',
         contents: [
           `Producto: ${product.name}`,
           `Categoría: ${product.category.name}`,
