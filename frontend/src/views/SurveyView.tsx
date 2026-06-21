@@ -120,13 +120,13 @@ export function SurveyView() {
       <main className="min-h-[100dvh] overflow-y-auto bg-background px-3 py-4 text-white sm:px-5">
         <form onSubmit={handleSubmit} className="mx-auto w-full max-w-md space-y-3 pb-6">
           {/* ── Header ─────────────────────── */}
-          <header className="survey-card-in flex items-center gap-3 px-1">
+          <header className="survey-card-in flex flex-col items-center gap-2 px-1 text-center">
             <img
               src="/images/logo.png"
               alt="Fatboy"
               className="h-11 w-11 rounded-xl object-contain"
             />
-            <div className="min-w-0 flex-1">
+            <div>
               <p className="text-[9px] font-black uppercase tracking-[.22em] text-primary">
                 Tu opinión importa
               </p>
@@ -137,7 +137,7 @@ export function SurveyView() {
           </header>
 
           {/* ── Anonymous badge ────────────── */}
-          <div className="survey-card-in flex items-center gap-2 rounded-xl border border-green/20 bg-green/8 px-3 py-2 text-[10px] font-semibold text-gray-300">
+          <div className="survey-card-in flex items-center justify-center gap-2 rounded-xl border border-green/20 bg-green/8 px-3 py-2 text-[10px] font-semibold text-gray-300">
             <LockKeyhole size={14} className="shrink-0 text-green" />
             Anónima · Sin datos personales
           </div>
@@ -164,16 +164,16 @@ export function SurveyView() {
                 const currentRating = form[key] as number;
                 const justTapped = activeRating?.key === key;
                 return (
-                  <div key={key}>
-                    {/* Category row */}
-                    <div className="mb-1.5 flex items-center justify-between">
+                  <div key={key} className="text-center">
+                    {/* Category label */}
+                    <div className="mb-1.5 flex flex-col items-center">
                       <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-200">
                         <span className="text-sm">{emoji}</span>
                         {label}
                       </span>
                       {currentRating > 0 && (
                         <span
-                          className="text-[10px] font-bold text-gold"
+                          className="mt-0.5 text-[10px] font-bold text-gold"
                           style={{ animation: justTapped ? 'surveyLabelPop .25s ease' : 'none' }}
                         >
                           {ratingLabels[currentRating]}
@@ -181,7 +181,7 @@ export function SurveyView() {
                       )}
                     </div>
                     {/* Stars row */}
-                    <div className="flex gap-1" role="radiogroup" aria-label={label}>
+                    <div className="flex justify-center gap-1" role="radiogroup" aria-label={label}>
                       {[1, 2, 3, 4, 5].map((rating) => {
                         const filled = currentRating >= rating;
                         const isPopping = justTapped && activeRating?.value === currentRating && filled;
@@ -300,13 +300,13 @@ function SurveyCard({
     <section
       className={`rounded-2xl border border-outline bg-surface p-3.5 shadow-lg ${className ?? ''}`}
     >
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex flex-col items-center gap-0.5">
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-black text-primary">
           {step}
         </span>
         <h2 className="text-xs font-black text-white">{title}</h2>
         {subtitle && (
-          <span className="ml-auto text-[9px] font-semibold text-gray-500">{subtitle}</span>
+          <span className="text-[9px] font-semibold text-gray-500">{subtitle}</span>
         )}
       </div>
       {children}
