@@ -25,8 +25,9 @@ import {
   getCategories, getProducts, getSystemSettings,
   defaultProductImage,
   getPromotions,
+  getBranches,
   resolveMediaUrl,
-  type HomeBanner, type Category, type Product, type Promotion,
+  type HomeBanner, type Category, type Product, type Promotion, type Branch,
 } from '@/lib/api';
 
 
@@ -132,6 +133,12 @@ const FALLBACK_PRODUCTS = [
   { id: 'fp1', name: 'FATBOY CLÁSICA',  price: 139, description: 'Doble carne smash, queso americano, lechuga, tomate, cebolla, pepinillos y nuestra salsa Fatboy.', imageUrl: '/images/product_fatboy_clasica_1781279420825.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
   { id: 'fp2', name: 'FATBOY BACON',    price: 159, description: 'Doble carne smash, queso americano, bacon crujiente, cebolla caramelizada y salsa Fatboy.', imageUrl: '/images/product_fatboy_bacon_1781279428950.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
   { id: 'fp3', name: 'FATBOY MUSHROOM', price: 155, description: 'Doble carne smash, queso suizo, champiñones salteados, cebolla caramelizada y aioli de ajo.', imageUrl: '/images/product_fatboy_mushroom_1781279439261.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
+];
+
+const FALLBACK_CONTACT_BRANCHES: Branch[] = [
+  { id: '512f8942-93c7-4980-9966-0f11f29db3f6', name: 'Venecia', phone: '+526861105191', address: null, hours: null, mapsUrl: null },
+  { id: '82a1bccf-0f0d-4f64-a2f6-0b8d60583fea', name: 'San Marcos', phone: '+526862761824', address: null, hours: null, mapsUrl: null },
+  { id: '6d038f0e-0f15-4bd7-951f-2b1f0a70a9e8', name: 'Américas', phone: '+526861101287', address: null, hours: null, mapsUrl: null },
 ];
 
 /* ─────────────────────────────────────────────────
@@ -270,17 +277,19 @@ export function HomeView({ onNavigate }: HomeViewProps) {
   const [banners, setBanners]     = useState<HomeBanner[]>(FALLBACK_BANNERS);
   const [categories, setCategories] = useState<Category[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [settings, setSettings]     = useState<Record<string, string>>({});
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     let m = true;
-    Promise.allSettled([getCategories(), getSystemSettings(), getPromotions()])
-      .then(([cRes, sRes, pRes]) => {
+    Promise.allSettled([getCategories(), getSystemSettings(), getPromotions(), getBranches()])
+      .then(([cRes, sRes, pRes, bRes]) => {
         if (!m) return;
         if (cRes.status === 'fulfilled') setCategories(cRes.value);
         if (sRes.status === 'fulfilled') setSettings(sRes.value);
         if (pRes.status === 'fulfilled') setPromotions(pRes.value);
+        if (bRes.status === 'fulfilled') setBranches(bRes.value);
       })
       .finally(() => { if (m) setLoading(false); });
     return () => { m = false; };
@@ -314,6 +323,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     onNavigate('cart');
   };
 
+  const whatsappBranches = (branches.length ? branches : FALLBACK_CONTACT_BRANCHES).filter((branch) => branch.phone);
 
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingTop: 44, paddingBottom: 60 }}>
@@ -408,28 +418,20 @@ export function HomeView({ onNavigate }: HomeViewProps) {
 
         {/* Botones de Redes Sociales / WhatsApp */}
         <div className="grid grid-cols-2 gap-2.5">
-          <a
-            href="https://wa.me/526861105191"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-10 bg-[#25D366]/10 border border-[#25D366]/30 hover:border-[#25D366] rounded-lg flex items-center justify-center gap-2 text-white/90 hover:text-white font-sans text-[10px] font-bold uppercase transition-all"
-          >
-            <svg className="w-4 h-4 fill-current text-[#25D366]" viewBox="0 0 24 24">
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-3.535l.409.243c1.517.901 3.23 1.378 4.978 1.379 5.485 0 9.95-4.462 9.954-9.944.002-2.656-1.03-5.153-2.905-7.03C16.208 3.238 13.716 2.2 11.063 2.2c-5.491 0-9.957 4.463-9.96 9.946-.001 1.839.48 3.633 1.393 5.179l.265.447-.925 3.385 3.463-.908c1.5.819 3.197 1.25 4.92 1.251zM18.06 14.88c-.33-.165-1.956-.967-2.257-1.077-.302-.11-.522-.165-.742.165-.22.33-.852 1.077-1.044 1.298-.193.22-.385.242-.715.077-.33-.165-1.393-.513-2.653-1.637-.98-.874-1.64-1.954-1.832-2.284-.193-.33-.02-.508.145-.672.148-.148.33-.385.495-.578.165-.192.22-.33.33-.55.11-.22.055-.412-.028-.577-.082-.165-.742-1.79-.88-2.12-.276-.665-.558-.574-.766-.585-.198-.01-.424-.01-.65-.01s-.592.085-.902.424c-.31.339-1.187 1.161-1.187 2.83 0 1.669 1.213 3.28 1.378 3.5.165.22 2.387 3.646 5.783 5.111.808.349 1.439.557 1.93.713.812.258 1.552.221 2.138.134.652-.097 1.956-.8 2.23-1.57.275-.77.275-1.43.193-1.57-.083-.14-.303-.225-.633-.39z" />
-            </svg>
-            WA Venecia
-          </a>
-          <a
-            href="https://wa.me/526862761824"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-10 bg-[#25D366]/10 border border-[#25D366]/30 hover:border-[#25D366] rounded-lg flex items-center justify-center gap-2 text-white/90 hover:text-white font-sans text-[10px] font-bold uppercase transition-all"
-          >
-            <svg className="w-4 h-4 fill-current text-[#25D366]" viewBox="0 0 24 24">
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-3.535l.409.243c1.517.901 3.23 1.378 4.978 1.379 5.485 0 9.95-4.462 9.954-9.944.002-2.656-1.03-5.153-2.905-7.03C16.208 3.238 13.716 2.2 11.063 2.2c-5.491 0-9.957 4.463-9.96 9.946-.001 1.839.48 3.633 1.393 5.179l.265.447-.925 3.385 3.463-.908c1.5.819 3.197 1.25 4.92 1.251zM18.06 14.88c-.33-.165-1.956-.967-2.257-1.077-.302-.11-.522-.165-.742.165-.22.33-.852 1.077-1.044 1.298-.193.22-.385.242-.715.077-.33-.165-1.393-.513-2.653-1.637-.98-.874-1.64-1.954-1.832-2.284-.193-.33-.02-.508.145-.672.148-.148.33-.385.495-.578.165-.192.22-.33.33-.55.11-.22.055-.412-.028-.577-.082-.165-.742-1.79-.88-2.12-.276-.665-.558-.574-.766-.585-.198-.01-.424-.01-.65-.01s-.592.085-.902.424c-.31.339-1.187 1.161-1.187 2.83 0 1.669 1.213 3.28 1.378 3.5.165.22 2.387 3.646 5.783 5.111.808.349 1.439.557 1.93.713.812.258 1.552.221 2.138.134.652-.097 1.956-.8 2.23-1.57.275-.77.275-1.43.193-1.57-.083-.14-.303-.225-.633-.39z" />
-            </svg>
-            WA San Marcos
-          </a>
+          {whatsappBranches.map((branch) => (
+            <a
+              key={branch.id}
+              href={formatWhatsAppLink(branch.phone ?? '')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-10 bg-[#25D366]/10 border border-[#25D366]/30 hover:border-[#25D366] rounded-lg flex items-center justify-center gap-2 text-white/90 hover:text-white font-sans text-[10px] font-bold uppercase transition-all"
+            >
+              <svg className="w-4 h-4 fill-current text-[#25D366]" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-3.535l.409.243c1.517.901 3.23 1.378 4.978 1.379 5.485 0 9.95-4.462 9.954-9.944.002-2.656-1.03-5.153-2.905-7.03C16.208 3.238 13.716 2.2 11.063 2.2c-5.491 0-9.957 4.463-9.96 9.946-.001 1.839.48 3.633 1.393 5.179l.265.447-.925 3.385 3.463-.908c1.5.819 3.197 1.25 4.92 1.251zM18.06 14.88c-.33-.165-1.956-.967-2.257-1.077-.302-.11-.522-.165-.742.165-.22.33-.852 1.077-1.044 1.298-.193.22-.385.242-.715.077-.33-.165-1.393-.513-2.653-1.637-.98-.874-1.64-1.954-1.832-2.284-.193-.33-.02-.508.145-.672.148-.148.33-.385.495-.578.165-.192.22-.33.33-.55.11-.22.055-.412-.028-.577-.082-.165-.742-1.79-.88-2.12-.276-.665-.558-.574-.766-.585-.198-.01-.424-.01-.65-.01s-.592.085-.902.424c-.31.339-1.187 1.161-1.187 2.83 0 1.669 1.213 3.28 1.378 3.5.165.22 2.387 3.646 5.783 5.111.808.349 1.439.557 1.93.713.812.258 1.552.221 2.138.134.652-.097 1.956-.8 2.23-1.57.275-.77.275-1.43.193-1.57-.083-.14-.303-.225-.633-.39z" />
+              </svg>
+              WA {branch.name}
+            </a>
+          ))}
         </div>
       </div>
 

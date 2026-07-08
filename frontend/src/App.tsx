@@ -21,7 +21,6 @@ import { SurveyView } from './views/SurveyView';
 import { TopBar, BottomNav } from './components/layout/Navigation';
 import { GoogleReviewPrompt } from './components/layout/GoogleReviewPrompt';
 import { AppSplash } from './components/layout/AppSplash';
-import { AnnouncementModal } from './components/layout/AnnouncementModal';
 import { useUser } from './context/UserContext';
 import { getSystemSettings, trackMenuVisit, type Product } from './lib/api';
 import { GOOGLE_REVIEW_ROUTE, getGoogleReviewCooldown, isGoogleReviewRoutePath } from './lib/googleReviews';
@@ -59,8 +58,6 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('fatboy-app-splash-shown'));
-  const [showAnnouncement, setShowAnnouncement] = useState(false);
-  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
 
   // Google Review prompt state & config URL
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
@@ -89,12 +86,6 @@ export default function App() {
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [showSplash]);
-
-  useEffect(() => {
-    if (!showSplash) {
-      setShowAnnouncement(true);
-    }
   }, [showSplash]);
 
   useEffect(() => {
@@ -139,13 +130,10 @@ export default function App() {
   }, [isAdminCatalogPath, isBranchOrdersPath, isSurveyPath]);
 
   useEffect(() => {
-    if (announcementDismissed) {
-      const timer = setTimeout(() => {
-        setShowReviewPrompt(true);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [announcementDismissed]);
+    if (showSplash || isAdminCatalogPath || isBranchOrdersPath || isSurveyPath) return;
+    const timer = setTimeout(() => setShowReviewPrompt(true), 1500);
+    return () => clearTimeout(timer);
+  }, [showSplash, isAdminCatalogPath, isBranchOrdersPath, isSurveyPath]);
 
   const handleDismissPrompt = () => {
     setShowReviewPrompt(false);
@@ -302,17 +290,6 @@ export default function App() {
 
       <AnimatePresence>
         {showSplash && <AppSplash />}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showAnnouncement && (
-          <AnnouncementModal
-            onClose={() => {
-              setShowAnnouncement(false);
-              setAnnouncementDismissed(true);
-            }}
-          />
-        )}
       </AnimatePresence>
 
       <AnimatePresence>

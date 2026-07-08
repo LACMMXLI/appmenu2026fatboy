@@ -2,7 +2,7 @@ import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { createHmac } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
-const ALLOWED_BRANCHES = ['Venecia', 'San Marcos'] as const;
+const ALLOWED_BRANCHES = ['Venecia', 'San Marcos', 'Américas'] as const;
 const ALLOWED_RETURN_VALUES = ['yes', 'no', 'maybe'] as const;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 3;

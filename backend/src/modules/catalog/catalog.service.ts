@@ -78,6 +78,12 @@ const FIXED_BRANCH_DETAILS = {
     hours: '24 horas todos los días',
     mapsUrl: 'https://maps.app.goo.gl/ytg4tsmf3MrMnSm38',
   },
+  americas: {
+    phone: '+526861101287',
+    address: 'Calzada de las Américas 837, Colonia Compuertas, Mexicali, B.C.',
+    hours: 'Horario pendiente de configurar',
+    mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Calzada%20de%20las%20Am%C3%A9ricas%20837%2C%20Colonia%20Compuertas%2C%20Mexicali%2C%20B.C.',
+  },
 } as const;
 
 const MENU_VISIT_COUNTER_ID = 'menu';
@@ -1130,6 +1136,10 @@ export class CatalogService {
 
     if (normalized.includes('san marcos')) {
       return FIXED_BRANCH_DETAILS.sanMarcos;
+    }
+
+    if (normalized.includes('americas')) {
+      return FIXED_BRANCH_DETAILS.americas;
     }
 
     if (normalized.includes('venecia') || normalized.includes('venezia')) {

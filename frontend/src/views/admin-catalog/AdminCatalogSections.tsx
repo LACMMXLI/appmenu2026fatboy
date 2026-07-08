@@ -2127,7 +2127,7 @@ function SurveyScoreBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function SurveyResponseCard({ response }: { response: SurveyResponseItem }) {
+function SurveyResponseCard({ response }: { key?: React.Key; response: SurveyResponseItem }) {
   const scores = [
     ['General', response.ratingGeneral], ['Comida', response.ratingFood], ['Atención', response.ratingService],
     ['Espera', response.ratingWaitTime], ['Limpieza', response.ratingCleanliness],

@@ -52,7 +52,11 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
   const branchPins = useMemo(
     () => branches.map((branch, index) => ({
       ...branch,
-      coords: index % 2 === 0 ? { top: '40%', left: '42%' } : { top: '65%', left: '55%' },
+      coords: [
+        { top: '38%', left: '42%' },
+        { top: '61%', left: '55%' },
+        { top: '49%', left: '64%' },
+      ][index % 3],
     })),
     [branches],
   );

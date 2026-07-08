@@ -145,7 +145,7 @@ export function SurveyView() {
           {/* ── 1. Branch ─────────────────── */}
           <SurveyCard title="Sucursal" step={1} className="survey-card-in">
             <div className="grid grid-cols-2 gap-2">
-              {(['Venecia', 'San Marcos'] as const).map((branch) => (
+              {(['Venecia', 'San Marcos', 'Américas'] as const).map((branch) => (
                 <ChoiceButton
                   key={branch}
                   selected={form.branch === branch}

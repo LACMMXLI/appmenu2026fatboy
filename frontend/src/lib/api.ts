@@ -590,7 +590,7 @@ export async function getAdminFeedback(adminKey: string): Promise<FeedbackItem[]
 export type SurveyWouldReturn = 'yes' | 'no' | 'maybe';
 
 export interface SurveyPayload {
-  branch: 'Venecia' | 'San Marcos';
+  branch: 'Venecia' | 'San Marcos' | 'Américas';
   ratingGeneral: number;
   ratingFood: number;
   ratingService: number;

@@ -9,6 +9,12 @@ interface ProfileViewProps {
   onNavigate: (view: any) => void;
 }
 
+const FALLBACK_CONTACT_BRANCHES: Branch[] = [
+  { id: '512f8942-93c7-4980-9966-0f11f29db3f6', name: 'Venecia', phone: '+526861105191', address: null, hours: null, mapsUrl: null },
+  { id: '82a1bccf-0f0d-4f64-a2f6-0b8d60583fea', name: 'San Marcos', phone: '+526862761824', address: null, hours: null, mapsUrl: null },
+  { id: '6d038f0e-0f15-4bd7-951f-2b1f0a70a9e8', name: 'Américas', phone: '+526861101287', address: null, hours: null, mapsUrl: null },
+];
+
 export function ProfileView({ onNavigate }: ProfileViewProps) {
   const { points, customer, logout, isAuthenticated } = useUser();
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -32,6 +38,7 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
 
   const favoriteBranch = branches.find(b => b.id === customer?.favoriteBranchId);
   const branchName = favoriteBranch ? favoriteBranch.name : 'Ninguna seleccionada';
+  const contactBranches = (branches.length ? branches : FALLBACK_CONTACT_BRANCHES).filter((branch) => branch.phone);
 
   // Points progress
   const targetPoints = 500;
@@ -117,20 +124,15 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
           <div className="w-full shrink-0">
             <h3 className="text-[9px] font-bold text-gray-400 tracking-wider mb-0.5 uppercase">Contacto & Ayuda</h3>
             <div className="bg-surface border border-outline/50 rounded-lg overflow-hidden divide-y divide-outline/50">
-              <a href="https://wa.me/526861105191" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors">
-                <div className="flex items-center gap-2">
-                  <Phone size={12} className="text-[#25D366]" />
-                  <span className="text-[10px] font-semibold text-white">WhatsApp Fatboy Venecia</span>
-                </div>
-                <ChevronRight size={12} className="text-gray-500" />
-              </a>
-              <a href="https://wa.me/526862761824" target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors">
-                <div className="flex items-center gap-2">
-                  <Phone size={12} className="text-[#25D366]" />
-                  <span className="text-[10px] font-semibold text-white">WhatsApp Fatboy San Marcos</span>
-                </div>
-                <ChevronRight size={12} className="text-gray-500" />
-              </a>
+              {contactBranches.map((branch) => (
+                <a key={branch.id} href={formatWhatsAppLink(branch.phone ?? '')} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Phone size={12} className="text-[#25D366]" />
+                    <span className="text-[10px] font-semibold text-white">WhatsApp Fatboy {branch.name}</span>
+                  </div>
+                  <ChevronRight size={12} className="text-gray-500" />
+                </a>
+              ))}
               <button onClick={() => onNavigate('google-review')} className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors">
                 <div className="flex items-center gap-2">
                   <Star size={12} className="text-accent" />
@@ -224,4 +226,9 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
       )}
     </div>
   );
+}
+
+function formatWhatsAppLink(value: string): string {
+  const cleanNumber = value.replace(/\D/g, '');
+  return `https://wa.me/${cleanNumber}`;
 }
