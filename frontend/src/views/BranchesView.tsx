@@ -52,11 +52,7 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
   const branchPins = useMemo(
     () => branches.map((branch, index) => ({
       ...branch,
-      coords: [
-        { top: '38%', left: '42%' },
-        { top: '61%', left: '55%' },
-        { top: '49%', left: '64%' },
-      ][index % 3],
+      coords: branchPinCoords(branch.name, index),
     })),
     [branches],
   );
@@ -87,27 +83,31 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
 
           {/* Pins */}
           {branchPins.map(b => (
-            <div 
+            <button
+              type="button"
               key={b.id} 
               className={cn(
-                "absolute transition-all duration-700 ease-out cursor-pointer",
-                activeBranch === b.id ? "scale-[1.18] z-50" : "scale-95 z-40 grayscale-[0.8] opacity-55 hover:grayscale-0 hover:opacity-100"
+                "absolute h-16 w-24 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-300 ease-out outline-none",
+                activeBranch === b.id ? "z-50 opacity-100" : "z-40 opacity-70 hover:opacity-100"
               )}
               style={{ 
                 top: b.coords.top, 
                 left: b.coords.left, 
-                // Inverse rotation for the pin so it stands upright relative to the rotated map
-                transform: `translate(-50%, -50%) rotateZ(25deg) rotateX(-55deg)`,
-                transformOrigin: 'center center'
               }}
               onClick={() => setActiveBranch(b.id)}
             >
-              <div className="relative flex flex-col items-center">
+              <div
+                className="relative flex flex-col items-center"
+                style={{
+                  transform: 'rotateZ(25deg) rotateX(-55deg)',
+                  transformOrigin: 'center center',
+                }}
+              >
                 {activeBranch === b.id && (
-                  <div className="absolute inset-0 rounded-full bg-primary/40 animate-ping" style={{ transform: 'scale(1.5)' }}></div>
+                  <div className="absolute top-0 h-11 w-11 rounded-full bg-primary/40 animate-ping" style={{ transform: 'scale(1.5)' }}></div>
                 )}
                 
-                <div className="absolute -bottom-1.5 w-3 h-1 bg-black/80 blur-[2px] rounded-full"></div>
+                <div className="absolute top-10 w-3 h-1 bg-black/80 blur-[2px] rounded-full"></div>
                 
                 <div className={cn(
                   "w-11 h-11 rounded-full flex items-center justify-center relative shadow-[0_12px_24px_rgba(229,9,20,0.5)] transition-all overflow-hidden border-2",
@@ -129,7 +129,7 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
                   <span className="text-[9px] font-black text-white uppercase tracking-widest">{b.name}</span>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -231,4 +231,21 @@ export function BranchesView({ onNavigate }: BranchesViewProps) {
       </div>
     </div>
   );
+}
+
+function branchPinCoords(branchName: string, fallbackIndex: number) {
+  const normalized = branchName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (normalized.includes('america')) return { top: '37%', left: '42%' };
+  if (normalized.includes('san marcos')) return { top: '63%', left: '49%' };
+  if (normalized.includes('venecia') || normalized.includes('venezia')) return { top: '48%', left: '68%' };
+
+  return [
+    { top: '37%', left: '42%' },
+    { top: '63%', left: '49%' },
+    { top: '48%', left: '68%' },
+  ][fallbackIndex % 3];
 }
