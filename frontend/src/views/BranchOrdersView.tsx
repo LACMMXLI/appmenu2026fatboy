@@ -63,8 +63,9 @@ const roleConfig: Record<StaffRole, { label: string; short: string; description:
 
 const statusMeta: Record<Order['status'], { label: string; tone: string; dot: string }> = {
   pending: { label: 'Nuevo', tone: 'text-amber-300 bg-amber-400/10 border-amber-400/25', dot: 'bg-amber-300' },
-  preparing: { label: 'Aceptado', tone: 'text-sky-300 bg-sky-400/10 border-sky-400/25', dot: 'bg-sky-300' },
-  delivered: { label: 'Finalizado', tone: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/25', dot: 'bg-emerald-300' },
+  preparing: { label: 'En preparacion', tone: 'text-sky-300 bg-sky-400/10 border-sky-400/25', dot: 'bg-sky-300' },
+  ready: { label: 'Listo', tone: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/25', dot: 'bg-emerald-300' },
+  delivered: { label: 'Entregado', tone: 'text-green-300 bg-green-400/10 border-green-400/25', dot: 'bg-green-300' },
   cancelled: { label: 'Cancelado', tone: 'text-red-300 bg-red-400/10 border-red-400/25', dot: 'bg-red-300' },
 };
 
@@ -271,9 +272,10 @@ export function BranchOrdersView() {
   }
 
   const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
-  const activeOrders = useMemo(() => orders.filter((order) => order.status === 'pending' || order.status === 'preparing'), [orders]);
+  const activeOrders = useMemo(() => orders.filter((order) => order.status === 'pending' || order.status === 'preparing' || order.status === 'ready'), [orders]);
   const pendingOrders = useMemo(() => activeOrders.filter((order) => order.status === 'pending'), [activeOrders]);
   const preparingOrders = useMemo(() => activeOrders.filter((order) => order.status === 'preparing'), [activeOrders]);
+  const readyOrders = useMemo(() => activeOrders.filter((order) => order.status === 'ready'), [activeOrders]);
   const completedOrders = useMemo(() => orders.filter((order) => order.status === 'delivered' || order.status === 'cancelled'), [orders]);
   const todayTotal = useMemo(
     () => orders.filter((order) => order.status === 'delivered').reduce((sum, order) => sum + order.total, 0),
@@ -382,8 +384,8 @@ export function BranchOrdersView() {
       <section className="grid gap-3 border-b border-white/10 bg-[#151413] px-4 py-3 lg:grid-cols-[1fr_auto] lg:px-6">
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <MetricCard label="Nuevos" value={pendingOrders.length.toString()} tone="amber" Icon={Bell} />
-          <MetricCard label="Aceptados" value={preparingOrders.length.toString()} tone="sky" Icon={ChefHat} />
-          <MetricCard label="Finalizados" value={completedOrders.filter((order) => order.status === 'delivered').length.toString()} tone="emerald" Icon={CheckCircle2} />
+          <MetricCard label="Preparacion" value={preparingOrders.length.toString()} tone="sky" Icon={ChefHat} />
+          <MetricCard label="Listos" value={readyOrders.length.toString()} tone="emerald" Icon={CheckCircle2} />
           <MetricCard label="Venta finalizada" value={currency(todayTotal)} tone="red" Icon={CreditCard} />
         </div>
         <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400 lg:w-80">
@@ -405,7 +407,7 @@ export function BranchOrdersView() {
       </nav>
 
       {activeTab === 'active' && (
-        <section className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-[1.05fr_1fr]">
+        <section className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-3">
           <OrderColumn title="Recepcion / nuevos" count={pendingOrders.length} tone="amber">
             {pendingOrders.map((order) => (
               <OrderCard
@@ -415,6 +417,7 @@ export function BranchOrdersView() {
                 canCancel={canCancel}
                 canFinalize={canFinalize}
                 onAccept={() => handleUpdateStatus(order, 'preparing')}
+                onReady={() => handleUpdateStatus(order, 'ready')}
                 onFinalize={() => handleUpdateStatus(order, 'delivered')}
                 onCancel={() => handleUpdateStatus(order, 'cancelled')}
                 onPrint={() => handlePrint(order)}
@@ -431,6 +434,24 @@ export function BranchOrdersView() {
                 canCancel={canCancel}
                 canFinalize={canFinalize}
                 onAccept={() => handleUpdateStatus(order, 'preparing')}
+                onReady={() => handleUpdateStatus(order, 'ready')}
+                onFinalize={() => handleUpdateStatus(order, 'delivered')}
+                onCancel={() => handleUpdateStatus(order, 'cancelled')}
+                onPrint={() => handlePrint(order)}
+              />
+            ))}
+          </OrderColumn>
+
+          <OrderColumn title="Listos para entregar" count={readyOrders.length} tone="emerald">
+            {readyOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                role={role}
+                canCancel={canCancel}
+                canFinalize={canFinalize}
+                onAccept={() => handleUpdateStatus(order, 'preparing')}
+                onReady={() => handleUpdateStatus(order, 'ready')}
                 onFinalize={() => handleUpdateStatus(order, 'delivered')}
                 onCancel={() => handleUpdateStatus(order, 'cancelled')}
                 onPrint={() => handlePrint(order)}
@@ -451,6 +472,7 @@ export function BranchOrdersView() {
               canFinalize={canFinalize}
               compact
               onAccept={() => handleUpdateStatus(order, 'preparing')}
+              onReady={() => handleUpdateStatus(order, 'ready')}
               onFinalize={() => handleUpdateStatus(order, 'delivered')}
               onCancel={() => handleUpdateStatus(order, 'cancelled')}
               onPrint={() => handlePrint(order)}
@@ -527,12 +549,12 @@ function TabButton({ active, onClick, Icon, children }: { active: boolean; onCli
   );
 }
 
-function OrderColumn({ title, count, tone, children }: { title: string; count: number; tone: 'amber' | 'sky'; children: React.ReactNode }) {
+function OrderColumn({ title, count, tone, children }: { title: string; count: number; tone: 'amber' | 'sky' | 'emerald'; children: React.ReactNode }) {
   return (
     <div className="flex min-h-0 flex-col border-r border-white/10">
-      <div className={cn('flex items-center justify-between border-b px-4 py-3 lg:px-6', tone === 'amber' ? 'border-amber-400/10 bg-amber-400/5' : 'border-sky-400/10 bg-sky-400/5')}>
-        <h2 className={cn('font-display text-2xl leading-none tracking-wide', tone === 'amber' ? 'text-amber-300' : 'text-sky-300')}>{title}</h2>
-        <span className={cn('rounded-full px-2.5 py-1 text-xs font-black text-black', tone === 'amber' ? 'bg-amber-300' : 'bg-sky-300')}>{count}</span>
+      <div className={cn('flex items-center justify-between border-b px-4 py-3 lg:px-6', tone === 'amber' && 'border-amber-400/10 bg-amber-400/5', tone === 'sky' && 'border-sky-400/10 bg-sky-400/5', tone === 'emerald' && 'border-emerald-400/10 bg-emerald-400/5')}>
+        <h2 className={cn('font-display text-2xl leading-none tracking-wide', tone === 'amber' && 'text-amber-300', tone === 'sky' && 'text-sky-300', tone === 'emerald' && 'text-emerald-300')}>{title}</h2>
+        <span className={cn('rounded-full px-2.5 py-1 text-xs font-black text-black', tone === 'amber' && 'bg-amber-300', tone === 'sky' && 'bg-sky-300', tone === 'emerald' && 'bg-emerald-300')}>{count}</span>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-4 lg:p-6">
         {children}
@@ -549,6 +571,7 @@ function OrderCard({
   canFinalize,
   compact = false,
   onAccept,
+  onReady,
   onFinalize,
   onCancel,
   onPrint,
@@ -560,6 +583,7 @@ function OrderCard({
   canFinalize: boolean;
   compact?: boolean;
   onAccept: () => void;
+  onReady: () => void;
   onFinalize: () => void;
   onCancel: () => void;
   onPrint: () => void;
@@ -567,7 +591,7 @@ function OrderCard({
   const meta = statusMeta[order.status];
 
   return (
-    <article className={cn('rounded-lg border bg-[#1b1a19] p-4 shadow-lg', order.status === 'pending' ? 'border-amber-400/25' : order.status === 'preparing' ? 'border-sky-400/25' : 'border-white/10')}>
+    <article className={cn('rounded-lg border bg-[#1b1a19] p-4 shadow-lg', order.status === 'pending' ? 'border-amber-400/25' : order.status === 'preparing' ? 'border-sky-400/25' : order.status === 'ready' ? 'border-emerald-400/25' : 'border-white/10')}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -625,15 +649,20 @@ function OrderCard({
         </Button>
         {order.status === 'pending' && (
           <Button type="button" size="sm" onClick={onAccept} className="bg-sky-600 hover:bg-sky-700">
-            <ChefHat size={14} className="mr-1" /> Aceptar
+            <ChefHat size={14} className="mr-1" /> Preparar
           </Button>
         )}
         {order.status === 'preparing' && canFinalize && (
-          <Button type="button" size="sm" onClick={onFinalize} className="bg-emerald-600 hover:bg-emerald-700">
-            <Check size={14} className="mr-1" /> Finalizar
+          <Button type="button" size="sm" onClick={onReady} className="bg-emerald-600 hover:bg-emerald-700">
+            <Check size={14} className="mr-1" /> Listo
           </Button>
         )}
-        {(order.status === 'pending' || order.status === 'preparing') && canCancel && (
+        {order.status === 'ready' && canFinalize && (
+          <Button type="button" size="sm" onClick={onFinalize} className="bg-emerald-600 hover:bg-emerald-700">
+            <Check size={14} className="mr-1" /> Entregado
+          </Button>
+        )}
+        {(order.status === 'pending' || order.status === 'preparing' || order.status === 'ready') && canCancel && (
           <Button type="button" size="sm" variant="outline" onClick={onCancel} className="border-primary/25 text-primary hover:bg-primary/10">
             <X size={14} className="mr-1" /> Cancelar
           </Button>

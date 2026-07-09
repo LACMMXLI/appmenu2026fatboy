@@ -165,7 +165,7 @@ export class OrderService {
   }
 
   async updateOrderStatus(id: string, status: string) {
-    const validStatuses = ['pending', 'preparing', 'delivered', 'cancelled'];
+    const validStatuses = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
       throw new BadRequestException('Estado inválido.');
     }

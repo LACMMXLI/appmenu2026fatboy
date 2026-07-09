@@ -1451,6 +1451,7 @@ export function OrdersAdmin({
     switch (status) {
       case 'pending': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
       case 'preparing': return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+      case 'ready': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
       case 'delivered': return 'bg-green-500/10 text-green-400 border-green-500/30';
       case 'cancelled': return 'bg-red-500/10 text-red-400 border-red-500/30';
       default: return 'bg-gray-500/10 text-gray-400 border-gray-500/30';
@@ -1461,6 +1462,7 @@ export function OrdersAdmin({
     switch (status) {
       case 'pending': return 'Pendiente';
       case 'preparing': return 'Preparando';
+      case 'ready': return 'Listo';
       case 'delivered': return 'Entregado';
       case 'cancelled': return 'Cancelado';
       default: return status;
@@ -1471,6 +1473,7 @@ export function OrdersAdmin({
     switch (status) {
       case 'pending': return Clock;
       case 'preparing': return Flame;
+      case 'ready': return Truck;
       case 'delivered': return CheckCircle2;
       case 'cancelled': return X;
       default: return AlertCircle;
@@ -1481,6 +1484,7 @@ export function OrdersAdmin({
     switch (status) {
       case 'pending': return 'admin-order-pending';
       case 'preparing': return 'admin-order-preparing';
+      case 'ready': return 'admin-order-ready';
       case 'delivered': return 'admin-order-delivered';
       case 'cancelled': return 'admin-order-cancelled';
       default: return '';
@@ -1488,7 +1492,7 @@ export function OrdersAdmin({
   };
 
   // Progress timeline steps
-  const STEPS = ['pending', 'preparing', 'delivered'];
+  const STEPS = ['pending', 'preparing', 'ready', 'delivered'];
   const getStepIndex = (status: string) => {
     const idx = STEPS.indexOf(status);
     return idx === -1 ? -1 : idx;
@@ -1532,7 +1536,7 @@ export function OrdersAdmin({
                       <span className={cn('flex items-center gap-1 text-xs font-bold border px-2 py-0.5 rounded-full uppercase', getStatusBadgeClass(order.status))}>
                         <StatusIcon size={12} />
                         {getStatusLabel(order.status)}
-                        {(order.status === 'pending' || order.status === 'preparing') && (
+                        {(order.status === 'pending' || order.status === 'preparing' || order.status === 'ready') && (
                           <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
                         )}
                       </span>
@@ -1557,7 +1561,7 @@ export function OrdersAdmin({
                           </React.Fragment>
                         ))}
                         <span className="ml-2 text-[10px] font-bold text-gray-500 uppercase">
-                          {order.status === 'delivered' ? 'Completado' : `Paso ${currentStep + 1}/3`}
+                          {order.status === 'delivered' ? 'Completado' : `Paso ${currentStep + 1}/4`}
                         </span>
                       </div>
                     )}
@@ -1573,8 +1577,13 @@ export function OrdersAdmin({
                         <Button size="sm" onClick={() => onUpdateStatus(order.id, 'preparing')} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">Aceptar / Cocinar</Button>
                       )}
                       {order.status === 'preparing' && (
+                        <Button size="sm" onClick={() => onUpdateStatus(order.id, 'ready')} disabled={isLoading} className="bg-emerald-600 hover:bg-emerald-700">
+                          <CheckCircle2 size={14} className="mr-1.5" /> Listo
+                        </Button>
+                      )}
+                      {order.status === 'ready' && (
                         <Button size="sm" onClick={() => onUpdateStatus(order.id, 'delivered')} disabled={isLoading} className="bg-green-600 hover:bg-green-700">
-                          <Truck size={14} className="mr-1.5" /> Entregar
+                          <Truck size={14} className="mr-1.5" /> Entregado
                         </Button>
                       )}
                       {order.status !== 'delivered' && order.status !== 'cancelled' && (

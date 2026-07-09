@@ -410,7 +410,7 @@ export interface Order {
   customerPhone: string;
   branchId: string;
   branchName: string;
-  status: 'pending' | 'preparing' | 'delivered' | 'cancelled';
+  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   total: number;
   pointsEarned: number;
   pointsRedeemed: number;

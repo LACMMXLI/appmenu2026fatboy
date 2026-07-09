@@ -67,28 +67,37 @@ export function OrderTrackingView({ onNavigate }: OrderTrackingProps) {
   }
 
   // Map order status to steps
-  // Status: pending, preparing, delivered, cancelled
+  // Status: pending, preparing, ready, delivered, cancelled
   const orderStatus = order?.status || 'pending';
+  const stepOrder = ['pending', 'preparing', 'ready', 'delivered'];
+  const currentStepIndex = Math.max(0, stepOrder.indexOf(orderStatus));
+  const stepStatus = (index: number) => {
+    if (orderStatus === 'cancelled') return 'pending';
+    if (currentStepIndex > index) return 'done';
+    if (currentStepIndex === index) return 'current';
+    return 'pending';
+  };
 
   const steps = [
     {
       title: 'RECIBIDO',
       desc: 'Tu pedido ha sido recibido en el sistema',
-      status: orderStatus === 'cancelled'
-        ? 'pending'
-        : (orderStatus === 'pending' ? 'current' : 'done'),
+      status: stepStatus(0),
     },
     {
       title: 'EN PREPARACIÓN',
       desc: 'Nuestros cocineros están preparando tu hamburguesa',
-      status: orderStatus === 'cancelled'
-        ? 'pending'
-        : (orderStatus === 'preparing' ? 'current' : (orderStatus === 'delivered' ? 'done' : 'pending')),
+      status: stepStatus(1),
     },
     {
-      title: 'LISTO / ENTREGADO',
+      title: 'LISTO',
+      desc: 'Tu pedido está listo para entregar',
+      status: stepStatus(2),
+    },
+    {
+      title: 'ENTREGADO',
       desc: '¡Tu pedido fue entregado, que disfrutes!',
-      status: orderStatus === 'delivered' ? 'done' : 'pending',
+      status: stepStatus(3),
     },
   ];
 
@@ -126,7 +135,7 @@ export function OrderTrackingView({ onNavigate }: OrderTrackingProps) {
             <div 
               className={cn(
                 "absolute left-[47px] top-4 w-[2px] bg-primary z-0 shadow-[0_0_15px_rgba(229,9,20,0.5)] transition-all duration-700",
-                orderStatus === 'pending' ? 'bottom-[75%]' : (orderStatus === 'preparing' ? 'bottom-[35%]' : 'bottom-10')
+                orderStatus === 'pending' ? 'bottom-[82%]' : orderStatus === 'preparing' ? 'bottom-[57%]' : orderStatus === 'ready' ? 'bottom-[32%]' : 'bottom-10'
               )}
             ></div>
             

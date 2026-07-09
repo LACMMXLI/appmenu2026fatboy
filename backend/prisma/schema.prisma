@@ -127,7 +127,7 @@ model Order {
   customerPhone  String      @map("customer_phone")
   branchId       String      @map("branch_id") @db.Uuid
   branchName     String      @map("branch_name")
-  status         String      @default("pending") // pending, preparing, delivered, cancelled
+  status         String      @default("pending") // pending, preparing, ready, delivered, cancelled
   total          Decimal     @db.Decimal(10, 2)
   pointsEarned   Int         @default(0) @map("points_earned")
   pointsRedeemed Int         @default(0) @map("points_redeemed")

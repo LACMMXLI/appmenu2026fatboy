@@ -497,6 +497,7 @@ textarea {
 /* Order status left border */
 .admin-order-pending   { border-left: 4px solid #eab308; }
 .admin-order-preparing { border-left: 4px solid #3b82f6; }
+.admin-order-ready     { border-left: 4px solid #10b981; }
 .admin-order-delivered { border-left: 4px solid #22c55e; }
 .admin-order-cancelled { border-left: 4px solid #ef4444; }
 
