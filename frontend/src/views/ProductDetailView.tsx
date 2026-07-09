@@ -16,16 +16,8 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
   const [isLiked, setIsLiked] = useState(false);
   const [notes, setNotes] = useState('');
   
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [selectedRemovals, setSelectedRemovals] = useState<string[]>([]);
 
-  const extras = [
-    { name: 'Queso extra', price: 25 },
-    { name: 'Tocino extra', price: 25 },
-    { name: 'Aguacate', price: 30 },
-    { name: 'Aros de cebolla', price: 25 },
-  ];
-  
   const removalsList = ['Sin tomate', 'Sin cebolla', 'Sin lechuga', 'Sin salsa'];
   
   const productPrice = product?.price ?? 0;
@@ -37,25 +29,17 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
       return;
     }
 
-    const finalExtras = extras.filter(e => selectedExtras.includes(e.name));
-    
     addItem({
       id: product.id,
       title: product.name,
       price: productPrice,
       qty,
       img: productImage,
-      extras: finalExtras,
+      extras: [],
       removals: selectedRemovals,
       notes,
     });
     onNavigate('cart');
-  };
-
-  const toggleExtra = (name: string) => {
-    setSelectedExtras(prev => 
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    );
   };
 
   if (!product) {
@@ -119,7 +103,7 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
 
         {/* Removals */}
         <div className="mb-5 w-full animate-fade-in-up stagger-3">
-          <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-2.5">MODIFICACIONES</h3>
+          <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-2.5">QUITAR INGREDIENTES</h3>
           <div className="flex flex-wrap gap-1.5">
             {removalsList.map((rem) => (
               <button
@@ -134,31 +118,6 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
               >
                 {rem}
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Extras */}
-        <div className="mb-5 w-full animate-fade-in-up stagger-3">
-          <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-2.5">EXTRAS</h3>
-          <div className="flex flex-col border border-outline rounded-xl overflow-hidden bg-surface divide-y divide-outline shadow-lg transition-colors">
-            {extras.map((extra, i) => (
-              <label key={i} className="flex justify-between items-center p-3 cursor-pointer hover:bg-surface-hover hover:-translate-y-0.5 transition-all group">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded border border-gray-500 flex items-center justify-center relative overflow-hidden transition-colors group-hover:border-gray-300">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={selectedExtras.includes(extra.name)}
-                      onChange={() => toggleExtra(extra.name)}
-                    />
-                    <div className="absolute inset-0 bg-primary opacity-0 peer-checked:opacity-100 transition-opacity"></div>
-                    <div className="w-2.5 h-2.5 bg-white opacity-0 peer-checked:opacity-100 transition-opacity rounded-[2px] z-10"></div>
-                  </div>
-                  <span className="text-sm text-gray-200 group-hover:text-white">{extra.name}</span>
-                </div>
-                <span className="text-sm font-semibold text-gray-400 group-hover:text-accent transition-colors">+${extra.price}</span>
-              </label>
             ))}
           </div>
         </div>
