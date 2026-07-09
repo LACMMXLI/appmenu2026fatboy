@@ -76,9 +76,30 @@ export function CartView({ onNavigate }: CartViewProps) {
 
       setIsLoading(true);
       try {
-        // WhatsApp message formatting for Guest
-        let text = `*NUEVO PEDIDO (INVITADO) - Fatboy ${selectedBranch?.name || ''}*\n\n`;
-        text += `*Cliente:* ${guestName.trim()}\n*Teléfono:* ${guestPhone.trim()}\n\n*Detalles del pedido:*\n`;
+        const payload = {
+          branchId: selectedBranchId,
+          deliveryType: 'pickup' as const,
+          paymentMethod: 'cash' as const,
+          customerName: guestName.trim(),
+          customerPhone: guestPhone.trim(),
+          notes: notes || undefined,
+          items: items.map(item => ({
+            id: item.id,
+            title: item.title,
+            price: item.price,
+            qty: item.qty,
+            meatPrep: item.meatPrep || undefined,
+            extras: item.extras || undefined,
+            removals: item.removals || undefined,
+            notes: item.notes || undefined
+          }))
+        };
+
+        const order = await createOrder(payload);
+        const shortId = order.id.substring(0, 8).toUpperCase();
+
+        let text = `*NUEVO PEDIDO INVITADO #${shortId} - Fatboy ${order.branchName}*\n\n`;
+        text += `*Cliente:* ${order.customerName}\n*Teléfono:* ${order.customerPhone}\n\n*Detalles del pedido:*\n`;
         
         items.forEach(item => {
           let itemTotal = item.price;
@@ -93,14 +114,15 @@ export function CartView({ onNavigate }: CartViewProps) {
         if (notes) {
           text += `\n*Notas generales:* ${notes}\n`;
         }
-        text += `\n*TOTAL: $${total}*\n`;
-        text += `\n_Pedido enviado directamente por WhatsApp._`;
+        text += `\n*TOTAL: $${order.total}*\n`;
+        text += `\n_Pedido registrado en el sistema. Estado: Recibido._`;
         
         const destinationPhone = selectedBranch?.phone || '526860000000';
         window.open(`https://wa.me/${destinationPhone}?text=${encodeURIComponent(text)}`, '_blank');
         
+        sessionStorage.setItem('fatboy-last-order-id', order.id);
         clearCart();
-        onNavigate('home');
+        onNavigate('order-tracking');
       } catch (err) {
         setError('Ocurrió un error al procesar el pedido.');
       } finally {

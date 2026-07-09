@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createOrder(customerId: string, body: any) {
+  async createOrder(customerId: string | null, body: any) {
     const { branchId, deliveryType, paymentMethod, notes, items, pointsToRedeem } = body;
 
     const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
@@ -14,9 +14,15 @@ export class OrderService {
       throw new NotFoundException('Sucursal no encontrada.');
     }
 
-    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
-    if (!customer) {
+    const customer = customerId ? await this.prisma.customer.findUnique({ where: { id: customerId } }) : null;
+    if (customerId && !customer) {
       throw new NotFoundException('Cliente no encontrado.');
+    }
+
+    const guestName = typeof body.customerName === 'string' ? body.customerName.trim() : '';
+    const guestPhone = typeof body.customerPhone === 'string' ? body.customerPhone.trim() : '';
+    if (!customer && (!guestName || !guestPhone)) {
+      throw new BadRequestException('Nombre y teléfono son obligatorios para pedidos invitados.');
     }
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -64,7 +70,7 @@ export class OrderService {
     }
 
     let pointsRedeemed = 0;
-    if (pointsToRedeem && pointsToRedeem > 0) {
+    if (customer && pointsToRedeem && pointsToRedeem > 0) {
       if (customer.points < pointsToRedeem) {
         throw new BadRequestException('Puntos insuficientes.');
       }
@@ -74,16 +80,16 @@ export class OrderService {
       calculatedTotal = Math.max(0, calculatedTotal - discount);
     }
 
-    const pointsEarned = Math.floor(calculatedTotal / 10);
+    const pointsEarned = customer ? Math.floor(calculatedTotal / 10) : 0;
 
     // Save order
     const order = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
           id: randomUUID(),
-          customerId: customer.id,
-          customerName: customer.name,
-          customerPhone: customer.phone,
+          customerId: customer?.id ?? null,
+          customerName: customer?.name ?? guestName,
+          customerPhone: customer?.phone ?? guestPhone,
           branchId: branch.id,
           branchName: branch.name,
           status: 'pending',
@@ -102,15 +108,17 @@ export class OrderService {
         },
       });
 
-      await tx.customer.update({
-        where: { id: customer.id },
-        data: {
-          points: {
-            decrement: pointsRedeemed,
-            increment: pointsEarned,
+      if (customer) {
+        await tx.customer.update({
+          where: { id: customer.id },
+          data: {
+            points: {
+              decrement: pointsRedeemed,
+              increment: pointsEarned,
+            },
           },
-        },
-      });
+        });
+      }
 
       return newOrder;
     });

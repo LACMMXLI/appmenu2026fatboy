@@ -398,6 +398,8 @@ export interface OrderPayload {
   branchId: string;
   deliveryType: 'delivery' | 'pickup';
   paymentMethod: 'cash' | 'card';
+  customerName?: string;
+  customerPhone?: string;
   notes?: string;
   items: OrderItemPayload[];
   pointsToRedeem?: number;
@@ -430,16 +432,12 @@ export interface Order {
   }[];
 }
 
-export async function createOrder(payload: OrderPayload, token: string): Promise<Order> {
-  if (!token) {
-    throw new Error('Para realizar un pedido debes iniciar sesión o registrarte.');
-  }
-
+export async function createOrder(payload: OrderPayload, token?: string | null): Promise<Order> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
   };
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: 'POST',

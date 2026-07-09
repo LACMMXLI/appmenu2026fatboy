@@ -12,18 +12,17 @@ export class OrderController {
   @Post('orders')
   async createOrder(@Headers('Authorization') authHeader: string | undefined, @Body() body: any) {
     const token = this.extractToken(authHeader);
-    if (!token) {
-      throw new UnauthorizedException('Para realizar un pedido debes iniciar sesión o registrarte.');
+
+    if (token) {
+      try {
+        const customer = await this.authService.validateSession(token);
+        return this.orderService.createOrder(customer.id, body);
+      } catch {
+        throw new UnauthorizedException('Sesión expirada o inválida. Por favor, inicia sesión de nuevo.');
+      }
     }
 
-    let customer;
-    try {
-      customer = await this.authService.validateSession(token);
-    } catch {
-      throw new UnauthorizedException('Sesión expirada o inválida. Por favor, inicia sesión de nuevo.');
-    }
-
-    return this.orderService.createOrder(customer.id, body);
+    return this.orderService.createOrder(null, body);
   }
 
   @Get('orders/:id')
