@@ -54,7 +54,7 @@ import {
 } from '@/lib/api';
 import type { NewBanner, NewProduct, NewPromotion, NewRedeemableProduct } from './adminCatalogTypes';
 
-const [veneciaReviewBranch, sanMarcosReviewBranch] = GOOGLE_REVIEW_BRANCHES;
+const [veneciaReviewBranch, sanMarcosReviewBranch, americasReviewBranch] = GOOGLE_REVIEW_BRANCHES;
 
 /* ═══════════════════════════════════════════
    EMPTY STATE — Shared component
@@ -1885,6 +1885,7 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
   const [googleReviewsSanMarcosUrl, setGoogleReviewsSanMarcosUrl] = useState('');
+  const [googleReviewsAmericasUrl, setGoogleReviewsAmericasUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -1897,6 +1898,7 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         if (data.whatsapp_number) setWhatsappNumber(data.whatsapp_number);
         if (data.google_reviews_url) setGoogleReviewsUrl(data.google_reviews_url);
         if (data.google_reviews_san_marcos_url) setGoogleReviewsSanMarcosUrl(data.google_reviews_san_marcos_url);
+        if (data.google_reviews_americas_url) setGoogleReviewsAmericasUrl(data.google_reviews_americas_url);
       })
       .catch((err) => console.error('Error al cargar configuraciones:', err))
       .finally(() => {
@@ -1916,6 +1918,7 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         whatsapp_number: whatsappNumber,
         google_reviews_url: googleReviewsUrl,
         google_reviews_san_marcos_url: googleReviewsSanMarcosUrl,
+        google_reviews_americas_url: googleReviewsAmericasUrl,
       });
       onSaveSuccess();
     } catch (err: any) {
@@ -1963,6 +1966,12 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
           placeholder={buildGoogleReviewUrl(sanMarcosReviewBranch.fallbackPlaceId)}
           value={googleReviewsSanMarcosUrl}
           onChange={(e) => setGoogleReviewsSanMarcosUrl(e.target.value)}
+        />
+        <Input
+          label={`Enlace de Reseñas en Google Maps - ${americasReviewBranch.label}`}
+          placeholder={buildGoogleReviewUrl(americasReviewBranch.fallbackPlaceId)}
+          value={googleReviewsAmericasUrl}
+          onChange={(e) => setGoogleReviewsAmericasUrl(e.target.value)}
         />
         <p className="text-[11px] text-gray-400">
           Nota: Si ingresas un número telefónico, por favor incluye el código de país sin el símbolo "+" (ej: 521234567890).

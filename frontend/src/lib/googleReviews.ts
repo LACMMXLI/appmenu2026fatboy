@@ -11,6 +11,12 @@ export const GOOGLE_REVIEW_BRANCHES = [
     settingsKey: 'google_reviews_san_marcos_url',
     fallbackPlaceId: 'ChIJ6zxiklN714ARVQ2BPf3W3Xc',
   },
+  {
+    id: 'americas',
+    label: 'Calzada de las Américas',
+    settingsKey: 'google_reviews_americas_url',
+    fallbackPlaceId: 'ChIJD2a-eABx14ARQpdrmTxn--Y',
+  },
 ] as const;
 
 export type GoogleReviewBranch = (typeof GOOGLE_REVIEW_BRANCHES)[number];
