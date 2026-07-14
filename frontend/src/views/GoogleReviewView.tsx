@@ -8,6 +8,7 @@ import {
   getGoogleReviewCooldown,
   getGoogleReviewUrl,
   markGoogleReviewSubmitted,
+  withGoogleReviewRating,
   type GoogleReviewBranch,
 } from '@/lib/googleReviews';
 
@@ -75,7 +76,7 @@ export function GoogleReviewView({ onNavigate }: GoogleReviewViewProps) {
     submitFeedback(rating, `Redirigido a Google Reseñas - ${branch.label}`)
       .catch((err) => console.error('Error saving 4/5 star feedback:', err));
 
-    const targetLink = googleUrls[branch.id] || getGoogleReviewUrl(branch, {});
+    const targetLink = withGoogleReviewRating(googleUrls[branch.id] || getGoogleReviewUrl(branch, {}), rating);
     const openedWindow = window.open(targetLink, '_blank', 'noopener,noreferrer');
     if (!openedWindow) {
       window.location.href = targetLink;

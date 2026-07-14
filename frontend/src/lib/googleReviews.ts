@@ -30,6 +30,12 @@ export function buildGoogleReviewUrl(placeId: string) {
   return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
 }
 
+export function withGoogleReviewRating(url: string, rating: number) {
+  if (rating < 4 || rating > 5) return url;
+  if (url.includes('/maps/')) return url.replace(/,\d?$/, '') + `,${rating}`;
+  return url;
+}
+
 export function getGoogleReviewUrl(branch: GoogleReviewBranch, settings: Record<string, string>) {
   const configuredUrl = settings[branch.settingsKey]?.trim();
   return configuredUrl || buildGoogleReviewUrl(branch.fallbackPlaceId);
