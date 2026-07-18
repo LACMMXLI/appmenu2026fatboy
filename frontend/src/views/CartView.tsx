@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, MessageCircle, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Gift, MessageCircle, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,7 @@ export function CartView({ onNavigate }: CartViewProps) {
   
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
+  const [showGuestSignupPrompt, setShowGuestSignupPrompt] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -123,7 +124,7 @@ export function CartView({ onNavigate }: CartViewProps) {
         
         sessionStorage.setItem('fatboy-last-order-id', order.id);
         clearCart();
-        onNavigate('order-tracking');
+        setShowGuestSignupPrompt(true);
       } catch (err) {
         setError('Ocurrió un error al procesar el pedido.');
       } finally {
@@ -187,6 +188,42 @@ export function CartView({ onNavigate }: CartViewProps) {
       setIsLoading(false);
     }
   };
+
+  const handleGuestSignup = () => {
+    setShowGuestSignupPrompt(false);
+    onNavigate('register');
+  };
+
+  const handleViewOrder = () => {
+    setShowGuestSignupPrompt(false);
+    onNavigate('order-tracking');
+  };
+
+  if (showGuestSignupPrompt) {
+    return (
+      <div className="h-full w-full bg-background px-4 py-6 flex items-center justify-center">
+        <div className="w-full rounded-2xl border border-gold/30 bg-surface p-5 text-center shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-gold/30 bg-gold/10 text-gold">
+            <Gift size={30} />
+          </div>
+          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-primary">Pedido recibido</p>
+          <h2 className="font-display text-4xl leading-none tracking-wide text-white">NO PIERDAS TUS PUNTOS</h2>
+          <p className="mx-auto mt-3 max-w-[300px] text-xs font-semibold leading-relaxed text-gray-300">
+            Regístrate ahora y empieza a ganar puntos, descuentos especiales y beneficios Fatboy en tus próximos pedidos.
+          </p>
+
+          <div className="mt-5 grid gap-2">
+            <Button size="lg" onClick={handleGuestSignup} className="w-full gap-2 bg-gold text-black hover:bg-gold/90">
+              <Sparkles size={20} /> Registrarme ahora
+            </Button>
+            <Button variant="outline" onClick={handleViewOrder} className="w-full">
+              Ver mi pedido
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
