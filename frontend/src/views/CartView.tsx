@@ -144,10 +144,10 @@ export function CartView({ onNavigate }: CartViewProps) {
         items: items.map(item => ({
           id: item.id,
           title: item.title,
-            price: item.price,
-            qty: item.qty,
-            isPromotion: item.isPromotion,
-            meatPrep: item.meatPrep || undefined,
+          price: item.price,
+          qty: item.qty,
+          isPromotion: item.isPromotion,
+          meatPrep: item.meatPrep || undefined,
           extras: item.extras || undefined,
           removals: item.removals || undefined,
           notes: item.notes || undefined
