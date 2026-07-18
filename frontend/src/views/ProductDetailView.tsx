@@ -35,6 +35,7 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
       price: productPrice,
       qty,
       img: productImage,
+      isPromotion: product.isPromotion,
       extras: [],
       removals: selectedRemovals,
       notes,

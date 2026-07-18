@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { areMenuPromotionsOpen } from '../../lib/promotion-window.js';
 
 interface ProductFilters {
   categoryId?: string;
@@ -678,6 +679,10 @@ export class CatalogService {
   }
 
   async listActivePromotions() {
+    if (!areMenuPromotionsOpen()) {
+      return [];
+    }
+
     const now = new Date();
 
     const promotions = await this.prisma.promotion.findMany({

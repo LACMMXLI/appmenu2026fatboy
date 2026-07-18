@@ -97,6 +97,7 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
       price: product.price,
       qty: 1,
       img: product.imageUrl || defaultProductImage,
+      isPromotion: product.isPromotion,
       extras: [],
       removals: [],
       notes: '',

@@ -388,6 +388,7 @@ export interface OrderItemPayload {
   title: string;
   price: number;
   qty: number;
+  isPromotion?: boolean;
   meatPrep?: string;
   extras?: { name: string; price: number }[];
   removals?: string[];

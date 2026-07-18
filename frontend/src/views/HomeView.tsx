@@ -29,6 +29,7 @@ import {
   resolveMediaUrl,
   type HomeBanner, type Category, type Product, type Promotion, type Branch,
 } from '@/lib/api';
+import { areMenuPromotionsOpen } from '@/lib/promotionWindow';
 
 
 interface HomeViewProps {
@@ -274,6 +275,7 @@ function PromotionHeroSlider({ promotions, onPromoClick }: { promotions: Promoti
 ───────────────────────────────────────────────── */
 export function HomeView({ onNavigate }: HomeViewProps) {
   const { addItem } = useCart();
+  const promotionsOpen = areMenuPromotionsOpen();
   const [banners, setBanners]     = useState<HomeBanner[]>(FALLBACK_BANNERS);
   const [categories, setCategories] = useState<Category[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -296,12 +298,15 @@ export function HomeView({ onNavigate }: HomeViewProps) {
   }, []);
 
   const addPromoToCart = (promo: Promotion) => {
+    if (!promotionsOpen) return;
+
     addItem({
       id: promo.id,
       title: promo.title,
       price: promo.price,
       qty: 1,
       img: resolveMediaUrl(promo.imageUrl),
+      isPromotion: true,
       extras: [],
       removals: [],
       notes: '',
@@ -310,12 +315,15 @@ export function HomeView({ onNavigate }: HomeViewProps) {
   };
 
   const addStaticPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+    if (!promotionsOpen) return;
+
     addItem({
       id: promo.id,
       title: promo.label,
       price: promo.price,
       qty: 1,
       img: promo.img,
+      isPromotion: true,
       extras: [],
       removals: [],
       notes: '',
@@ -385,19 +393,23 @@ export function HomeView({ onNavigate }: HomeViewProps) {
           {STATIC_PROMOS.map(promo => (
             <div
               key={promo.id}
-              className="promo-card bg-black"
+              className={cn('promo-card bg-black', !promotionsOpen && 'cursor-not-allowed opacity-45 grayscale')}
               onClick={() => addStaticPromoToCart(promo)}
             >
               <img src={promo.img} alt={promo.label} className="w-full h-full object-contain rounded-[10px] bg-black" />
               <button
                 type="button"
+                disabled={!promotionsOpen}
                 onClick={(event) => {
                   event.stopPropagation();
                   addStaticPromoToCart(promo);
                 }}
-                className="absolute bottom-2 right-2 rounded-md bg-primary px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_0_12px_rgba(229,9,20,0.45)]"
+                className={cn(
+                  'absolute bottom-2 right-2 rounded-md px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_0_12px_rgba(229,9,20,0.45)]',
+                  promotionsOpen ? 'bg-primary' : 'bg-gray-700',
+                )}
               >
-                Agregar ${promo.price}
+                {promotionsOpen ? `Agregar $${promo.price}` : 'No disponible'}
               </button>
             </div>
           ))}

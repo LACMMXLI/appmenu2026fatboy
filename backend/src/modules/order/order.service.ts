@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { randomUUID } from 'node:crypto';
+import { areMenuPromotionsOpen } from '../../lib/promotion-window.js';
 
 @Injectable()
 export class OrderService {
@@ -39,11 +40,16 @@ export class OrderService {
 
     let calculatedTotal = 0;
     const orderItemsData: any[] = [];
+    const promotionsOpen = areMenuPromotionsOpen();
 
     for (const item of items) {
       const dbProduct = productMap.get(item.id);
       if (!dbProduct || dbProduct.status !== 'active') {
         throw new BadRequestException(`El producto ${item.title || 'desconocido'} no está activo.`);
+      }
+
+      if ((item.isPromotion || dbProduct.isPromotion) && !promotionsOpen) {
+        throw new BadRequestException('Las promociones solo están disponibles hasta las 21:00 h.');
       }
 
       let itemPrice = Number(dbProduct.price);

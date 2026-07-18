@@ -7,6 +7,7 @@ export interface CartItem {
   price: number;
   qty: number;
   img: string;
+  isPromotion?: boolean;
   meatPrep?: string;
   extras: { name: string; price: number }[];
   removals: string[];

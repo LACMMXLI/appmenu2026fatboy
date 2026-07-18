@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Zap, ShoppingCart } from 'lucide-react';
 import { getPromotions, resolveMediaUrl, type Product, type Promotion } from '@/lib/api';
 import { useCart } from '@/context/CartContext';
+import { areMenuPromotionsOpen } from '@/lib/promotionWindow';
 
 interface PromosViewProps {
   onNavigate: (view: any, product?: Product) => void;
@@ -47,6 +48,7 @@ const STATIC_PROMOS = [
 
 export function PromosView({ onNavigate }: PromosViewProps) {
   const { addItem } = useCart();
+  const promotionsOpen = areMenuPromotionsOpen();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,12 +71,15 @@ export function PromosView({ onNavigate }: PromosViewProps) {
   }, []);
 
   const addPromoToCart = (promo: Promotion) => {
+    if (!promotionsOpen) return;
+
     addItem({
       id: promo.id,
       title: promo.title,
       price: promo.price,
       qty: 1,
       img: resolveMediaUrl(promo.imageUrl),
+      isPromotion: true,
       extras: [],
       removals: [],
       notes: '',
@@ -83,12 +88,15 @@ export function PromosView({ onNavigate }: PromosViewProps) {
   };
 
   const addStaticPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+    if (!promotionsOpen) return;
+
     addItem({
       id: promo.id,
       title: promo.label,
       price: promo.price,
       qty: 1,
       img: promo.img,
+      isPromotion: true,
       extras: [],
       removals: [],
       notes: '',
@@ -146,11 +154,13 @@ export function PromosView({ onNavigate }: PromosViewProps) {
           </>
         )}
 
-        <p className="px-1 pt-1 text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>Promociones vigentes</p>
+        <p className="px-1 pt-1 text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>
+          {promotionsOpen ? 'Promociones vigentes' : 'Promociones disponibles hasta las 21:00 h'}
+        </p>
         {STATIC_PROMOS.map(promo => (
           <div
             key={promo.id}
-            className="rounded-xl overflow-hidden cursor-pointer bg-black"
+            className={`rounded-xl overflow-hidden bg-black ${promotionsOpen ? 'cursor-pointer' : 'cursor-not-allowed opacity-45 grayscale'}`}
             style={{ border: '1px solid var(--color-outline)' }}
             onClick={() => addStaticPromoToCart(promo)}
           >
@@ -166,10 +176,11 @@ export function PromosView({ onNavigate }: PromosViewProps) {
               </div>
               <button
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[9.5px] uppercase tracking-wider flex-shrink-0 ml-3"
-                style={{ background: 'var(--color-primary)', color: 'white' }}
+                disabled={!promotionsOpen}
+                style={{ background: promotionsOpen ? 'var(--color-primary)' : '#374151', color: 'white' }}
                 onClick={e => { e.stopPropagation(); addStaticPromoToCart(promo); }}
               >
-                <ShoppingCart size={11} /> Agregar
+                <ShoppingCart size={11} /> {promotionsOpen ? 'Agregar' : 'No disponible'}
               </button>
             </div>
           </div>
