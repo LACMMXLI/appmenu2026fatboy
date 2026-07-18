@@ -112,7 +112,13 @@ async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
 
-  const response = await fetch(request);
+  let response;
+  try {
+    response = await fetch(request);
+  } catch {
+    return Response.error();
+  }
+
   if (response.ok) {
     const cache = await caches.open(RUNTIME_CACHE);
     cache.put(request, response.clone());

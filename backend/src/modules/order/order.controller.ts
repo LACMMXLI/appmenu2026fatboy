@@ -12,12 +12,19 @@ export class OrderController {
   @Post('orders')
   async createOrder(@Headers('Authorization') authHeader: string | undefined, @Body() body: any) {
     const token = this.extractToken(authHeader);
+    const hasGuestContact = Boolean(
+      typeof body?.customerName === 'string' && body.customerName.trim() &&
+      typeof body?.customerPhone === 'string' && body.customerPhone.trim()
+    );
 
     if (token) {
       try {
         const customer = await this.authService.validateSession(token);
         return this.orderService.createOrder(customer.id, body);
       } catch {
+        if (hasGuestContact) {
+          return this.orderService.createOrder(null, body);
+        }
         throw new UnauthorizedException('Sesión expirada o inválida. Por favor, inicia sesión de nuevo.');
       }
     }
