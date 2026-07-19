@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { randomUUID } from 'node:crypto';
-import { areMenuPromotionsOpen } from '../../lib/promotion-window.js';
+import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '../../lib/promotion-window.js';
 
 const DELIVERY_TYPES = new Set(['pickup', 'delivery']);
 const PAYMENT_METHODS = new Set(['cash', 'card']);
@@ -72,7 +72,8 @@ export class OrderService {
 
     let calculatedTotal = 0;
     const orderItemsData: any[] = [];
-    const promotionsOpen = areMenuPromotionsOpen();
+    const { startHour, endHour } = await resolvePromotionWindowHours(this.prisma);
+    const promotionsOpen = areMenuPromotionsOpen(new Date(), startHour, endHour);
 
     for (const item of items) {
       if (typeof item?.id !== 'string' || !item.id) {
@@ -85,7 +86,9 @@ export class OrderService {
       }
 
       if (dbProduct.isPromotion && !promotionsOpen) {
-        throw new BadRequestException('Las promociones solo están disponibles hasta las 21:00 h.');
+        throw new BadRequestException(
+          `Las promociones solo están disponibles de ${formatHour(startHour)} a ${formatHour(endHour)} h.`,
+        );
       }
 
       const qty = Number(item.qty);
@@ -278,4 +281,8 @@ export class OrderService {
 
     return order;
   }
+}
+
+function formatHour(hour: number): string {
+  return `${hour.toString().padStart(2, '0')}:00`;
 }

@@ -29,7 +29,7 @@ import {
   resolveMediaUrl,
   type HomeBanner, type Category, type Product, type Promotion, type Branch,
 } from '@/lib/api';
-import { areMenuPromotionsOpen } from '@/lib/promotionWindow';
+import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '@/lib/promotionWindow';
 
 
 interface HomeViewProps {
@@ -97,7 +97,10 @@ function getCategoryVisual(name: string): CategoryVisual {
   return { Icon: UtensilsCrossed, accent: '#fabd00', bg: 'rgba(250,189,0,0.14)' };
 }
 
-const STATIC_PROMOS = [
+// Fallback shown only if the catalog has no products marked as "Es promoción"
+// yet, or while that request is still loading — the admin panel is the real
+// source of truth for these cards (Producto → Es promoción).
+const FALLBACK_DAILY_PROMOS = [
   {
     id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
     img: '/images/promo_charola_futbolera.png',
@@ -275,23 +278,27 @@ function PromotionHeroSlider({ promotions, onPromoClick }: { promotions: Promoti
 ───────────────────────────────────────────────── */
 export function HomeView({ onNavigate }: HomeViewProps) {
   const { addItem } = useCart();
-  const promotionsOpen = areMenuPromotionsOpen();
   const [banners, setBanners]     = useState<HomeBanner[]>(FALLBACK_BANNERS);
   const [categories, setCategories] = useState<Category[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [dailyPromoProducts, setDailyPromoProducts] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [settings, setSettings]     = useState<Record<string, string>>({});
   const [loading, setLoading]     = useState(true);
 
+  const { startHour, endHour } = useMemo(() => resolvePromotionWindowHours(settings), [settings]);
+  const promotionsOpen = useMemo(() => areMenuPromotionsOpen(new Date(), startHour, endHour), [startHour, endHour]);
+
   useEffect(() => {
     let m = true;
-    Promise.allSettled([getCategories(), getSystemSettings(), getPromotions(), getBranches()])
-      .then(([cRes, sRes, pRes, bRes]) => {
+    Promise.allSettled([getCategories(), getSystemSettings(), getPromotions(), getBranches(), getProducts()])
+      .then(([cRes, sRes, pRes, bRes, prodRes]) => {
         if (!m) return;
         if (cRes.status === 'fulfilled') setCategories(cRes.value);
         if (sRes.status === 'fulfilled') setSettings(sRes.value);
         if (pRes.status === 'fulfilled') setPromotions(pRes.value);
         if (bRes.status === 'fulfilled') setBranches(bRes.value);
+        if (prodRes.status === 'fulfilled') setDailyPromoProducts(prodRes.value.filter((product) => product.isPromotion));
       })
       .finally(() => { if (m) setLoading(false); });
     return () => { m = false; };
@@ -314,7 +321,16 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     onNavigate('cart');
   };
 
-  const addStaticPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+  const dailyPromoCards = dailyPromoProducts.length > 0
+    ? dailyPromoProducts.map((product) => ({
+        id: product.id,
+        img: resolveMediaUrl(product.imageUrl) || defaultProductImage,
+        label: product.name,
+        price: product.price,
+      }))
+    : FALLBACK_DAILY_PROMOS;
+
+  const addDailyPromoToCart = (promo: (typeof dailyPromoCards)[number]) => {
     if (!promotionsOpen) return;
 
     addItem({
@@ -390,11 +406,11 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         </div>
 
         <div className="promos-container no-scrollbar">
-          {STATIC_PROMOS.map(promo => (
+          {dailyPromoCards.map(promo => (
             <div
               key={promo.id}
               className={cn('promo-card bg-black', !promotionsOpen && 'cursor-not-allowed opacity-45 grayscale')}
-              onClick={() => addStaticPromoToCart(promo)}
+              onClick={() => addDailyPromoToCart(promo)}
             >
               <img src={promo.img} alt={promo.label} className="w-full h-full object-contain rounded-[10px] bg-black" />
               <button
@@ -402,7 +418,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
                 disabled={!promotionsOpen}
                 onClick={(event) => {
                   event.stopPropagation();
-                  addStaticPromoToCart(promo);
+                  addDailyPromoToCart(promo);
                 }}
                 className={cn(
                   'absolute bottom-2 right-2 rounded-md px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_0_12px_rgba(229,9,20,0.45)]',

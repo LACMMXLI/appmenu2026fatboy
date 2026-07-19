@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Zap, ShoppingCart } from 'lucide-react';
-import { getPromotions, resolveMediaUrl, type Product, type Promotion } from '@/lib/api';
+import { defaultProductImage, getProducts, getPromotions, getSystemSettings, resolveMediaUrl, type Product, type Promotion } from '@/lib/api';
 import { useCart } from '@/context/CartContext';
-import { areMenuPromotionsOpen } from '@/lib/promotionWindow';
+import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '@/lib/promotionWindow';
 
 interface PromosViewProps {
   onNavigate: (view: any, product?: Product) => void;
 }
 
-const STATIC_PROMOS = [
+// Fallback shown only if the catalog has no products marked as "Es promoción"
+// yet, or while that request is still loading — the admin panel is the real
+// source of truth for these cards (Producto → Es promoción).
+const FALLBACK_DAILY_PROMOS = [
   {
     id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
     img: '/images/promo_charola_futbolera.png',
