@@ -164,7 +164,7 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
   return (
     <div
       className="relative w-full overflow-hidden bg-black cursor-pointer"
-      style={isImageOnly ? { aspectRatio: '3 / 2' } : { height: 120 }}
+      style={isImageOnly ? { aspectRatio: '4 / 3' } : { height: 120 }}
       role="button"
       tabIndex={0}
       onClick={() => onNavigate(b.linkView ?? 'promos')}
@@ -173,17 +173,25 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
       }}
     >
       {/* background image */}
-      <img
-        key={b.id}
-        src={b.imageUrl}
-        alt={b.title || 'Banner'}
-        className={cn(
-          "absolute top-0 h-full animate-fade-in",
-          isImageOnly ? "object-contain" : "object-cover",
-          isImageOnly ? "left-0 w-full" : "right-0 w-1/2"
-        )}
-        style={{ objectPosition: 'center' }}
-      />
+      {isImageOnly ? (
+        // Full width, fixed height, small centered crop instead of
+        // stretching to the image's full natural (and often much taller) height.
+        <img
+          key={b.id}
+          src={b.imageUrl}
+          alt={b.title || 'Banner'}
+          className="block w-full h-full object-cover animate-fade-in"
+          style={{ objectPosition: 'center' }}
+        />
+      ) : (
+        <img
+          key={b.id}
+          src={b.imageUrl}
+          alt={b.title || 'Banner'}
+          className="absolute top-0 right-0 h-full w-1/2 object-cover animate-fade-in"
+          style={{ objectPosition: 'center' }}
+        />
+      )}
 
       {/* Dark overlay left side */}
       {!isImageOnly && (
