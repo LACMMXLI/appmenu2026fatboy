@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
+
+const SUPPORT_WHATSAPP = '526861105191';
 
 interface AuthViewProps {
   onNavigate: (view: any) => void;
@@ -15,6 +17,7 @@ export function AuthView({ onNavigate, onLogin }: AuthViewProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showResetHelp, setShowResetHelp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,8 +45,8 @@ export function AuthView({ onNavigate, onLogin }: AuthViewProps) {
 
       {/* Header */}
       <header className="py-4 flex items-center relative h-16 w-full shrink-0 z-10">
-        <button 
-          onClick={() => onNavigate('home')} 
+        <button
+          onClick={() => onNavigate('home')}
           className="text-white/80 hover:text-white transition-all p-2 rounded-xl bg-surface/60 border border-white/5 shadow-md active:scale-95 flex items-center justify-center backdrop-blur-md"
         >
           <ArrowLeft size={18} />
@@ -103,15 +106,35 @@ export function AuthView({ onNavigate, onLogin }: AuthViewProps) {
             />
             
             <div className="w-full flex justify-end">
-              <button 
-                type="button" 
+              <button
+                type="button"
+                onClick={() => setShowResetHelp((prev) => !prev)}
                 className="text-primary text-[11px] font-bold hover:underline transition-colors py-0.5"
               >
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
 
-            <Button 
+            {showResetHelp && (
+              <div className="w-full flex items-start gap-2.5 text-xs text-gray-300 border border-white/10 bg-white/5 rounded-xl px-4 py-3 animate-fade-in-up">
+                <MessageCircle size={15} className="text-primary shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold leading-snug">
+                    Para restablecer tu contraseña, escríbenos por WhatsApp y un miembro del equipo te ayudará.
+                  </p>
+                  <a
+                    href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent('Hola, olvidé mi contraseña de la app de Fatboy y necesito ayuda para restablecerla.')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-2 text-primary font-bold hover:underline"
+                  >
+                    Contactar por WhatsApp <MessageCircle size={12} />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            <Button
               type="submit" 
               size="lg" 
               className="w-full mt-2 bg-gradient-to-r from-primary to-primary-dark hover:from-primary-hover hover:to-primary text-white rounded-xl shadow-[0_4px_15px_rgba(232,0,10,0.3)] active:scale-[0.98] transition-all duration-200 py-3 uppercase font-extrabold tracking-wider text-xs flex items-center justify-center gap-2" 

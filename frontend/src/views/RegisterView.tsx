@@ -15,7 +15,7 @@ export function RegisterView({ onNavigate, onRegister }: RegisterViewProps) {
   const { register } = useUser();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState('');
-  
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -72,16 +72,16 @@ export function RegisterView({ onNavigate, onRegister }: RegisterViewProps) {
 
       {/* Header */}
       <header className="py-4 flex items-center relative h-16 w-full shrink-0 z-10">
-        <button 
-          onClick={() => onNavigate('auth')} 
+        <button
+          onClick={() => onNavigate('auth')}
           className="text-white/80 hover:text-white transition-all p-2 rounded-xl bg-surface/60 border border-white/5 shadow-md active:scale-95 flex items-center justify-center backdrop-blur-md"
         >
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1 flex justify-center items-center -ml-9">
-          <img 
-            src="/images/logo.png" 
-            alt="FATBOY" 
+          <img
+            src="/images/logo.png"
+            alt="FATBOY"
             className="h-7 w-auto object-contain relative drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]"
           />
         </div>

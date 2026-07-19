@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Home, UtensilsCrossed, Flame, ShoppingBag, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import { HamburgerButton, NavDrawer } from './NavDrawer';
 
 interface NavProps {
   currentView: string;
@@ -9,23 +11,18 @@ interface NavProps {
 }
 
 /* ─────────────────────────────────────────────────
-   TOP BAR — Hamburger | Logo mascot | Cart badge
+   TOP BAR — Hamburger (opens quick-access drawer) |
+   Logo mascot | Cart badge
 ───────────────────────────────────────────────── */
 export function TopBar({ onNavigate }: Omit<NavProps, 'currentView'>) {
   const { items } = useCart();
   const cartCount = items.reduce((s, i) => s + i.qty, 0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
+    <>
     <header className="topbar">
-      {/* Hamburger — decorative only */}
-      <button
-        className="flex flex-col gap-[3.5px] p-1.5 rounded-md"
-        aria-label="Menú"
-      >
-        <span className="block w-4 h-[1.5px] bg-white rounded-full" />
-        <span className="block w-4 h-[1.5px] bg-white rounded-full" />
-        <span className="block w-4 h-[1.5px] bg-white rounded-full" />
-      </button>
+      <HamburgerButton open={drawerOpen} onClick={() => setDrawerOpen((prev) => !prev)} />
 
       {/* Logo — mascot image */}
       <button
@@ -48,13 +45,26 @@ export function TopBar({ onNavigate }: Omit<NavProps, 'currentView'>) {
         aria-label="Carrito"
       >
         <ShoppingBag size={18} className="text-white" strokeWidth={1.8} />
-        {cartCount > 0 && (
-          <span className="nav-badge" style={{ top: 0, right: 0 }}>
-            {cartCount > 9 ? '9+' : cartCount}
-          </span>
-        )}
+        <AnimatePresence>
+          {cartCount > 0 && (
+            <motion.span
+              key={cartCount}
+              initial={{ scale: 1.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+              className="nav-badge"
+              style={{ top: 0, right: 0 }}
+            >
+              {cartCount > 9 ? '9+' : cartCount}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </button>
+
     </header>
+    <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onNavigate={onNavigate} />
+    </>
   );
 }
 
@@ -78,26 +88,39 @@ export function BottomNav({ currentView, onNavigate }: NavProps) {
       {tabs.map(({ id, label, Icon, badge }) => {
         const isActive = currentView === id;
         return (
-          <button
+          <motion.button
             key={id}
             id={`nav-${id}`}
             onClick={() => onNavigate(id)}
+            whileTap={{ scale: 0.88 }}
             className={cn('nav-tab', isActive && 'active')}
           >
             <div className="nav-icon-wrap">
-              <Icon
-                size={16}
-                strokeWidth={isActive ? 2.2 : 1.7}
-                className={isActive ? 'text-primary' : 'text-[#555]'}
-                fill={isActive ? 'currentColor' : 'none'}
-                style={{ color: isActive ? 'var(--color-primary)' : '#555' }}
-              />
+              <motion.div
+                animate={isActive ? { y: -1, scale: 1.08 } : { y: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+              >
+                <Icon
+                  size={16}
+                  strokeWidth={isActive ? 2.2 : 1.7}
+                  className={isActive ? 'text-primary' : 'text-[#555]'}
+                  fill={isActive ? 'currentColor' : 'none'}
+                  style={{ color: isActive ? 'var(--color-primary)' : '#555' }}
+                />
+              </motion.div>
               {badge ? (
                 <span className="nav-badge" style={{ top: -3, right: -6 }}>{badge > 9 ? '9+' : badge}</span>
               ) : null}
             </div>
             <span className="nav-tab-label">{label}</span>
-          </button>
+            {isActive && (
+              <motion.span
+                layoutId="bottom-nav-indicator"
+                className="nav-indicator"
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+              />
+            )}
+          </motion.button>
         );
       })}
     </nav>
