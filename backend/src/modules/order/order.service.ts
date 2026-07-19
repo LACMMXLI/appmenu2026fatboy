@@ -3,12 +3,36 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { randomUUID } from 'node:crypto';
 import { areMenuPromotionsOpen } from '../../lib/promotion-window.js';
 
+const DELIVERY_TYPES = new Set(['pickup', 'delivery']);
+const PAYMENT_METHODS = new Set(['cash', 'card']);
+const MAX_ITEM_QTY = 20;
+const MAX_ITEMS_PER_ORDER = 40;
+const MAX_NOTES_LENGTH = 500;
+const MAX_EXTRA_NAME_LENGTH = 80;
+const MAX_EXTRAS_PER_ITEM = 10;
+const MAX_REMOVALS_PER_ITEM = 10;
+const MAX_REMOVAL_LENGTH = 80;
+
 @Injectable()
 export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createOrder(customerId: string | null, body: any) {
-    const { branchId, deliveryType, paymentMethod, notes, items, pointsToRedeem } = body;
+    const { branchId, notes, items, pointsToRedeem } = body;
+
+    const deliveryType = typeof body.deliveryType === 'string' ? body.deliveryType : 'pickup';
+    if (!DELIVERY_TYPES.has(deliveryType)) {
+      throw new BadRequestException('Tipo de entrega inválido.');
+    }
+
+    const paymentMethod = typeof body.paymentMethod === 'string' ? body.paymentMethod : 'cash';
+    if (!PAYMENT_METHODS.has(paymentMethod)) {
+      throw new BadRequestException('Método de pago inválido.');
+    }
+
+    if (typeof branchId !== 'string' || !branchId) {
+      throw new BadRequestException('Sucursal inválida.');
+    }
 
     const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
     if (!branch) {
@@ -20,8 +44,8 @@ export class OrderService {
       throw new NotFoundException('Cliente no encontrado.');
     }
 
-    const guestName = typeof body.customerName === 'string' ? body.customerName.trim() : '';
-    const guestPhone = typeof body.customerPhone === 'string' ? body.customerPhone.trim() : '';
+    const guestName = typeof body.customerName === 'string' ? body.customerName.trim().slice(0, 120) : '';
+    const guestPhone = typeof body.customerPhone === 'string' ? body.customerPhone.trim().slice(0, 30) : '';
     if (!customer && (!guestName || !guestPhone)) {
       throw new BadRequestException('Nombre y teléfono son obligatorios para pedidos invitados.');
     }
@@ -30,8 +54,16 @@ export class OrderService {
       throw new BadRequestException('El pedido debe incluir al menos un producto.');
     }
 
-    // Fetch products to validate price
-    const productIds = items.map((i: any) => i.id);
+    if (items.length > MAX_ITEMS_PER_ORDER) {
+      throw new BadRequestException('El pedido tiene demasiados productos.');
+    }
+
+    const notesValue =
+      typeof notes === 'string' && notes.trim() ? notes.trim().slice(0, MAX_NOTES_LENGTH) : null;
+
+    // Fetch products to validate price. Product identity, price and status
+    // always come from the database — nothing from the client body is trusted.
+    const productIds = items.map((i: any) => (typeof i?.id === 'string' ? i.id : null)).filter(Boolean);
     const dbProducts = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
     });
@@ -43,8 +75,8 @@ export class OrderService {
     const promotionsOpen = areMenuPromotionsOpen();
 
     for (const item of items) {
-      if (item.isPromotion && !promotionsOpen) {
-        throw new BadRequestException('Las promociones solo están disponibles hasta las 21:00 h.');
+      if (typeof item?.id !== 'string' || !item.id) {
+        throw new BadRequestException('Producto inválido en el pedido.');
       }
 
       const dbProduct = productMap.get(item.id);
@@ -56,15 +88,44 @@ export class OrderService {
         throw new BadRequestException('Las promociones solo están disponibles hasta las 21:00 h.');
       }
 
-      let itemPrice = Number(dbProduct.price);
-      // Add extras price
-      if (item.extras && Array.isArray(item.extras)) {
-        for (const extra of item.extras) {
-          itemPrice += Number(extra.price || 0);
-        }
+      const qty = Number(item.qty);
+      if (!Number.isInteger(qty) || qty < 1 || qty > MAX_ITEM_QTY) {
+        throw new BadRequestException('Cantidad inválida en el pedido.');
       }
 
-      const qty = Number(item.qty || 1);
+      // Extras/removals are cosmetic notes for the kitchen only. There is no
+      // backend catalog of paid extras yet, so client-supplied prices are
+      // never trusted — only the product's own DB price counts toward the total.
+      let extrasForStorage: { name: string }[] | null = null;
+      if (item.extras !== undefined && item.extras !== null) {
+        if (!Array.isArray(item.extras) || item.extras.length > MAX_EXTRAS_PER_ITEM) {
+          throw new BadRequestException('Extras inválidos en el pedido.');
+        }
+        extrasForStorage = item.extras.map((extra: any) => {
+          if (typeof extra?.name !== 'string' || !extra.name.trim()) {
+            throw new BadRequestException('Extras inválidos en el pedido.');
+          }
+          return { name: extra.name.trim().slice(0, MAX_EXTRA_NAME_LENGTH) };
+        });
+      }
+
+      let removalsForStorage: string[] | null = null;
+      if (item.removals !== undefined && item.removals !== null) {
+        if (!Array.isArray(item.removals) || item.removals.length > MAX_REMOVALS_PER_ITEM) {
+          throw new BadRequestException('Ingredientes a quitar inválidos.');
+        }
+        removalsForStorage = item.removals.map((removal: any) => {
+          if (typeof removal !== 'string' || !removal.trim()) {
+            throw new BadRequestException('Ingredientes a quitar inválidos.');
+          }
+          return removal.trim().slice(0, MAX_REMOVAL_LENGTH);
+        });
+      }
+
+      const meatPrep =
+        typeof item.meatPrep === 'string' && item.meatPrep.trim() ? item.meatPrep.trim().slice(0, 60) : null;
+
+      const itemPrice = Number(dbProduct.price);
       calculatedTotal += itemPrice * qty;
 
       orderItemsData.push({
@@ -73,21 +134,33 @@ export class OrderService {
         productName: dbProduct.name,
         price: itemPrice,
         quantity: qty,
-        meatPrep: item.meatPrep || null,
-        extras: item.extras ? JSON.stringify(item.extras) : null,
-        removals: item.removals ? JSON.stringify(item.removals) : null,
+        meatPrep,
+        extras: extrasForStorage ? JSON.stringify(extrasForStorage) : null,
+        removals: removalsForStorage ? JSON.stringify(removalsForStorage) : null,
       });
     }
 
+    if (!Number.isFinite(calculatedTotal) || calculatedTotal < 0) {
+      throw new BadRequestException('Total de pedido inválido.');
+    }
+
     let pointsRedeemed = 0;
-    if (customer && pointsToRedeem && pointsToRedeem > 0) {
-      if (customer.points < pointsToRedeem) {
-        throw new BadRequestException('Puntos insuficientes.');
+    if (pointsToRedeem !== undefined && pointsToRedeem !== null) {
+      const requestedPoints = Number(pointsToRedeem);
+      if (!Number.isInteger(requestedPoints) || requestedPoints < 0) {
+        throw new BadRequestException('Puntos a redimir inválidos.');
       }
-      pointsRedeemed = pointsToRedeem;
-      // In this system: 1 point = $1 discount
-      const discount = pointsRedeemed;
-      calculatedTotal = Math.max(0, calculatedTotal - discount);
+      if (requestedPoints > 0) {
+        if (!customer) {
+          throw new BadRequestException('Debes iniciar sesión para redimir puntos.');
+        }
+        if (customer.points < requestedPoints) {
+          throw new BadRequestException('Puntos insuficientes.');
+        }
+        // 1 point = $1 discount, and a customer can never redeem more than the order subtotal.
+        pointsRedeemed = Math.min(requestedPoints, Math.floor(calculatedTotal));
+        calculatedTotal = Math.max(0, calculatedTotal - pointsRedeemed);
+      }
     }
 
     const pointsEarned = customer ? Math.floor(calculatedTotal / 10) : 0;
@@ -106,9 +179,9 @@ export class OrderService {
           total: calculatedTotal,
           pointsEarned,
           pointsRedeemed,
-          deliveryType: deliveryType || 'pickup',
-          paymentMethod: paymentMethod || 'cash',
-          notes: notes || null,
+          deliveryType,
+          paymentMethod,
+          notes: notesValue,
           items: {
             create: orderItemsData,
           },
@@ -119,11 +192,21 @@ export class OrderService {
       });
 
       if (customer) {
+        if (pointsRedeemed > 0) {
+          // Atomic, race-safe deduction: only succeeds if the balance still
+          // covers the redemption at commit time, even under concurrent orders.
+          const deduction = await tx.customer.updateMany({
+            where: { id: customer.id, points: { gte: pointsRedeemed } },
+            data: { points: { decrement: pointsRedeemed } },
+          });
+          if (deduction.count === 0) {
+            throw new BadRequestException('Puntos insuficientes.');
+          }
+        }
         await tx.customer.update({
           where: { id: customer.id },
           data: {
             points: {
-              decrement: pointsRedeemed,
               increment: pointsEarned,
             },
           },
