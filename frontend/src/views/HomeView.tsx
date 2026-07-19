@@ -26,6 +26,7 @@ import {
   defaultProductImage,
   getPromotions,
   getBranches,
+  getHomeBanners,
   resolveMediaUrl,
   type HomeBanner, type Category, type Product, type Promotion, type Branch,
 } from '@/lib/api';
@@ -39,21 +40,21 @@ interface HomeViewProps {
 /* ── Static fallback data ─────────────────────── */
 const FALLBACK_BANNERS: HomeBanner[] = [
   {
-    id: 'promo-futbolera',
-    imageUrl: '/images/promo_charola_futbolera.png',
+    id: 'promo-mariscos-1',
+    imageUrl: '/images/promo_mariscos_1.png',
     title: null,
     subtitle: null,
     buttonText: null,
-    linkView: 'promos',
+    linkView: 'menu',
     order: 0,
   },
   {
-    id: 'promo-fatgool',
-    imageUrl: '/images/promo_charola_fatgool.png',
+    id: 'promo-mariscos-2',
+    imageUrl: '/images/promo_mariscos_2.png',
     title: null,
     subtitle: null,
     buttonText: null,
-    linkView: 'promos',
+    linkView: 'menu',
     order: 1,
   },
 ];
@@ -306,14 +307,15 @@ export function HomeView({ onNavigate }: HomeViewProps) {
 
   useEffect(() => {
     let m = true;
-    Promise.allSettled([getCategories(), getSystemSettings(), getPromotions(), getBranches(), getProducts()])
-      .then(([cRes, sRes, pRes, bRes, prodRes]) => {
+    Promise.allSettled([getCategories(), getSystemSettings(), getPromotions(), getBranches(), getProducts(), getHomeBanners()])
+      .then(([cRes, sRes, pRes, bRes, prodRes, banRes]) => {
         if (!m) return;
         if (cRes.status === 'fulfilled') setCategories(cRes.value);
         if (sRes.status === 'fulfilled') setSettings(sRes.value);
         if (pRes.status === 'fulfilled') setPromotions(pRes.value);
         if (bRes.status === 'fulfilled') setBranches(bRes.value);
         if (prodRes.status === 'fulfilled') setDailyPromoProducts(prodRes.value.filter((product) => product.isPromotion));
+        if (banRes.status === 'fulfilled' && banRes.value.length > 0) setBanners(banRes.value);
       })
       .finally(() => { if (m) setLoading(false); });
     return () => { m = false; };
