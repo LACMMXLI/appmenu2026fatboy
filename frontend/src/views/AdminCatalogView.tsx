@@ -309,6 +309,8 @@ export function AdminCatalogView() {
         categoryId: newProduct.categoryId,
         description: newProduct.description,
         imageUrl: newProduct.imageUrl,
+        isPromotion: newProduct.isPromotion,
+        promotionTag: newProduct.promotionTag,
       });
       setNewProduct({ ...emptyProduct, categoryId: catalog.categories[0]?.id || '' });
       await refreshAll();

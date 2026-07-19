@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Zap, ShoppingCart } from 'lucide-react';
 import { defaultProductImage, getProducts, getPromotions, getSystemSettings, resolveMediaUrl, type Product, type Promotion } from '@/lib/api';
 import { useCart } from '@/context/CartContext';
-import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '@/lib/promotionWindow';
+import { areMenuPromotionsOpen, formatPromotionHour, resolvePromotionWindowHours } from '@/lib/promotionWindow';
 
 interface PromosViewProps {
   onNavigate: (view: any, product?: Product) => void;
@@ -51,18 +51,22 @@ const FALLBACK_DAILY_PROMOS = [
 
 export function PromosView({ onNavigate }: PromosViewProps) {
   const { addItem } = useCart();
-  const promotionsOpen = areMenuPromotionsOpen();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [dailyPromoProducts, setDailyPromoProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
+
+  const { startHour, endHour } = useMemo(() => resolvePromotionWindowHours(settings), [settings]);
+  const promotionsOpen = useMemo(() => areMenuPromotionsOpen(new Date(), startHour, endHour), [startHour, endHour]);
 
   useEffect(() => {
     let mounted = true;
-    getPromotions()
-      .then((items) => {
-        if (mounted) setPromotions(items);
-      })
-      .catch(() => {
-        if (mounted) setPromotions([]);
+    Promise.allSettled([getPromotions(), getProducts(), getSystemSettings()])
+      .then(([promoRes, prodRes, settingsRes]) => {
+        if (!mounted) return;
+        setPromotions(promoRes.status === 'fulfilled' ? promoRes.value : []);
+        setDailyPromoProducts(prodRes.status === 'fulfilled' ? prodRes.value.filter((product) => product.isPromotion) : []);
+        if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value);
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -72,6 +76,16 @@ export function PromosView({ onNavigate }: PromosViewProps) {
       mounted = false;
     };
   }, []);
+
+  const dailyPromoCards = dailyPromoProducts.length > 0
+    ? dailyPromoProducts.map((product) => ({
+        id: product.id,
+        img: resolveMediaUrl(product.imageUrl) || defaultProductImage,
+        label: product.name,
+        desc: product.shortDescription || product.description || '',
+        price: product.price,
+      }))
+    : FALLBACK_DAILY_PROMOS;
 
   const addPromoToCart = (promo: Promotion) => {
     if (!promotionsOpen) return;
@@ -90,7 +104,7 @@ export function PromosView({ onNavigate }: PromosViewProps) {
     onNavigate('cart');
   };
 
-  const addStaticPromoToCart = (promo: (typeof STATIC_PROMOS)[number]) => {
+  const addDailyPromoToCart = (promo: (typeof dailyPromoCards)[number]) => {
     if (!promotionsOpen) return;
 
     addItem({
@@ -158,14 +172,14 @@ export function PromosView({ onNavigate }: PromosViewProps) {
         )}
 
         <p className="px-1 pt-1 text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>
-          {promotionsOpen ? 'Promociones vigentes' : 'Promociones disponibles hasta las 21:00 h'}
+          {promotionsOpen ? 'Promociones vigentes' : `Promociones disponibles de ${formatPromotionHour(startHour)} a ${formatPromotionHour(endHour)} h`}
         </p>
-        {STATIC_PROMOS.map(promo => (
+        {dailyPromoCards.map(promo => (
           <div
             key={promo.id}
             className={`rounded-xl overflow-hidden bg-black ${promotionsOpen ? 'cursor-pointer' : 'cursor-not-allowed opacity-45 grayscale'}`}
             style={{ border: '1px solid var(--color-outline)' }}
-            onClick={() => addStaticPromoToCart(promo)}
+            onClick={() => addDailyPromoToCart(promo)}
           >
             <img src={promo.img} alt={promo.label} className="w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
             <div
@@ -181,7 +195,7 @@ export function PromosView({ onNavigate }: PromosViewProps) {
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[9.5px] uppercase tracking-wider flex-shrink-0 ml-3"
                 disabled={!promotionsOpen}
                 style={{ background: promotionsOpen ? 'var(--color-primary)' : '#374151', color: 'white' }}
-                onClick={e => { e.stopPropagation(); addStaticPromoToCart(promo); }}
+                onClick={e => { e.stopPropagation(); addDailyPromoToCart(promo); }}
               >
                 <ShoppingCart size={11} /> {promotionsOpen ? 'Agregar' : 'No disponible'}
               </button>

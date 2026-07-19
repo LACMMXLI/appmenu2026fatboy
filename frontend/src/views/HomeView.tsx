@@ -161,7 +161,16 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
   const isImageOnly = !b.title && !b.subtitle && !b.buttonText;
 
   return (
-    <div className="relative w-full overflow-hidden bg-black" style={isImageOnly ? { aspectRatio: '3 / 2' } : { height: 120 }}>
+    <div
+      className="relative w-full overflow-hidden bg-black cursor-pointer"
+      style={isImageOnly ? { aspectRatio: '3 / 2' } : { height: 120 }}
+      role="button"
+      tabIndex={0}
+      onClick={() => onNavigate(b.linkView ?? 'promos')}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onNavigate(b.linkView ?? 'promos');
+      }}
+    >
       {/* background image */}
       <img
         key={b.id}
@@ -210,7 +219,10 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
         <div>
           <button
             className="cta-brush"
-            onClick={() => onNavigate(b.linkView ?? 'menu')}
+            onClick={(event) => {
+              event.stopPropagation();
+              onNavigate(b.linkView ?? 'menu');
+            }}
           >
             {b.buttonText || 'VER MENÚ'} <ChevronRight size={11} strokeWidth={3} />
           </button>
@@ -223,7 +235,10 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
           {banners.map((_, i) => (
             <button
               key={i}
-              onClick={() => setIdx(i)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIdx(i);
+              }}
               className={cn('hero-dot', i === idx && 'active')}
             />
           ))}

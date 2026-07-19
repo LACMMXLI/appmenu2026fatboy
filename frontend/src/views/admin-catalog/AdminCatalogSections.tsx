@@ -410,6 +410,24 @@ export function ProductsAdmin({
                     </label>
                   </div>
                   <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} placeholder="https://..." className="h-10 px-3 text-sm" />
+                  <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+                    <label className="flex h-10 items-center gap-2 rounded-lg border border-outline bg-background px-3 text-sm text-white">
+                      <input
+                        type="checkbox"
+                        checked={newProduct.isPromotion ?? false}
+                        onChange={(event) => onNewProductChange({ ...newProduct, isPromotion: event.target.checked })}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      Es promoción
+                    </label>
+                    <Input
+                      label="Etiqueta de promoción (opcional)"
+                      value={newProduct.promotionTag ?? ''}
+                      onChange={(event) => onNewProductChange({ ...newProduct, promotionTag: event.target.value })}
+                      placeholder="Ej: 2x1, Solo hoy"
+                      className="h-10 px-3 text-sm"
+                    />
+                  </div>
                   <div className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
                     Descripción
                     <textarea
@@ -539,6 +557,27 @@ export function ProductsAdmin({
                       </select>
                     </label>
                   </div>
+                  <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+                    <label className="flex h-10 items-center gap-2 rounded-lg border border-outline bg-background px-3 text-sm text-white">
+                      <input
+                        type="checkbox"
+                        checked={editingProduct.isPromotion}
+                        onChange={(event) => setEditingProduct({ ...editingProduct, isPromotion: event.target.checked })}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      Es promoción
+                    </label>
+                    <Input
+                      label="Etiqueta de promoción (opcional)"
+                      value={editingProduct.promotionTag ?? ''}
+                      onChange={(event) => setEditingProduct({ ...editingProduct, promotionTag: event.target.value })}
+                      placeholder="Ej: 2x1, Solo hoy"
+                      className="h-10 px-3 text-sm"
+                    />
+                  </div>
+                  <p className="text-[10px] font-medium normal-case text-gray-500">
+                    Las promociones marcadas aquí aparecen en "Promos del día" y solo se pueden comprar dentro del horario de promociones configurado en Configuraciones.
+                  </p>
                   <div className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
                     <span className="flex items-center justify-between gap-3">
                       Descripción
@@ -1886,6 +1925,8 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
   const [googleReviewsSanMarcosUrl, setGoogleReviewsSanMarcosUrl] = useState('');
   const [googleReviewsAmericasUrl, setGoogleReviewsAmericasUrl] = useState('');
+  const [promotionsStartHour, setPromotionsStartHour] = useState('10');
+  const [promotionsEndHour, setPromotionsEndHour] = useState('21');
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -1899,6 +1940,8 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         if (data.google_reviews_url) setGoogleReviewsUrl(data.google_reviews_url);
         if (data.google_reviews_san_marcos_url) setGoogleReviewsSanMarcosUrl(data.google_reviews_san_marcos_url);
         if (data.google_reviews_americas_url) setGoogleReviewsAmericasUrl(data.google_reviews_americas_url);
+        if (data.promotions_start_hour) setPromotionsStartHour(data.promotions_start_hour);
+        if (data.promotions_end_hour) setPromotionsEndHour(data.promotions_end_hour);
       })
       .catch((err) => console.error('Error al cargar configuraciones:', err))
       .finally(() => {
@@ -1911,6 +1954,14 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+
+    const startHour = Number(promotionsStartHour);
+    const endHour = Number(promotionsEndHour);
+    if (!Number.isInteger(startHour) || !Number.isInteger(endHour) || startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
+      onSaveError('El horario de promociones debe ser válido y la hora de inicio debe ser menor a la de cierre.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateAdminSystemSettings(adminKey, {
@@ -1919,6 +1970,8 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         google_reviews_url: googleReviewsUrl,
         google_reviews_san_marcos_url: googleReviewsSanMarcosUrl,
         google_reviews_americas_url: googleReviewsAmericasUrl,
+        promotions_start_hour: promotionsStartHour,
+        promotions_end_hour: promotionsEndHour,
       });
       onSaveSuccess();
     } catch (err: any) {
@@ -1976,6 +2029,32 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         <p className="text-[11px] text-gray-400">
           Nota: Si ingresas un número telefónico, por favor incluye el código de país sin el símbolo "+" (ej: 521234567890).
         </p>
+
+        <div className="rounded-lg border border-outline bg-background/40 p-4">
+          <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-primary">Horario de promociones</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Hora de apertura (0-23)"
+              type="number"
+              min="0"
+              max="23"
+              value={promotionsStartHour}
+              onChange={(e) => setPromotionsStartHour(e.target.value)}
+            />
+            <Input
+              label="Hora de cierre (0-23)"
+              type="number"
+              min="0"
+              max="23"
+              value={promotionsEndHour}
+              onChange={(e) => setPromotionsEndHour(e.target.value)}
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-gray-400">
+            Los productos marcados como "Es promoción" solo se pueden comprar entre estas horas. Fuera de este rango se muestran deshabilitados en el menú.
+          </p>
+        </div>
+
         <div className="pt-2">
           <Button type="submit" className="w-full bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary shadow-[0_0_15px_rgba(232,0,10,0.2)] transition-all duration-300" isLoading={isSaving}>
             <Save size={16} className="mr-2" /> Guardar Configuraciones

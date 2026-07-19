@@ -28,6 +28,8 @@ export interface NewProduct {
   categoryId: string;
   description: string;
   imageUrl: string;
+  isPromotion?: boolean;
+  promotionTag?: string;
 }
 
 export interface NewCategory {
