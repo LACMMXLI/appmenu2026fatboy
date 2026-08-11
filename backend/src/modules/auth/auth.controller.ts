@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Headers, Patch, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { AuthRateLimitGuard } from './auth-rate-limit.guard.js';
 import { AuthService } from './auth.service.js';
 
 @Controller('auth')
@@ -6,11 +8,15 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @UseGuards(AuthRateLimitGuard)
+  @Throttle({ default: { limit: 4, ttl: 10 * 60_000 } })
   register(@Body() body: unknown) {
     return this.authService.register(body);
   }
 
   @Post('login')
+  @UseGuards(AuthRateLimitGuard)
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   login(@Body() body: unknown) {
     return this.authService.login(body);
   }
