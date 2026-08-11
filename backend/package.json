@@ -23,6 +23,7 @@
     "@nestjs/core": "^11.1.26",
     "@nestjs/platform-express": "^11.1.26",
     "@prisma/client": "^6.19.3",
+    "argon2": "^0.45.1",
     "csv-parse": "^6.2.1",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",

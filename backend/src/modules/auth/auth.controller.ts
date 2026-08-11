@@ -6,12 +6,12 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  register(@Body() body: any) {
+  register(@Body() body: unknown) {
     return this.authService.register(body);
   }
 
   @Post('login')
-  login(@Body() body: any) {
+  login(@Body() body: unknown) {
     return this.authService.login(body);
   }
 
@@ -28,7 +28,7 @@ export class AuthController {
   }
 
   @Patch('profile')
-  updateProfile(@Headers('Authorization') authHeader: string | undefined, @Body() body: any) {
+  updateProfile(@Headers('Authorization') authHeader: string | undefined, @Body() body: unknown) {
     const token = this.extractToken(authHeader);
     return this.authService.validateSession(token).then((customer) => {
       return this.authService.updateProfile(customer.id, body);
@@ -36,7 +36,7 @@ export class AuthController {
   }
 
   @Patch('change-password')
-  changePassword(@Headers('Authorization') authHeader: string | undefined, @Body() body: any) {
+  changePassword(@Headers('Authorization') authHeader: string | undefined, @Body() body: unknown) {
     const token = this.extractToken(authHeader);
     return this.authService.validateSession(token).then((customer) => {
       return this.authService.changePassword(customer.id, body);
