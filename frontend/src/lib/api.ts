@@ -397,8 +397,6 @@ export interface OrderPayload {
   branchId: string;
   deliveryType: 'delivery' | 'pickup';
   paymentMethod: 'cash' | 'card';
-  customerName?: string;
-  customerPhone?: string;
   notes?: string;
   items: OrderItemPayload[];
   pointsToRedeem?: number;
@@ -445,12 +443,12 @@ export interface PublicOrderTracking {
   }[];
 }
 
-export async function createOrder(payload: OrderPayload, token?: string | null): Promise<Order> {
+export async function createOrder(payload: OrderPayload, token: string): Promise<Order> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
   };
-  if (token) headers.Authorization = `Bearer ${token}`;
 
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: 'POST',
@@ -469,6 +467,10 @@ export async function createOrder(payload: OrderPayload, token?: string | null):
 
 export async function getOrder(id: string): Promise<PublicOrderTracking> {
   return getJson<PublicOrderTracking>(`/orders/${id}`);
+}
+
+export async function getMyOrders(token: string): Promise<PublicOrderTracking[]> {
+  return requestWithAuth<PublicOrderTracking[]>('/orders/mine', token);
 }
 
 // Admin Orders API

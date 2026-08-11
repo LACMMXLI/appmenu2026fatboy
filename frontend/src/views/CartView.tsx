@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Gift, MessageCircle, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, History, LogIn, MessageCircle, Minus, Plus, ShoppingBag, Trash2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { useUser } from '@/context/UserContext';
 import { getBranches, createOrder, type Branch } from '@/lib/api';
 
 interface CartViewProps {
-  onNavigate: (view: any) => void;
+  onNavigate: (view: any, extra?: any) => void;
 }
 
 export function CartView({ onNavigate }: CartViewProps) {
@@ -26,10 +25,6 @@ export function CartView({ onNavigate }: CartViewProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [showGuestSignupPrompt, setShowGuestSignupPrompt] = useState(false);
-
   useEffect(() => {
     let isMounted = true;
 
@@ -70,66 +65,7 @@ export function CartView({ onNavigate }: CartViewProps) {
     const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
 
     if (!isAuthenticated || !customer || !token) {
-      if (!guestName.trim() || !guestPhone.trim()) {
-        setError('Por favor ingresa tu nombre y teléfono para el pedido.');
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const payload = {
-          branchId: selectedBranchId,
-          deliveryType: 'pickup' as const,
-          paymentMethod: 'cash' as const,
-          customerName: guestName.trim(),
-          customerPhone: guestPhone.trim(),
-          notes: notes || undefined,
-          items: items.map(item => ({
-            id: item.id,
-            title: item.title,
-            price: item.price,
-            qty: item.qty,
-            isPromotion: item.isPromotion,
-            meatPrep: item.meatPrep || undefined,
-            extras: item.extras || undefined,
-            removals: item.removals || undefined,
-            notes: item.notes || undefined
-          }))
-        };
-
-        const order = await createOrder(payload);
-        const shortId = order.id.substring(0, 8).toUpperCase();
-
-        let text = `*NUEVO PEDIDO INVITADO #${shortId} - Fatboy ${order.branchName}*\n\n`;
-        text += `*Cliente:* ${order.customerName}\n*Teléfono:* ${order.customerPhone}\n\n*Detalles del pedido:*\n`;
-        
-        items.forEach(item => {
-          let itemTotal = item.price;
-          item.extras?.forEach(ext => itemTotal += ext.price);
-          text += `- ${item.qty}x ${item.title} ($${itemTotal} c/u)\n`;
-          if (item.meatPrep) text += `  Término: ${item.meatPrep}\n`;
-          if (item.removals?.length) text += `  Sin: ${item.removals.join(', ')}\n`;
-          if (item.extras?.length) text += `  Extras: ${item.extras.map(e => e.name).join(', ')}\n`;
-          if (item.notes) text += `  Notas: ${item.notes}\n`;
-        });
-        
-        if (notes) {
-          text += `\n*Notas generales:* ${notes}\n`;
-        }
-        text += `\n*TOTAL: $${order.total}*\n`;
-        text += `\n_Pedido registrado en el sistema. Estado: Recibido._`;
-        
-        const destinationPhone = selectedBranch?.phone || '526860000000';
-        window.open(`https://wa.me/${destinationPhone}?text=${encodeURIComponent(text)}`, '_blank');
-        
-        sessionStorage.setItem('fatboy-last-order-id', order.id);
-        clearCart();
-        setShowGuestSignupPrompt(true);
-      } catch (err) {
-        setError('Ocurrió un error al procesar el pedido.');
-      } finally {
-        setIsLoading(false);
-      }
+      onNavigate('auth', 'cart');
       return;
     }
 
@@ -188,42 +124,6 @@ export function CartView({ onNavigate }: CartViewProps) {
       setIsLoading(false);
     }
   };
-
-  const handleGuestSignup = () => {
-    setShowGuestSignupPrompt(false);
-    onNavigate('register');
-  };
-
-  const handleViewOrder = () => {
-    setShowGuestSignupPrompt(false);
-    onNavigate('order-tracking');
-  };
-
-  if (showGuestSignupPrompt) {
-    return (
-      <div className="h-full w-full bg-background px-4 py-6 flex items-center justify-center">
-        <div className="w-full rounded-2xl border border-gold/30 bg-surface p-5 text-center shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-gold/30 bg-gold/10 text-gold">
-            <Gift size={30} />
-          </div>
-          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-primary">Pedido recibido</p>
-          <h2 className="font-display text-4xl leading-none tracking-wide text-white">NO PIERDAS TUS PUNTOS</h2>
-          <p className="mx-auto mt-3 max-w-[300px] text-xs font-semibold leading-relaxed text-gray-300">
-            Regístrate ahora y empieza a ganar puntos, descuentos especiales y beneficios Fatboy en tus próximos pedidos.
-          </p>
-
-          <div className="mt-5 grid gap-2">
-            <Button size="lg" onClick={handleGuestSignup} className="w-full gap-2 bg-gold text-black hover:bg-gold/90">
-              <Sparkles size={20} /> Registrarme ahora
-            </Button>
-            <Button variant="outline" onClick={handleViewOrder} className="w-full">
-              Ver mi pedido
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (items.length === 0) {
     return (
@@ -424,50 +324,26 @@ export function CartView({ onNavigate }: CartViewProps) {
               </div>
             </div>
           ) : (
-            <div className="bg-surface/55 border border-white/5 backdrop-blur-md rounded-2xl p-4 flex flex-col gap-4 shadow-lg">
-              <div className="flex flex-col gap-0.5 text-center mb-1">
-                <span className="text-[9px] font-black tracking-[0.2em] text-primary uppercase">Pedido rápido</span>
-                <h4 className="text-xs font-bold text-white uppercase">Comprar como Invitado</h4>
-                <p className="text-[10px] text-gray-400 font-medium">Ingresa tus datos para enviar tu pedido por WhatsApp.</p>
-              </div>
-              
-              <div className="flex flex-col gap-3">
-                <Input
-                  label="Nombre Completo"
-                  placeholder="Ej. Juan Pérez"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 text-xs h-11"
-                />
-                <Input
-                  label="Teléfono"
-                  placeholder="686 123 4567"
-                  type="tel"
-                  value={guestPhone}
-                  onChange={(e) => setGuestPhone(e.target.value)}
-                  className="bg-black/35 border-white/5 text-white placeholder:text-gray-600 text-xs h-11"
-                />
-              </div>
-
-              <div className="border-t border-white/5 pt-3 mt-1 flex flex-col items-center">
-                <p className="text-[10px] text-gray-400 font-semibold mb-2">¿Quieres acumular puntos?</p>
-                <div className="flex items-center gap-3">
-                  <button 
-                    type="button" 
-                    onClick={() => onNavigate('auth')} 
-                    className="text-primary text-[11px] font-extrabold hover:underline"
-                  >
-                    Iniciar sesión
-                  </button>
-                  <span className="text-gray-600 text-[10px]">•</span>
-                  <button 
-                    type="button" 
-                    onClick={() => onNavigate('register')} 
-                    className="text-white text-[11px] font-bold hover:underline"
-                  >
-                    Crear cuenta
-                  </button>
+            <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <History size={20} />
                 </div>
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Cuenta requerida</span>
+                  <h4 className="mt-0.5 text-sm font-black uppercase text-white">Guarda tu historial de compras</h4>
+                  <p className="mt-1 text-[10px] font-medium leading-relaxed text-gray-400">
+                    Inicia sesión o crea una cuenta gratuita para registrar este pedido a tu nombre y acumular tus compras y puntos.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" onClick={() => onNavigate('auth', 'cart')} className="gap-1.5">
+                  <LogIn size={15} /> Iniciar sesión
+                </Button>
+                <Button type="button" onClick={() => onNavigate('register', 'cart')} className="gap-1.5">
+                  <UserPlus size={15} /> Crear cuenta
+                </Button>
               </div>
             </div>
           )}
@@ -489,10 +365,20 @@ export function CartView({ onNavigate }: CartViewProps) {
           onClick={handleGenerateOrder}
           isLoading={isLoading}
         >
-          <span className="flex-1 text-center font-bold">GENERAR PEDIDO</span>
-          <MessageCircle size={24} className="shrink-0 text-white opacity-70" />
+          <span className="flex-1 text-center font-bold">
+            {isAuthenticated ? 'GENERAR PEDIDO' : 'INICIAR SESIÓN PARA PEDIR'}
+          </span>
+          {isAuthenticated ? (
+            <MessageCircle size={24} className="shrink-0 text-white opacity-70" />
+          ) : (
+            <LogIn size={22} className="shrink-0 text-white opacity-70" />
+          )}
         </Button>
-        <p className="text-[10px] text-gray-400 mt-2.5 text-center">Se registrará en el sistema y se notificará por WhatsApp.</p>
+        <p className="text-[10px] text-gray-400 mt-2.5 text-center">
+          {isAuthenticated
+            ? 'Se guardará en tu historial y se notificará por WhatsApp.'
+            : 'Todos los pedidos requieren una cuenta para conservar el historial de compras.'}
+        </p>
       </div>
     </div>
   );

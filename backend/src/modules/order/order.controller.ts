@@ -12,24 +12,23 @@ export class OrderController {
   @Post('orders')
   async createOrder(@Headers('Authorization') authHeader: string | undefined, @Body() body: any) {
     const token = this.extractToken(authHeader);
-    const hasGuestContact = Boolean(
-      typeof body?.customerName === 'string' && body.customerName.trim() &&
-      typeof body?.customerPhone === 'string' && body.customerPhone.trim()
-    );
-
-    if (token) {
-      try {
-        const customer = await this.authService.validateSession(token);
-        return this.orderService.createOrder(customer.id, body);
-      } catch {
-        if (hasGuestContact) {
-          return this.orderService.createOrder(null, body);
-        }
-        throw new UnauthorizedException('Sesión expirada o inválida. Por favor, inicia sesión de nuevo.');
-      }
+    if (!token) {
+      throw new UnauthorizedException('Debes iniciar sesión o crear una cuenta para realizar un pedido.');
     }
 
-    return this.orderService.createOrder(null, body);
+    const customer = await this.authService.validateSession(token);
+    return this.orderService.createOrder(customer.id, body);
+  }
+
+  @Get('orders/mine')
+  async listCustomerOrders(@Headers('Authorization') authHeader: string | undefined) {
+    const token = this.extractToken(authHeader);
+    if (!token) {
+      throw new UnauthorizedException('Debes iniciar sesión para consultar tu historial de compras.');
+    }
+
+    const customer = await this.authService.validateSession(token);
+    return this.orderService.listCustomerOrders(customer.id);
   }
 
   @Get('orders/:id')

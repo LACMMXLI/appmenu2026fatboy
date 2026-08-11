@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Flame, Phone, ChevronRight, Lock, CreditCard, LogOut, Store, Gift, Zap, ShieldCheck } from 'lucide-react';
+import { Star, Flame, Phone, ChevronRight, Lock, CreditCard, LogOut, Store, Gift, Zap, ShieldCheck, History, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { Button } from '@/components/ui/Button';
-import { getBranches, type Branch } from '@/lib/api';
+import { getBranches, getMyOrders, type Branch, type PublicOrderTracking } from '@/lib/api';
 
 interface ProfileViewProps {
   onNavigate: (view: any) => void;
@@ -16,8 +16,10 @@ const FALLBACK_CONTACT_BRANCHES: Branch[] = [
 ];
 
 export function ProfileView({ onNavigate }: ProfileViewProps) {
-  const { points, customer, logout, isAuthenticated } = useUser();
+  const { points, customer, logout, isAuthenticated, token } = useUser();
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [orders, setOrders] = useState<PublicOrderTracking[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   useEffect(() => {
     async function loadBranches() {
@@ -30,6 +32,30 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
     }
     loadBranches();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      setOrders([]);
+      return;
+    }
+
+    let isMounted = true;
+    setOrdersLoading(true);
+    getMyOrders(token)
+      .then((history) => {
+        if (isMounted) setOrders(history);
+      })
+      .catch(() => {
+        if (isMounted) setOrders([]);
+      })
+      .finally(() => {
+        if (isMounted) setOrdersLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, token]);
 
   const handleLogout = async () => {
     await logout();
@@ -49,7 +75,7 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
     <div className={cn('flex flex-col gap-1.5 px-3 h-full overflow-hidden py-1.5 justify-start')}>
       {/* User Info Card */}
       {isAuthenticated ? (
-        <div className="flex flex-col gap-1.5 h-full justify-start overflow-hidden">
+        <div className="flex flex-col gap-1.5 h-full justify-start overflow-y-auto no-scrollbar pb-2">
           {/* User Info Card */}
           <div className="bg-surface border border-outline/50 p-2 rounded-lg flex items-center gap-2.5 relative overflow-hidden shrink-0">
             <div className="absolute -right-4 -top-4 w-16 h-16 bg-primary/10 rounded-full blur-xl"></div>
@@ -117,6 +143,49 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
                 <span className="text-[7.5px] font-bold text-gray-400 uppercase tracking-widest block mb-0.5">Sucursal Favorita</span>
                 <span className="font-bold text-[10px] leading-none block text-white">Fatboy {branchName}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Purchase History */}
+          <div className="w-full shrink-0">
+            <h3 className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400">
+              <History size={11} /> Historial de compras
+            </h3>
+            <div className="overflow-hidden rounded-lg border border-outline/50 bg-surface">
+              {ordersLoading ? (
+                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Cargando tus pedidos...</p>
+              ) : orders.length === 0 ? (
+                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Todavía no tienes pedidos registrados.</p>
+              ) : (
+                <div className="divide-y divide-outline/50">
+                  {orders.map((order) => (
+                    <button
+                      key={order.id}
+                      type="button"
+                      onClick={() => {
+                        sessionStorage.setItem('fatboy-last-order-id', order.id);
+                        onNavigate('order-tracking');
+                      }}
+                      className="flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-surface-hover"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <ShoppingBag size={14} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <strong className="truncate text-[10px] text-white">#{order.id.slice(0, 8).toUpperCase()} · Fatboy {order.branchName}</strong>
+                          <span className="shrink-0 text-[10px] font-black text-accent">${order.total}</span>
+                        </span>
+                        <span className="mt-0.5 flex items-center justify-between gap-2 text-[8.5px] font-semibold text-gray-500">
+                          <span>{new Date(order.createdAt).toLocaleDateString('es-MX')} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} productos</span>
+                          <span className="uppercase text-gray-400">{formatOrderStatus(order.status)}</span>
+                        </span>
+                      </span>
+                      <ChevronRight size={12} className="shrink-0 text-gray-600" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -231,4 +300,15 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
 function formatWhatsAppLink(value: string): string {
   const cleanNumber = value.replace(/\D/g, '');
   return `https://wa.me/${cleanNumber}`;
+}
+
+function formatOrderStatus(status: PublicOrderTracking['status']): string {
+  const labels: Record<PublicOrderTracking['status'], string> = {
+    pending: 'Recibido',
+    preparing: 'Preparando',
+    ready: 'Listo',
+    delivered: 'Entregado',
+    cancelled: 'Cancelado',
+  };
+  return labels[status];
 }

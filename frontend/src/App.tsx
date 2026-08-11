@@ -178,6 +178,10 @@ export default function App() {
   const privateViews = ['rewards', 'change-password', 'payment-methods'];
 
   const navigate = (view: string, extra?: any) => {
+    if ((view === 'auth' || view === 'register') && typeof extra === 'string') {
+      setPendingAuthView(extra);
+    }
+
     if (view === 'google-review' && !isGoogleReviewRoutePath(window.location.pathname)) {
       window.history.pushState(null, '', GOOGLE_REVIEW_ROUTE);
     }

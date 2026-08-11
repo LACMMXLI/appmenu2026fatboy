@@ -12,12 +12,27 @@ const MAX_EXTRA_NAME_LENGTH = 80;
 const MAX_EXTRAS_PER_ITEM = 10;
 const MAX_REMOVALS_PER_ITEM = 10;
 const MAX_REMOVAL_LENGTH = 80;
+const TRACKING_ORDER_SELECT = {
+  id: true,
+  branchName: true,
+  status: true,
+  total: true,
+  deliveryType: true,
+  paymentMethod: true,
+  createdAt: true,
+  items: {
+    select: {
+      productName: true,
+      quantity: true,
+    },
+  },
+} as const;
 
 @Injectable()
 export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createOrder(customerId: string | null, body: any) {
+  async createOrder(customerId: string, body: any) {
     const { branchId, notes, items, pointsToRedeem } = body;
 
     const deliveryType = typeof body.deliveryType === 'string' ? body.deliveryType : 'pickup';
@@ -39,15 +54,9 @@ export class OrderService {
       throw new NotFoundException('Sucursal no encontrada.');
     }
 
-    const customer = customerId ? await this.prisma.customer.findUnique({ where: { id: customerId } }) : null;
-    if (customerId && !customer) {
+    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer) {
       throw new NotFoundException('Cliente no encontrado.');
-    }
-
-    const guestName = typeof body.customerName === 'string' ? body.customerName.trim().slice(0, 120) : '';
-    const guestPhone = typeof body.customerPhone === 'string' ? body.customerPhone.trim().slice(0, 30) : '';
-    if (!customer && (!guestName || !guestPhone)) {
-      throw new BadRequestException('Nombre y teléfono son obligatorios para pedidos invitados.');
     }
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -154,9 +163,6 @@ export class OrderService {
         throw new BadRequestException('Puntos a redimir inválidos.');
       }
       if (requestedPoints > 0) {
-        if (!customer) {
-          throw new BadRequestException('Debes iniciar sesión para redimir puntos.');
-        }
         if (customer.points < requestedPoints) {
           throw new BadRequestException('Puntos insuficientes.');
         }
@@ -166,16 +172,16 @@ export class OrderService {
       }
     }
 
-    const pointsEarned = customer ? Math.floor(calculatedTotal / 10) : 0;
+    const pointsEarned = Math.floor(calculatedTotal / 10);
 
     // Save order
     const order = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
           id: randomUUID(),
-          customerId: customer?.id ?? null,
-          customerName: customer?.name ?? guestName,
-          customerPhone: customer?.phone ?? guestPhone,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.phone,
           branchId: branch.id,
           branchName: branch.name,
           status: 'pending',
@@ -194,27 +200,25 @@ export class OrderService {
         },
       });
 
-      if (customer) {
-        if (pointsRedeemed > 0) {
-          // Atomic, race-safe deduction: only succeeds if the balance still
-          // covers the redemption at commit time, even under concurrent orders.
-          const deduction = await tx.customer.updateMany({
-            where: { id: customer.id, points: { gte: pointsRedeemed } },
-            data: { points: { decrement: pointsRedeemed } },
-          });
-          if (deduction.count === 0) {
-            throw new BadRequestException('Puntos insuficientes.');
-          }
-        }
-        await tx.customer.update({
-          where: { id: customer.id },
-          data: {
-            points: {
-              increment: pointsEarned,
-            },
-          },
+      if (pointsRedeemed > 0) {
+        // Atomic, race-safe deduction: only succeeds if the balance still
+        // covers the redemption at commit time, even under concurrent orders.
+        const deduction = await tx.customer.updateMany({
+          where: { id: customer.id, points: { gte: pointsRedeemed } },
+          data: { points: { decrement: pointsRedeemed } },
         });
+        if (deduction.count === 0) {
+          throw new BadRequestException('Puntos insuficientes.');
+        }
       }
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: {
+          points: {
+            increment: pointsEarned,
+          },
+        },
+      });
 
       return newOrder;
     });
@@ -232,21 +236,7 @@ export class OrderService {
   async getOrder(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      select: {
-        id: true,
-        branchName: true,
-        status: true,
-        total: true,
-        deliveryType: true,
-        paymentMethod: true,
-        createdAt: true,
-        items: {
-          select: {
-            productName: true,
-            quantity: true,
-          },
-        },
-      },
+      select: TRACKING_ORDER_SELECT,
     });
 
     if (!order) {
@@ -257,6 +247,20 @@ export class OrderService {
       ...order,
       total: Number(order.total),
     };
+  }
+
+  async listCustomerOrders(customerId: string) {
+    const orders = await this.prisma.order.findMany({
+      where: { customerId },
+      select: TRACKING_ORDER_SELECT,
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return orders.map((order) => ({
+      ...order,
+      total: Number(order.total),
+    }));
   }
 
   async listOrders(filters: { branchId?: string }) {
