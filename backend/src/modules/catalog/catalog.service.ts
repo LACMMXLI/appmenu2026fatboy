@@ -530,17 +530,24 @@ export class CatalogService {
         throw new NotFoundException('Producto canjeable no disponible.');
       }
 
-      if (customer.points < product.pointsCost) {
-        throw new BadRequestException('Puntos insuficientes para este canje.');
-      }
-
-      const updatedCustomer = await tx.customer.update({
-        where: { id: customer.id },
+      const deduction = await tx.customer.updateMany({
+        where: {
+          id: customer.id,
+          points: { gte: product.pointsCost },
+        },
         data: {
           points: {
             decrement: product.pointsCost,
           },
         },
+      });
+
+      if (deduction.count !== 1) {
+        throw new BadRequestException('Puntos insuficientes para este canje.');
+      }
+
+      const updatedCustomer = await tx.customer.findUniqueOrThrow({
+        where: { id: customer.id },
         select: this.customerPublicSelect(),
       });
 
