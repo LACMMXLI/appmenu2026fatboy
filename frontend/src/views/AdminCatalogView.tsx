@@ -48,7 +48,6 @@ import {
   type SurveyFilters,
   exportAdminCatalogWorkbook,
   importAdminCatalogWorkbook,
-  improveAdminProductDescription,
 } from '@/lib/api';
 import { AdminCatalogShell } from './admin-catalog/AdminCatalogShell';
 import {
@@ -315,11 +314,6 @@ export function AdminCatalogView() {
       setNewProduct({ ...emptyProduct, categoryId: catalog.categories[0]?.id || '' });
       await refreshAll();
     }, 'Producto creado.');
-  }
-
-  async function improveProductDescription(product: Product) {
-    const result = await improveAdminProductDescription(adminKey, product.id, product.description);
-    return result.description;
   }
 
   async function exportCatalogWorkbook() {
@@ -701,7 +695,6 @@ export function AdminCatalogView() {
           setIsCreateOpen={setIsCreateProductOpen}
           onExportCatalog={exportCatalogWorkbook}
           onImportCatalog={importCatalogWorkbook}
-          onImproveDescription={improveProductDescription}
         />
       )}
 

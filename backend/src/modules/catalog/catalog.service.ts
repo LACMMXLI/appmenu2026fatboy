@@ -1,6 +1,5 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CatalogStatus, Prisma, PromotionStatus } from '@prisma/client';
-import { GoogleGenAI } from '@google/genai';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
@@ -32,10 +31,6 @@ interface ProductInput {
   isPromotion?: boolean;
   promotionTag?: string | null;
   promotionTagColor?: string | null;
-}
-
-interface ImproveProductDescriptionInput {
-  description?: string | null;
 }
 
 interface RedeemableProductInput {
@@ -419,65 +414,6 @@ export class CatalogService {
         include: { category: true },
       }),
     );
-  }
-
-  async improveProductDescription(id: string, input: ImproveProductDescriptionInput) {
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
-      throw new ServiceUnavailableException('Configura GEMINI_API_KEY en el backend para usar la mejora con IA.');
-    }
-
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      include: { category: { select: { name: true } } },
-    });
-    if (!product) throw new NotFoundException('Producto no encontrado.');
-
-    const currentDescription = input.description !== undefined
-      ? this.optionalText(input.description) ?? ''
-      : product.description ?? '';
-    if (currentDescription.length > 1500) {
-      throw new BadRequestException('La descripción actual es demasiado extensa para mejorarla.');
-    }
-
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash',
-        contents: [
-          `Producto: ${product.name}`,
-          `Categoría: ${product.category.name}`,
-          `Descripción corta existente: ${product.shortDescription || '(sin descripción corta)'}`,
-          `Información e ingredientes obligatorios: ${currentDescription || '(no hay ingredientes registrados)'}`,
-          `Etiqueta comercial existente: ${product.promotionTag || '(sin etiqueta)'}`,
-          'Redacta una versión mejorada que aproveche toda la información disponible.',
-        ].join('\n'),
-        config: {
-          abortSignal: AbortSignal.timeout(20_000),
-          temperature: 0.75,
-          maxOutputTokens: 320,
-          systemInstruction: [
-            'Eres un redactor gastronómico profesional para el menú de un restaurante mexicano llamado Fatboy.',
-            'Devuelve únicamente la descripción final en español de México, sin título, comillas, listas, emojis ni Markdown.',
-            'Escribe dos oraciones completas, comerciales y apetitosas, entre 45 y 70 palabras.',
-            'La primera oración debe presentar el producto e integrar explícitamente todos los ingredientes, complementos, tamaños y opciones proporcionados.',
-            'La segunda debe comunicar la experiencia del producto de manera natural y convincente.',
-            'No omitas información concreta de la descripción actual y no sustituyas ingredientes por frases genéricas.',
-            'Evita descripciones vacías como "jugosa carne", "deliciosa hamburguesa", "sabor irresistible" o equivalentes sin información específica.',
-            'Nunca inventes ingredientes, métodos de preparación, tamaños, promociones, precios ni afirmaciones que no aparezcan en los datos.',
-            'Si no existen ingredientes registrados, describe solo lo verificable por el nombre y la categoría y señala de forma atractiva que puede personalizarse, sin inventar componentes.',
-          ].join(' '),
-        },
-      });
-
-      const description = response.text?.trim().replace(/^["“]|["”]$/g, '');
-      if (!description) throw new Error('Respuesta vacía');
-      if (description.length > 800) throw new Error('Respuesta demasiado extensa');
-      return { description };
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new ServiceUnavailableException('La IA no pudo generar una descripción en este momento. Intenta nuevamente.');
-    }
   }
 
   async deleteProduct(id: string) {

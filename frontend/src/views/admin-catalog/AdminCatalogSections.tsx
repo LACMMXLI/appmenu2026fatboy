@@ -25,7 +25,6 @@ import {
   PauseCircle,
   Upload,
   Download,
-  Sparkles,
   ClipboardList,
   MessageSquareText,
 } from 'lucide-react';
@@ -156,7 +155,6 @@ interface ProductsAdminProps {
   setIsCreateOpen: (value: boolean) => void;
   onExportCatalog: () => Promise<void>;
   onImportCatalog: (file: File) => Promise<void>;
-  onImproveDescription: (product: Product) => Promise<string>;
 }
 
 export function ProductsAdmin({
@@ -179,11 +177,8 @@ export function ProductsAdmin({
   setIsCreateOpen,
   onExportCatalog,
   onImportCatalog,
-  onImproveDescription,
 }: ProductsAdminProps) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [isImprovingDescription, setIsImprovingDescription] = useState(false);
-  const [descriptionAiMessage, setDescriptionAiMessage] = useState('');
   const importInputRef = React.useRef<HTMLInputElement>(null);
 
   const selectedCategoryName = selectedCategoryId
@@ -315,10 +310,7 @@ export function ProductsAdmin({
                   size="sm"
                   variant="outline"
                   className="flex-1 text-xs"
-                  onClick={() => {
-                    setDescriptionAiMessage('');
-                    setEditingProduct(product);
-                  }}
+                  onClick={() => setEditingProduct(product)}
                 >
                   Editar
                 </Button>
@@ -479,9 +471,8 @@ export function ProductsAdmin({
                 </div>
                 <button
                   type="button"
-                  disabled={isImprovingDescription}
                   onClick={() => setEditingProduct(null)}
-                  className="text-gray-400 transition-colors hover:text-white disabled:cursor-wait disabled:opacity-50"
+                  className="text-gray-400 transition-colors hover:text-white"
                 >
                   <X size={20} />
                 </button>
@@ -579,51 +570,19 @@ export function ProductsAdmin({
                     Las promociones marcadas aquí aparecen en "Promos del día" y solo se pueden comprar dentro del horario de promociones configurado en Configuraciones.
                   </p>
                   <div className="flex flex-col gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    <span className="flex items-center justify-between gap-3">
-                      Descripción
-                      <button
-                        type="button"
-                        disabled={isImprovingDescription}
-                        onClick={async () => {
-                          if (!editingProduct || isImprovingDescription) return;
-                          try {
-                            setIsImprovingDescription(true);
-                            setDescriptionAiMessage('');
-                            const description = await onImproveDescription(editingProduct);
-                            setEditingProduct({ ...editingProduct, description });
-                            setDescriptionAiMessage('Propuesta aplicada. Revísala antes de guardar.');
-                          } catch (error) {
-                            setDescriptionAiMessage(error instanceof Error ? error.message : 'No se pudo mejorar la descripción.');
-                          } finally {
-                            setIsImprovingDescription(false);
-                          }
-                        }}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gold/35 bg-gold/8 px-2.5 text-[9px] font-black uppercase tracking-wide text-gold transition-colors hover:bg-gold/15 disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {isImprovingDescription ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                        {isImprovingDescription ? 'Mejorando...' : 'Mejorar con IA'}
-                      </button>
-                    </span>
+                    Descripción
                     <textarea
                       aria-label="Descripción del producto"
                       value={editingProduct.description ?? ''}
-                      onChange={(event) => {
-                        setEditingProduct({ ...editingProduct, description: event.target.value });
-                        setDescriptionAiMessage('');
-                      }}
+                      onChange={(event) => setEditingProduct({ ...editingProduct, description: event.target.value })}
                       className="min-h-[110px] w-full resize-y rounded-lg border border-outline bg-background px-4 py-3 text-sm leading-5 text-white outline-none transition-colors focus:border-primary"
                     />
-                    {descriptionAiMessage && (
-                      <span role="status" className={cn('normal-case text-[10px] font-semibold tracking-normal', descriptionAiMessage.startsWith('Propuesta') ? 'text-green' : 'text-primary')}>
-                        {descriptionAiMessage}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap justify-end gap-2 border-t border-outline bg-surface px-5 py-4 rounded-b-2xl">
-                <Button type="button" variant="outline" onClick={() => setEditingProduct(null)} disabled={isLoading || isImprovingDescription}>
+                <Button type="button" variant="outline" onClick={() => setEditingProduct(null)} disabled={isLoading}>
                   Cancelar
                 </Button>
                 <Button
@@ -633,7 +592,7 @@ export function ProductsAdmin({
                     await onSaveProduct(editingProduct);
                     setEditingProduct(null);
                   }}
-                  disabled={isLoading || isImprovingDescription || !editingProduct.name}
+                  disabled={isLoading || !editingProduct.name}
                 >
                   <Save size={16} className="mr-2" /> Guardar cambios
                 </Button>
