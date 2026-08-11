@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Check, X, Store, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getOrder, type Order } from '@/lib/api';
+import { getOrder, type PublicOrderTracking } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 
 interface OrderTrackingProps {
@@ -10,7 +10,7 @@ interface OrderTrackingProps {
 
 export function OrderTrackingView({ onNavigate }: OrderTrackingProps) {
   const [orderId, setOrderId] = useState<string | null>(() => sessionStorage.getItem('fatboy-last-order-id'));
-  const [order, setOrder] = useState<Order | null>(null);
+  const [order, setOrder] = useState<PublicOrderTracking | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 

@@ -232,7 +232,21 @@ export class OrderService {
   async getOrder(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: { items: true },
+      select: {
+        id: true,
+        branchName: true,
+        status: true,
+        total: true,
+        deliveryType: true,
+        paymentMethod: true,
+        createdAt: true,
+        items: {
+          select: {
+            productName: true,
+            quantity: true,
+          },
+        },
+      },
     });
 
     if (!order) {
@@ -242,10 +256,6 @@ export class OrderService {
     return {
       ...order,
       total: Number(order.total),
-      items: order.items.map((i) => ({
-        ...i,
-        price: Number(i.price),
-      })),
     };
   }
 

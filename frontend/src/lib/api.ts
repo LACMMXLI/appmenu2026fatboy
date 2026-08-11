@@ -431,6 +431,20 @@ export interface Order {
   }[];
 }
 
+export interface PublicOrderTracking {
+  id: string;
+  branchName: string;
+  status: Order['status'];
+  total: number;
+  deliveryType: string;
+  paymentMethod: string;
+  createdAt: string;
+  items: {
+    productName: string;
+    quantity: number;
+  }[];
+}
+
 export async function createOrder(payload: OrderPayload, token?: string | null): Promise<Order> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -453,8 +467,8 @@ export async function createOrder(payload: OrderPayload, token?: string | null):
   return response.json() as Promise<Order>;
 }
 
-export async function getOrder(id: string): Promise<Order> {
-  return getJson<Order>(`/orders/${id}`);
+export async function getOrder(id: string): Promise<PublicOrderTracking> {
+  return getJson<PublicOrderTracking>(`/orders/${id}`);
 }
 
 // Admin Orders API
