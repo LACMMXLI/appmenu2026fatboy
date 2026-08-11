@@ -29,6 +29,7 @@ interface ProductBody {
   status?: string;
   description?: string | null;
   shortDescription?: string | null;
+  subcategory?: string | null;
   imageUrl?: string | null;
   isPromotion?: boolean;
   promotionTag?: string | null;

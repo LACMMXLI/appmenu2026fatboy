@@ -27,6 +27,7 @@ export interface NewProduct {
   price: number;
   categoryId: string;
   description: string;
+  subcategory: string;
   imageUrl: string;
   isPromotion?: boolean;
   promotionTag?: string;

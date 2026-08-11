@@ -14,6 +14,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'torta':       '/images/category_icon_combo_1781279372441.png',
   'charola':     '/images/category_icon_combo_1781279372441.png',
   'teriyaki':    '/images/category_icon_combo_1781279372441.png',
+  'marisc':      '/images/promo_mariscos_2.png',
   'extra':       '/images/category_icon_fries_1781279382390.png',
   'pap':         '/images/category_icon_fries_1781279382390.png',
   'snack':       '/images/category_icon_fries_1781279382390.png',
@@ -88,6 +89,22 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
     () => products.filter(p => p.categoryId === activeCategoryId),
     [products, activeCategoryId],
   );
+
+  const productGroups = useMemo(() => {
+    const groups: Array<{ name: string; products: Product[] }> = [];
+
+    for (const product of visible) {
+      const name = product.subcategory?.trim() || '';
+      const currentGroup = groups.at(-1);
+      if (!currentGroup || currentGroup.name !== name) {
+        groups.push({ name, products: [product] });
+      } else {
+        currentGroup.products.push(product);
+      }
+    }
+
+    return groups;
+  }, [visible]);
 
   const handleAdd = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
@@ -177,30 +194,48 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
               {category.name}
             </h2>
 
-            {visible.map(product => (
-              <div
-                key={product.id}
-                className="product-row"
-                onClick={() => onNavigate('product-detail', product)}
-              >
-                <img
-                  src={product.imageUrl || defaultProductImage}
-                  alt={product.name}
-                  className="product-thumb"
-                />
-                <div className="product-info">
-                  <h3 className="product-name">{product.name}</h3>
-                  <p className="product-desc">{product.description || product.shortDescription || 'Producto Fatboy'}</p>
-                  <p className="product-price">${product.price}.00</p>
-                </div>
-                <button
-                  className="add-btn"
-                  onClick={e => handleAdd(e, product)}
-                  aria-label={`Agregar ${product.name}`}
-                >
-                  <Plus size={13} strokeWidth={2.5} />
-                </button>
-              </div>
+            {productGroups.map((group, groupIndex) => (
+              <section key={group.name || `general-${groupIndex}`}>
+                {group.name && (
+                  <h3
+                    className="sticky top-[41px] z-30 mx-3 mt-2 rounded-md px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] shadow-lg"
+                    style={{
+                      color: 'var(--color-gold)',
+                      background: 'rgba(20, 20, 20, 0.96)',
+                      border: '1px solid var(--color-outline)',
+                      backdropFilter: 'blur(10px)',
+                    }}
+                  >
+                    {group.name}
+                  </h3>
+                )}
+
+                {group.products.map(product => (
+                  <div
+                    key={product.id}
+                    className="product-row"
+                    onClick={() => onNavigate('product-detail', product)}
+                  >
+                    <img
+                      src={product.imageUrl || defaultProductImage}
+                      alt={product.name}
+                      className="product-thumb"
+                    />
+                    <div className="product-info">
+                      <h3 className="product-name">{product.name}</h3>
+                      <p className="product-desc">{product.description || product.shortDescription || 'Producto Fatboy'}</p>
+                      <p className="product-price">${product.price}.00</p>
+                    </div>
+                    <button
+                      className="add-btn"
+                      onClick={e => handleAdd(e, product)}
+                      aria-label={`Agregar ${product.name}`}
+                    >
+                      <Plus size={13} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                ))}
+              </section>
             ))}
           </div>
         ))

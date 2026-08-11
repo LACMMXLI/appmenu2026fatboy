@@ -70,6 +70,7 @@ const emptyProduct = {
   price: 0,
   categoryId: '',
   description: '',
+  subcategory: '',
   imageUrl: '',
 };
 
@@ -156,6 +157,7 @@ export function AdminCatalogView() {
       return (
         product.name.toLowerCase().includes(term) ||
         product.category.name.toLowerCase().includes(term) ||
+        product.subcategory?.toLowerCase().includes(term) ||
         product.description?.toLowerCase().includes(term) ||
         product.shortDescription?.toLowerCase().includes(term)
       );
@@ -291,6 +293,7 @@ export function AdminCatalogView() {
         status: product.status,
         description: product.description,
         shortDescription: product.shortDescription,
+        subcategory: product.subcategory,
         imageUrl: product.imageUrl,
         isPromotion: product.isPromotion,
         promotionTag: product.promotionTag,
@@ -307,6 +310,7 @@ export function AdminCatalogView() {
         price: newProduct.price,
         categoryId: newProduct.categoryId,
         description: newProduct.description,
+        subcategory: newProduct.subcategory,
         imageUrl: newProduct.imageUrl,
         isPromotion: newProduct.isPromotion,
         promotionTag: newProduct.promotionTag,

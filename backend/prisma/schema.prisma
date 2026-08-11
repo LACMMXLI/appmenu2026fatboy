@@ -44,50 +44,52 @@ model Category {
 }
 
 model Product {
-  id               String        @id @db.Uuid
-  name             String
-  price            Decimal       @db.Decimal(10, 2)
-  categoryId       String        @map("category_id") @db.Uuid
-  category         Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  status           CatalogStatus @default(active)
-  description      String?
-  shortDescription String?       @map("short_description")
-  imageUrl         String?       @map("image_url")
-  order            Int           @default(999)
-  isPromotion      Boolean       @default(false) @map("is_promotion")
-  promotionTag     String?       @map("promotion_tag")
-  promotionTagColor String?      @map("promotion_tag_color")
-  createdAt        DateTime      @default(now()) @map("created_at")
+  id                String        @id @db.Uuid
+  name              String
+  price             Decimal       @db.Decimal(10, 2)
+  categoryId        String        @map("category_id") @db.Uuid
+  category          Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  status            CatalogStatus @default(active)
+  description       String?
+  shortDescription  String?       @map("short_description")
+  subcategory       String?
+  imageUrl          String?       @map("image_url")
+  order             Int           @default(999)
+  isPromotion       Boolean       @default(false) @map("is_promotion")
+  promotionTag      String?       @map("promotion_tag")
+  promotionTagColor String?       @map("promotion_tag_color")
+  createdAt         DateTime      @default(now()) @map("created_at")
 
   @@index([categoryId])
+  @@index([categoryId, subcategory, order])
   @@index([status])
   @@map("products")
 }
 
 model Customer {
-  id               String    @id @db.Uuid
-  name             String
-  phone            String    @unique
-  password         String    // Hash de contraseña
-  points           Int       @default(0)
-  favoriteBranchId String?   @map("favorite_branch_id") @db.Uuid
-  createdAt        DateTime  @default(now()) @map("created_at")
-  sessions         Session[]
-  orders           Order[]
+  id                String             @id @db.Uuid
+  name              String
+  phone             String             @unique
+  password          String // Hash de contraseña
+  points            Int                @default(0)
+  favoriteBranchId  String?            @map("favorite_branch_id") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at")
+  sessions          Session[]
+  orders            Order[]
   rewardRedemptions RewardRedemption[]
 
   @@map("customers")
 }
 
 model RedeemableProduct {
-  id          String        @id @db.Uuid
+  id          String             @id @db.Uuid
   name        String
-  pointsCost  Int           @map("points_cost")
-  status      CatalogStatus @default(active)
-  imageUrl    String?       @map("image_url")
+  pointsCost  Int                @map("points_cost")
+  status      CatalogStatus      @default(active)
+  imageUrl    String?            @map("image_url")
   description String?
-  order       Int           @default(999)
-  createdAt   DateTime      @default(now()) @map("created_at")
+  order       Int                @default(999)
+  createdAt   DateTime           @default(now()) @map("created_at")
   redemptions RewardRedemption[]
 
   @@index([status])

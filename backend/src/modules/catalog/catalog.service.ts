@@ -27,6 +27,7 @@ interface ProductInput {
   status?: string;
   description?: string | null;
   shortDescription?: string | null;
+  subcategory?: string | null;
   imageUrl?: string | null;
   isPromotion?: boolean;
   promotionTag?: string | null;
@@ -379,6 +380,7 @@ export class CatalogService {
           status: this.parseCatalogStatus(input.status),
           description: this.optionalText(input.description),
           shortDescription: this.optionalText(input.shortDescription),
+          subcategory: this.optionalText(input.subcategory),
           imageUrl: this.optionalText(input.imageUrl),
           isPromotion: Boolean(input.isPromotion),
           promotionTag: this.optionalText(input.promotionTag),
@@ -406,6 +408,7 @@ export class CatalogService {
           ...(input.status !== undefined ? { status: this.parseCatalogStatus(input.status) } : {}),
           ...(input.description !== undefined ? { description: this.optionalText(input.description) } : {}),
           ...(input.shortDescription !== undefined ? { shortDescription: this.optionalText(input.shortDescription) } : {}),
+          ...(input.subcategory !== undefined ? { subcategory: this.optionalText(input.subcategory) } : {}),
           ...(input.imageUrl !== undefined ? { imageUrl: this.optionalText(input.imageUrl) } : {}),
           ...(input.isPromotion !== undefined ? { isPromotion: Boolean(input.isPromotion) } : {}),
           ...(input.promotionTag !== undefined ? { promotionTag: this.optionalText(input.promotionTag) } : {}),

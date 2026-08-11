@@ -401,7 +401,10 @@ export function ProductsAdmin({
                       </select>
                     </label>
                   </div>
-                  <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} placeholder="https://..." className="h-10 px-3 text-sm" />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input label="Subcategoría (opcional)" value={newProduct.subcategory} onChange={(event) => onNewProductChange({ ...newProduct, subcategory: event.target.value })} placeholder="Ej: Ceviches" className="h-10 px-3 text-sm" />
+                    <Input label="URL imagen" value={newProduct.imageUrl} onChange={(event) => onNewProductChange({ ...newProduct, imageUrl: event.target.value })} placeholder="https://..." className="h-10 px-3 text-sm" />
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
                     <label className="flex h-10 items-center gap-2 rounded-lg border border-outline bg-background px-3 text-sm text-white">
                       <input
@@ -529,6 +532,13 @@ export function ProductsAdmin({
                     </label>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+                    <Input
+                      label="Subcategoría (opcional)"
+                      value={editingProduct.subcategory ?? ''}
+                      onChange={(event) => setEditingProduct({ ...editingProduct, subcategory: event.target.value })}
+                      placeholder="Ej: Ceviches"
+                      className="h-10 px-3 text-sm"
+                    />
                     <Input
                       label="URL imagen"
                       value={editingProduct.imageUrl ?? ''}
