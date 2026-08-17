@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '../../lib/promotion-window.js';
 import { isTransitionAllowed } from './order-status.js';
+import { OrdersGateway } from './orders.gateway.js';
 
 const DELIVERY_TYPES = new Set(['pickup', 'delivery']);
 const PAYMENT_METHODS = new Set(['cash', 'card']);
@@ -14,6 +15,17 @@ const MAX_EXTRA_NAME_LENGTH = 80;
 const MAX_EXTRAS_PER_ITEM = 10;
 const MAX_REMOVALS_PER_ITEM = 10;
 const MAX_REMOVAL_LENGTH = 80;
+const DEFAULT_PAGE_LIMIT = 20;
+const MAX_PAGE_LIMIT = 100;
+// The operational board (BranchOrdersView) lists a small, mostly-active set
+// per branch — it can afford a larger default than paginated history views
+// (VEINTINUEVE) without needing a cursor for day-to-day use.
+const DEFAULT_BOARD_LIMIT = 200;
+
+function clampLimit(limit: number | undefined, fallback: number, max = MAX_PAGE_LIMIT): number {
+  if (!Number.isFinite(limit) || !limit || limit <= 0) return fallback;
+  return Math.min(Math.floor(limit), max);
+}
 const TRACKING_ORDER_SELECT = {
   id: true,
   folio: true,
@@ -36,7 +48,10 @@ const TRACKING_ORDER_SELECT = {
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ordersGateway: OrdersGateway,
+  ) {}
 
   async createOrder(customerId: string, body: any) {
     const { branchId, notes, items, pointsToRedeem } = body;
@@ -247,6 +262,11 @@ export class OrderService {
       return newOrder;
     });
 
+    // Emitted only after the transaction above has committed (DIECISÉIS) —
+    // the branch board should never learn about an order the DB doesn't
+    // actually have yet.
+    this.ordersGateway.notifyOrderCreated({ id: order.id, branchId: order.branchId });
+
     return {
       ...order,
       total: Number(order.total),
@@ -292,37 +312,51 @@ export class OrderService {
     });
   }
 
-  async listCustomerOrders(customerId: string) {
-    const orders = await this.prisma.order.findMany({
+  // Cursor pagination (VEINTINUEVE) — never an unbounded findMany for a
+  // collection that only grows. `id` is a stable, unique tie-breaker paired
+  // with createdAt so the page order stays deterministic across requests.
+  async listCustomerOrders(customerId: string, opts: { limit?: number; cursor?: string } = {}) {
+    const limit = clampLimit(opts.limit, DEFAULT_PAGE_LIMIT);
+    const rows = await this.prisma.order.findMany({
       where: { customerId },
       select: TRACKING_ORDER_SELECT,
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
     });
 
-    return orders.map((order) => ({
-      ...order,
-      total: Number(order.total),
-    }));
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((order) => ({ ...order, total: Number(order.total) })),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
   }
 
-  async listOrders(filters: { branchId?: string }) {
-    const orders = await this.prisma.order.findMany({
+  async listOrders(filters: { branchId?: string; limit?: number; cursor?: string }) {
+    const limit = clampLimit(filters.limit, DEFAULT_BOARD_LIMIT, 500);
+    const rows = await this.prisma.order.findMany({
       where: {
         ...(filters.branchId ? { branchId: filters.branchId } : {}),
       },
       include: { items: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(filters.cursor ? { cursor: { id: filters.cursor }, skip: 1 } : {}),
     });
 
-    return orders.map((order) => ({
-      ...order,
-      total: Number(order.total),
-      items: order.items.map((i) => ({
-        ...i,
-        price: Number(i.price),
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((order) => ({
+        ...order,
+        total: Number(order.total),
+        items: order.items.map((i) => ({ ...i, price: Number(i.price) })),
       })),
-    }));
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
   }
 
   /**
@@ -345,7 +379,7 @@ export class OrderService {
     to: OrderStatus,
     opts: { staffId?: string | null; reason?: string | null; metadata?: Prisma.InputJsonValue } = {},
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const order = await this.prisma.$transaction(async (tx) => {
       const current = await tx.order.findUnique({ where: { id: orderId }, select: { status: true } });
       if (!current) {
         throw new NotFoundException('Pedido no encontrado.');
@@ -382,31 +416,26 @@ export class OrderService {
         },
       });
 
-      const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+      const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
       return {
-        ...order,
-        total: Number(order.total),
-        items: order.items.map((i) => ({ ...i, price: Number(i.price) })),
+        ...updatedOrder,
+        total: Number(updatedOrder.total),
+        items: updatedOrder.items.map((i) => ({ ...i, price: Number(i.price) })),
       };
     });
+
+    // Post-commit only (DIECISÉIS) — clients never learn of a status change
+    // Postgres hasn't durably recorded yet.
+    this.ordersGateway.notifyOrderStatusChanged({
+      id: order.id,
+      branchId: order.branchId,
+      customerId: order.customerId,
+      status: order.status,
+    });
+
+    return order;
   }
 
-  // TEMPORARY: kept only so the pre-existing PATCH /admin/orders/:id/status
-  // route still compiles/works during the migration. It will be replaced in
-  // Fase 5 (API operativa) by the dedicated accept/reject/status endpoints.
-  // Authorization (staff session + branch scoping) is now enforced by
-  // OrderController (Fase 3) before this is called.
-  async updateOrderStatus(id: string, status: string, staffId?: string) {
-    if (!this.isOrderStatus(status)) {
-      throw new BadRequestException('Estado inválido.');
-    }
-
-    return this.transitionOrder(id, status, { staffId });
-  }
-
-  private isOrderStatus(value: string): value is OrderStatus {
-    return (Object.values(OrderStatus) as string[]).includes(value);
-  }
 }
 
 function formatHour(hour: number): string {

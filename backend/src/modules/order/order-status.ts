@@ -24,6 +24,10 @@ export function isTransitionAllowed(from: OrderStatus, to: OrderStatus): boolean
   return ORDER_STATUS_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
+export function isOrderStatusValue(value: string): value is OrderStatus {
+  return (Object.values(OrderStatus) as string[]).includes(value);
+}
+
 export function assertTransition(from: OrderStatus, to: OrderStatus): void {
   if (!isTransitionAllowed(from, to)) {
     throw new InvalidOrderTransitionError(from, to);

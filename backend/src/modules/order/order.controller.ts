@@ -1,9 +1,10 @@
-import { Body, Controller, ForbiddenException, Get, Headers, NotFoundException, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
-import { StaffRole } from '@prisma/client';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, NotFoundException, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { OrderStatus, StaffRole } from '@prisma/client';
 import { OrderService } from './order.service.js';
 import { AuthService } from '../auth/auth.service.js';
 import { StaffAuthService } from '../staff/staff-auth.service.js';
 import { extractBearerToken, requireBearerToken } from '../../lib/http.js';
+import { isOrderStatusValue } from './order-status.js';
 
 @Controller()
 export class OrderController {
@@ -25,14 +26,18 @@ export class OrderController {
   }
 
   @Get('orders/mine')
-  async listCustomerOrders(@Headers('Authorization') authHeader: string | undefined) {
+  async listCustomerOrders(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
     const token = extractBearerToken(authHeader);
     if (!token) {
       throw new UnauthorizedException('Debes iniciar sesión para consultar tu historial de compras.');
     }
 
     const customer = await this.authService.validateSession(token);
-    return this.orderService.listCustomerOrders(customer.id);
+    return this.orderService.listCustomerOrders(customer.id, { limit: Number(limit), cursor });
   }
 
   // Knowing a pedido's id/folio is NOT authorization (DOCE). The requester
@@ -82,23 +87,75 @@ export class OrderController {
     return this.orderService.getOrderHistory(id);
   }
 
+  // Read-only. Branch operators use their own Staff session (branch-scoped).
+  // The master admin key — already trusted with full visibility over
+  // catalog/customers/redemptions in AdminCatalogView — may also browse
+  // orders across all branches for administrative search (VEINTISÉIS). It
+  // grants no write access: accept/reject/status stay Staff-session-only, so
+  // every status change is still attributed to a real person.
   @Get('admin/orders')
-  async listOrders(@Headers('Authorization') authHeader: string | undefined, @Query('branchId') branchId?: string) {
-    const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
-    const scopedBranchId = this.resolveBranchScope(staff, branchId);
-    return this.orderService.listOrders({ branchId: scopedBranchId });
+  async listOrders(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Headers('x-admin-key') adminKey: string | undefined,
+    @Query('branchId') branchId?: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    let scopedBranchId = branchId;
+    if (!adminKey || !this.isValidAdminKey(adminKey)) {
+      const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
+      scopedBranchId = this.resolveBranchScope(staff, branchId);
+    }
+    return this.orderService.listOrders({ branchId: scopedBranchId, limit: Number(limit), cursor });
   }
 
-  @Patch('admin/orders/:id/status')
-  async updateOrderStatus(
+  // PENDING_APPROVAL → ACCEPTED. Only staff of the receiving branch (or ADMIN).
+  @Post('orders/:id/accept')
+  async acceptOrder(@Headers('Authorization') authHeader: string | undefined, @Param('id') id: string) {
+    const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
+    const order = await this.orderService.getOrder(id);
+    this.assertBranchAccess(staff, order.branchId);
+    return this.orderService.transitionOrder(id, OrderStatus.ACCEPTED, { staffId: staff.id });
+  }
+
+  // PENDING_APPROVAL → REJECTED. A reason is mandatory (SEIS).
+  @Post('orders/:id/reject')
+  async rejectOrder(
     @Headers('Authorization') authHeader: string | undefined,
     @Param('id') id: string,
-    @Body('status') status: string,
+    @Body('reason') reason?: string,
   ) {
     const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
     const order = await this.orderService.getOrder(id);
     this.assertBranchAccess(staff, order.branchId);
-    return this.orderService.updateOrderStatus(id, status, staff.id);
+
+    if (!reason || !reason.trim()) {
+      throw new BadRequestException('Debes indicar un motivo de rechazo.');
+    }
+
+    return this.orderService.transitionOrder(id, OrderStatus.REJECTED, { staffId: staff.id, reason });
+  }
+
+  // The rest of the machine (ACCEPTED→PREPARING→READY→COMPLETED, or
+  // →CANCELLED). Accept/reject have their own endpoints above because they
+  // carry different validation (reason requirement) — kept separate rather
+  // than overloading this one (no endpoints redundantes, but no god-endpoint
+  // either).
+  @Patch('orders/:id/status')
+  async updateOrderStatus(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Body('reason') reason?: string,
+  ) {
+    if (!isOrderStatusValue(status) || status === OrderStatus.ACCEPTED || status === OrderStatus.REJECTED) {
+      throw new BadRequestException('Estado inválido. Usa /accept o /reject para esos cambios.');
+    }
+
+    const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
+    const order = await this.orderService.getOrder(id);
+    this.assertBranchAccess(staff, order.branchId);
+    return this.orderService.transitionOrder(id, status, { staffId: staff.id, reason });
   }
 
   /** Non-ADMIN staff are locked to their own branch; ADMIN can pass any/none. */
@@ -123,5 +180,10 @@ export class OrderController {
     if (staff.branchId !== orderBranchId) {
       throw new ForbiddenException('No tienes permiso para administrar pedidos de otra sucursal.');
     }
+  }
+
+  private isValidAdminKey(adminKey: string): boolean {
+    const expectedKey = process.env.ADMIN_CATALOG_KEY;
+    return Boolean(expectedKey) && adminKey === expectedKey;
   }
 }

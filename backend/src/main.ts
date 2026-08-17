@@ -3,9 +3,10 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { resolveCorsOrigin } from './lib/cors.js';
 
 const port = Number(process.env.PORT ?? 8372);
-const corsOrigin = parseCorsOrigin(process.env.CORS_ORIGIN);
+const corsOrigin = resolveCorsOrigin();
 
 const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
 
@@ -33,23 +34,3 @@ app.enableCors({
 await app.listen(port, '0.0.0.0');
 
 console.log(`Fatboy POS backend listo en http://localhost:${port}/api`);
-
-function parseCorsOrigin(value?: string): boolean | string[] {
-  if (!value) {
-    return [
-      'http://localhost:8371',
-      'http://127.0.0.1:8371',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-    ];
-  }
-
-  if (value.trim() === '*') {
-    return true;
-  }
-
-  return value
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}

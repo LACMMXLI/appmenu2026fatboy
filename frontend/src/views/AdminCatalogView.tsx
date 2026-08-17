@@ -17,8 +17,7 @@ import {
   updateAdminCustomerPoints,
   updateAdminCustomer,
   deleteAdminCustomer,
-  getAdminOrders,
-  updateAdminOrderStatus,
+  getAdminOrdersByKey,
   getBranches,
   getHomeBanners,
   createAdminHomeBanner,
@@ -206,8 +205,9 @@ export function AdminCatalogView() {
       const customersList = await getAdminCustomers(key);
       setCustomers(customersList);
 
-      // Cargar pedidos
-      const ordersList = await getAdminOrders(key);
+      // Cargar pedidos (solo lectura — el estado se administra desde la
+      // Pantalla de Sucursal, autenticada con cuentas de personal reales)
+      const ordersList = await getAdminOrdersByKey(key, { limit: 300 });
       setOrders(ordersList);
 
       // Cargar banners
@@ -508,14 +508,6 @@ export function AdminCatalogView() {
     }, 'Cliente eliminado.');
   }
 
-  // --- PEDIDOS ---
-  async function updateOrderStatus(orderId: string, status: string) {
-    await runAction(async () => {
-      await updateAdminOrderStatus(adminKey, orderId, status);
-      await refreshAll();
-    }, 'Estado del pedido actualizado.');
-  }
-
   const filteredOrders = useMemo(() => {
     if (!orderBranchFilter) return orders;
     return orders.filter(o => o.branchId === orderBranchFilter);
@@ -811,9 +803,7 @@ export function AdminCatalogView() {
           orders={filteredOrders}
           branches={branches}
           branchFilter={orderBranchFilter}
-          isLoading={isLoading}
           onBranchFilterChange={setOrderBranchFilter}
-          onUpdateStatus={updateOrderStatus}
         />
       )}
 

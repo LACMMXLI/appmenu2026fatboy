@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   BadgeCheck,
@@ -10,71 +10,63 @@ import {
   CreditCard,
   Gift,
   KeyRound,
+  LogOut,
   MapPin,
   Phone,
   Printer,
   RefreshCw,
-  ShieldCheck,
   ShoppingBag,
   Store,
-  UserCog,
-  Wallet,
+  Wifi,
+  WifiOff,
   X,
 } from 'lucide-react';
+import type { Socket } from 'socket.io-client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
+import { connectOrdersSocket } from '@/lib/socket';
 import {
-  getAdminOrders,
+  ORDER_STATUS_LABELS_ES,
+  acceptOrder,
   getAdminRewardRedemptions,
   getBranches,
-  updateAdminOrderStatus,
+  getAdminOrders,
+  rejectOrder,
+  staffLogin,
+  staffLogout,
+  getStaffMe,
+  updateOrderStatus,
   type Branch,
   type Order,
+  type OrderStatus,
   type RewardRedemption,
+  type Staff,
 } from '@/lib/api';
 
-type StaffRole = 'manager' | 'cashier' | 'admin';
 type OrderTab = 'active' | 'completed' | 'redemptions';
 
-const ROLE_STORAGE_KEY = 'fatboy-branch-role';
-const BRANCH_STORAGE_KEY = 'fatboy-branch-id';
+const STAFF_TOKEN_KEY = 'fatboy-staff-token';
+// Redemptions ("canjes") belong to the loyalty/catalog admin domain, which
+// this modernization intentionally does not touch (out of scope) — it keeps
+// using the existing shared admin key, entered separately and lazily.
+const REDEMPTIONS_ADMIN_KEY = 'fatboy-admin-key';
+// Safety net only. Socket.IO is the primary sync mechanism; this just covers
+// the rare case where an event was missed and the socket didn't notice.
+const SAFETY_POLL_MS = 30_000;
 
-const roleConfig: Record<StaffRole, { label: string; short: string; description: string; Icon: typeof UserCog }> = {
-  manager: {
-    label: 'Encargado',
-    short: 'Encargado',
-    description: 'Acepta, imprime, finaliza y cancela pedidos de sucursal.',
-    Icon: ShieldCheck,
-  },
-  cashier: {
-    label: 'Caja 1',
-    short: 'Caja 1',
-    description: 'Recibe pedidos, cobra, imprime tickets y entrega canjes.',
-    Icon: Wallet,
-  },
-  admin: {
-    label: 'Administrador',
-    short: 'Admin',
-    description: 'Control completo de pedidos, cancelaciones y operación.',
-    Icon: UserCog,
-  },
-};
-
-const statusMeta: Record<Order['status'], { label: string; tone: string; dot: string }> = {
-  pending: { label: 'Nuevo', tone: 'text-amber-300 bg-amber-400/10 border-amber-400/25', dot: 'bg-amber-300' },
-  preparing: { label: 'En preparacion', tone: 'text-sky-300 bg-sky-400/10 border-sky-400/25', dot: 'bg-sky-300' },
-  ready: { label: 'Listo', tone: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/25', dot: 'bg-emerald-300' },
-  delivered: { label: 'Entregado', tone: 'text-green-300 bg-green-400/10 border-green-400/25', dot: 'bg-green-300' },
-  cancelled: { label: 'Cancelado', tone: 'text-red-300 bg-red-400/10 border-red-400/25', dot: 'bg-red-300' },
+const statusMeta: Record<OrderStatus, { tone: string; dot: string }> = {
+  PENDING_APPROVAL: { tone: 'text-amber-300 bg-amber-400/10 border-amber-400/25', dot: 'bg-amber-300' },
+  ACCEPTED: { tone: 'text-sky-300 bg-sky-400/10 border-sky-400/25', dot: 'bg-sky-300' },
+  PREPARING: { tone: 'text-sky-300 bg-sky-400/10 border-sky-400/25', dot: 'bg-sky-300' },
+  READY: { tone: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/25', dot: 'bg-emerald-300' },
+  COMPLETED: { tone: 'text-green-300 bg-green-400/10 border-green-400/25', dot: 'bg-green-300' },
+  REJECTED: { tone: 'text-red-300 bg-red-400/10 border-red-400/25', dot: 'bg-red-300' },
+  CANCELLED: { tone: 'text-red-300 bg-red-400/10 border-red-400/25', dot: 'bg-red-300' },
 };
 
 function currency(value: number) {
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-}
-
-function shortOrderId(id: string) {
-  return id.slice(0, 6).toUpperCase();
 }
 
 function parseJsonList(value: string | null): string[] {
@@ -97,117 +89,208 @@ function orderAge(createdAt: string) {
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
+// Short WebAudio "ping" — no external asset, and browsers only need one user
+// gesture (the login submit) before this is allowed to play.
+function playNewOrderChime() {
+  try {
+    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  } catch {
+    // Autoplay/permissions restrictions — silently skip, UI update still happens.
+  }
+}
+
 export function BranchOrdersView() {
-  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('fatboy-admin-key') ?? '');
-  const [role, setRole] = useState<StaffRole>(() => (sessionStorage.getItem(ROLE_STORAGE_KEY) as StaffRole) || 'manager');
+  const [staffToken, setStaffToken] = useState(() => sessionStorage.getItem(STAFF_TOKEN_KEY) ?? '');
+  const [staff, setStaff] = useState<Staff | null>(null);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState(() => sessionStorage.getItem(BRANCH_STORAGE_KEY) ?? '');
+  const [selectedBranchId, setSelectedBranchId] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
+  const [redemptionsKey, setRedemptionsKey] = useState(() => sessionStorage.getItem(REDEMPTIONS_ADMIN_KEY) ?? '');
   const [activeTab, setActiveTab] = useState<OrderTab>('active');
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [rejectTarget, setRejectTarget] = useState<Order | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
-  const canCancel = role === 'manager' || role === 'admin';
-  const canFinalize = role !== 'cashier' || true;
+  const socketRef = useRef<Socket | null>(null);
+  const knownOrderIdsRef = useRef<Set<string> | null>(null);
+
+  const canCancel = staff?.role === 'MANAGER' || staff?.role === 'ADMIN';
+  const isAuthorized = Boolean(staff);
+  const effectiveBranchId = staff?.role === 'ADMIN' ? selectedBranchId : staff?.branchId ?? '';
+
+  const loadOperationData = useCallback(
+    async (showSpinner = false) => {
+      if (!staffToken || !effectiveBranchId) return;
+      try {
+        if (showSpinner) setSyncing(true);
+        const result = await getAdminOrders(staffToken, { branchId: effectiveBranchId, limit: 200 });
+
+        // Chime once per newly-seen PENDING_APPROVAL order — never repeat
+        // for the same order (VEINTICINCO).
+        if (knownOrderIdsRef.current) {
+          const freshlyPending = result.items.filter(
+            (o) => o.status === 'PENDING_APPROVAL' && !knownOrderIdsRef.current!.has(o.id),
+          );
+          if (freshlyPending.length > 0) playNewOrderChime();
+        }
+        knownOrderIdsRef.current = new Set(result.items.map((o) => o.id));
+
+        setOrders(result.items);
+        setError('');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al sincronizar pedidos.');
+      } finally {
+        if (showSpinner) setSyncing(false);
+      }
+    },
+    [staffToken, effectiveBranchId],
+  );
+
+  // Login / session restore
+  useEffect(() => {
+    if (!staffToken) {
+      getBranches().then(setBranches).catch(() => undefined);
+      return;
+    }
+    getStaffMe(staffToken)
+      .then((s) => {
+        setStaff(s);
+        if (s.branchId) setSelectedBranchId(s.branchId);
+      })
+      .catch(() => {
+        sessionStorage.removeItem(STAFF_TOKEN_KEY);
+        setStaffToken('');
+      });
+  }, [staffToken]);
 
   useEffect(() => {
-    if (adminKey) {
-      validateAndLoad(adminKey);
-    } else {
+    if (isAuthorized) {
       getBranches().then(setBranches).catch(() => undefined);
     }
-  }, []);
+  }, [isAuthorized]);
+
+  // Real-time sync: Socket.IO is authoritative for "something changed", the
+  // REST refetch is authoritative for "what it actually is now" (TRECE/DIECISÉIS/DIECISIETE).
+  useEffect(() => {
+    if (!staffToken || !effectiveBranchId) return;
+
+    const socket = connectOrdersSocket(staffToken);
+    socketRef.current = socket;
+
+    const refetch = () => loadOperationData(false);
+
+    socket.on('connect', () => {
+      setSocketConnected(true);
+      if (staff?.role === 'ADMIN') {
+        socket.emit('branch:watch', { branchId: effectiveBranchId });
+      }
+      refetch(); // reconnection rule: HTTP re-sync, never trust "no events missed"
+    });
+    socket.on('disconnect', () => setSocketConnected(false));
+    socket.on('connect_error', () => setSocketConnected(false));
+    socket.on('order.created', refetch);
+    socket.on('order.status_changed', refetch);
+
+    const safetyInterval = window.setInterval(refetch, SAFETY_POLL_MS);
+
+    return () => {
+      window.clearInterval(safetyInterval);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffToken, effectiveBranchId, staff?.role]);
 
   useEffect(() => {
-    sessionStorage.setItem(ROLE_STORAGE_KEY, role);
-  }, [role]);
+    if (isAuthorized && effectiveBranchId) loadOperationData(true);
+  }, [isAuthorized, effectiveBranchId, loadOperationData]);
 
   useEffect(() => {
-    if (selectedBranchId) sessionStorage.setItem(BRANCH_STORAGE_KEY, selectedBranchId);
-  }, [selectedBranchId]);
+    if (redemptionsKey) {
+      getAdminRewardRedemptions(redemptionsKey).then(setRedemptions).catch(() => undefined);
+    }
+  }, [redemptionsKey]);
 
-  async function validateAndLoad(key = adminKey) {
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
     try {
       setIsLoading(true);
       setError('');
-
-      const [branchList] = await Promise.all([getBranches(), getAdminOrders(key)]);
-      setBranches(branchList);
-      const savedBranchStillExists = branchList.some((branch) => branch.id === selectedBranchId);
-      const nextBranchId = savedBranchStillExists ? selectedBranchId : branchList[0]?.id ?? '';
-      setSelectedBranchId(nextBranchId);
-
-      setIsAuthorized(true);
-      sessionStorage.setItem('fatboy-admin-key', key);
+      const { token, staff: loggedStaff } = await staffLogin({ username, password });
+      sessionStorage.setItem(STAFF_TOKEN_KEY, token);
+      setStaffToken(token);
+      setStaff(loggedStaff);
+      if (loggedStaff.branchId) setSelectedBranchId(loggedStaff.branchId);
     } catch (err) {
-      setIsAuthorized(false);
-      setError(err instanceof Error ? err.message : 'Clave administrativa incorrecta.');
+      setError(err instanceof Error ? err.message : 'Usuario o contraseña incorrectos.');
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function loadOperationData(showSpinner = false) {
-    if (!adminKey || !selectedBranchId) return;
-
-    try {
-      if (showSpinner) setSyncing(true);
-      const [ordersList, redemptionList] = await Promise.all([
-        getAdminOrders(adminKey, selectedBranchId),
-        getAdminRewardRedemptions(adminKey).catch(() => []),
-      ]);
-
-      setOrders(ordersList);
-      setRedemptions(redemptionList);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al sincronizar pedidos.');
-    } finally {
-      if (showSpinner) setSyncing(false);
-    }
+  async function handleLogout() {
+    if (staffToken) await staffLogout(staffToken).catch(() => undefined);
+    sessionStorage.removeItem(STAFF_TOKEN_KEY);
+    setStaffToken('');
+    setStaff(null);
+    setOrders([]);
   }
 
-  useEffect(() => {
-    if (!isAuthorized || !selectedBranchId) return;
-
-    let isMounted = true;
-    const tick = async () => {
-      if (!isMounted) return;
-      await loadOperationData(false);
-    };
-
-    tick();
-    const intervalId = window.setInterval(tick, 5000);
-    return () => {
-      isMounted = false;
-      window.clearInterval(intervalId);
-    };
-  }, [isAuthorized, selectedBranchId, adminKey]);
-
-  async function handleUnlock(e: React.FormEvent) {
-    e.preventDefault();
-    await validateAndLoad(adminKey);
-  }
-
-  async function handleUpdateStatus(order: Order, status: Order['status']) {
+  async function withOrderAction(order: Order, action: () => Promise<Order>, successLabel: string) {
     try {
       setIsLoading(true);
       setMessage('');
       setError('');
-      const updated = await updateAdminOrderStatus(adminKey, order.id, status);
-
-      setOrders((prev) => prev.map((item) => (item.id === order.id ? { ...item, status: updated.status } : item)));
-      setMessage(`Pedido #${shortOrderId(order.id)} actualizado.`);
+      const updated = await action();
+      setOrders((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
+      setMessage(`Pedido ${order.folio}: ${successLabel}`);
       window.setTimeout(() => setMessage(''), 2500);
     } catch (err) {
+      // A 409 here means someone else (another tablet) already changed this
+      // order — refresh from the DB, the real source of truth (DIECIOCHO).
       setError(err instanceof Error ? err.message : 'Error al actualizar el pedido.');
+      loadOperationData(false);
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleAccept(order: Order) {
+    return withOrderAction(order, () => acceptOrder(staffToken, order.id), 'aceptado.');
+  }
+
+  function handleAdvance(order: Order, status: Exclude<OrderStatus, 'PENDING_APPROVAL' | 'ACCEPTED' | 'REJECTED'>) {
+    return withOrderAction(order, () => updateOrderStatus(staffToken, order.id, status), 'actualizado.');
+  }
+
+  function openRejectModal(order: Order) {
+    setRejectTarget(order);
+    setRejectReason('');
+  }
+
+  async function confirmReject() {
+    if (!rejectTarget || !rejectReason.trim()) return;
+    const order = rejectTarget;
+    setRejectTarget(null);
+    await withOrderAction(order, () => rejectOrder(staffToken, order.id, rejectReason.trim()), 'rechazado.');
   }
 
   function handlePrint(order: Order) {
@@ -240,7 +323,7 @@ export function BranchOrdersView() {
     ticket.document.write(`
       <html>
         <head>
-          <title>Pedido ${shortOrderId(order.id)}</title>
+          <title>Pedido ${order.folio}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 18px; color: #111; }
             h1 { font-size: 22px; margin: 0 0 6px; }
@@ -254,7 +337,7 @@ export function BranchOrdersView() {
           </style>
         </head>
         <body>
-          <h1>FATBOY #${shortOrderId(order.id)}</h1>
+          <h1>FATBOY ${order.folio}</h1>
           <div class="muted">${order.branchName} | ${new Date(order.createdAt).toLocaleString('es-MX')}</div>
           <div class="row"><strong>Cliente</strong><span>${order.customerName}</span></div>
           <div class="row"><strong>Telefono</strong><span>${order.customerPhone}</span></div>
@@ -271,21 +354,23 @@ export function BranchOrdersView() {
     ticket.document.close();
   }
 
-  const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
-  const activeOrders = useMemo(() => orders.filter((order) => order.status === 'pending' || order.status === 'preparing' || order.status === 'ready'), [orders]);
-  const pendingOrders = useMemo(() => activeOrders.filter((order) => order.status === 'pending'), [activeOrders]);
-  const preparingOrders = useMemo(() => activeOrders.filter((order) => order.status === 'preparing'), [activeOrders]);
-  const readyOrders = useMemo(() => activeOrders.filter((order) => order.status === 'ready'), [activeOrders]);
-  const completedOrders = useMemo(() => orders.filter((order) => order.status === 'delivered' || order.status === 'cancelled'), [orders]);
+  const selectedBranch = branches.find((branch) => branch.id === effectiveBranchId);
+  const pendingOrders = useMemo(() => orders.filter((o) => o.status === 'PENDING_APPROVAL'), [orders]);
+  const preparingOrders = useMemo(() => orders.filter((o) => o.status === 'ACCEPTED' || o.status === 'PREPARING'), [orders]);
+  const readyOrders = useMemo(() => orders.filter((o) => o.status === 'READY'), [orders]);
+  const completedOrders = useMemo(
+    () => orders.filter((o) => o.status === 'COMPLETED' || o.status === 'REJECTED' || o.status === 'CANCELLED'),
+    [orders],
+  );
   const todayTotal = useMemo(
-    () => orders.filter((order) => order.status === 'delivered').reduce((sum, order) => sum + order.total, 0),
+    () => orders.filter((o) => o.status === 'COMPLETED').reduce((sum, o) => sum + o.total, 0),
     [orders],
   );
 
   if (!isAuthorized) {
     return (
       <main className="min-h-[100dvh] bg-[#101010] text-white flex items-center justify-center px-5">
-        <form onSubmit={handleUnlock} className="w-full max-w-md rounded-xl border border-white/10 bg-[#181818] p-5 shadow-2xl">
+        <form onSubmit={handleLogin} className="w-full max-w-md rounded-xl border border-white/10 bg-[#181818] p-5 shadow-2xl">
           <div className="mb-5 flex items-start gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/15 text-primary">
               <KeyRound size={22} />
@@ -294,37 +379,20 @@ export function BranchOrdersView() {
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">Acceso operativo</p>
               <h1 className="font-display text-3xl leading-none">SUCURSALES / PEDIDOS</h1>
               <p className="mt-1 text-xs font-medium leading-relaxed text-gray-400">
-                Recepcion, aceptacion, impresion, finalizacion y canjes para el dia a dia.
+                Recepcion, aceptacion, impresion y finalizacion — con tu cuenta de personal.
               </p>
             </div>
           </div>
 
-          <Input
-            label="Clave administrativa"
-            type="password"
-            value={adminKey}
-            onChange={(event) => setAdminKey(event.target.value)}
-            autoFocus
-          />
-
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {(Object.keys(roleConfig) as StaffRole[]).map((roleId) => {
-              const Icon = roleConfig[roleId].Icon;
-              return (
-                <button
-                  type="button"
-                  key={roleId}
-                  onClick={() => setRole(roleId)}
-                  className={cn(
-                    'rounded-lg border px-2 py-3 text-left transition-colors',
-                    role === roleId ? 'border-primary bg-primary/12 text-white' : 'border-white/10 bg-black/20 text-gray-400',
-                  )}
-                >
-                  <Icon size={16} className={role === roleId ? 'text-primary' : 'text-gray-500'} />
-                  <span className="mt-2 block text-[11px] font-black uppercase">{roleConfig[roleId].short}</span>
-                </button>
-              );
-            })}
+          <div className="space-y-3">
+            <Input label="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" />
+            <Input
+              label="Contraseña"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
           </div>
 
           {error && <p className="mt-3 text-sm font-semibold text-primary">{error}</p>}
@@ -347,8 +415,12 @@ export function BranchOrdersView() {
             <div className="min-w-0">
               <h1 className="font-display text-3xl leading-none tracking-wide">CONTROL DE PEDIDOS</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold text-gray-400">
-                <span className="inline-flex items-center gap-1"><BadgeCheck size={13} /> {roleConfig[role].label}</span>
+                <span className="inline-flex items-center gap-1"><BadgeCheck size={13} /> {staff?.name} ({staff?.role})</span>
                 {selectedBranch && <span className="inline-flex items-center gap-1"><MapPin size={13} /> {selectedBranch.name}</span>}
+                <span className={cn('inline-flex items-center gap-1', socketConnected ? 'text-emerald-400' : 'text-amber-400')}>
+                  {socketConnected ? <Wifi size={13} /> : <WifiOff size={13} />}
+                  {socketConnected ? 'En vivo' : 'Reconectando…'}
+                </span>
               </div>
             </div>
           </div>
@@ -356,26 +428,22 @@ export function BranchOrdersView() {
           <div className="flex flex-wrap items-center gap-2">
             {message && <span className="rounded-md border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-xs font-black text-emerald-300">{message}</span>}
             {error && <span className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-black text-primary"><AlertCircle size={14} /> {error}</span>}
-            <select
-              value={role}
-              onChange={(event) => setRole(event.target.value as StaffRole)}
-              className="h-10 rounded-lg border border-white/10 bg-[#101010] px-3 text-xs font-black uppercase text-white outline-none focus:border-primary"
-            >
-              {(Object.keys(roleConfig) as StaffRole[]).map((roleId) => (
-                <option key={roleId} value={roleId}>{roleConfig[roleId].label}</option>
-              ))}
-            </select>
-            <select
-              value={selectedBranchId}
-              onChange={(event) => setSelectedBranchId(event.target.value)}
-              className="h-10 rounded-lg border border-white/10 bg-[#101010] px-3 text-xs font-black uppercase text-white outline-none focus:border-primary"
-            >
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>{branch.name}</option>
-              ))}
-            </select>
+            {staff?.role === 'ADMIN' && (
+              <select
+                value={selectedBranchId}
+                onChange={(event) => setSelectedBranchId(event.target.value)}
+                className="h-10 rounded-lg border border-white/10 bg-[#101010] px-3 text-xs font-black uppercase text-white outline-none focus:border-primary"
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>{branch.name}</option>
+                ))}
+              </select>
+            )}
             <Button type="button" size="sm" variant="outline" onClick={() => loadOperationData(true)} isLoading={syncing}>
               <RefreshCw size={15} className="mr-1" /> Sync
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={handleLogout}>
+              <LogOut size={15} className="mr-1" /> Salir
             </Button>
           </div>
         </div>
@@ -388,15 +456,11 @@ export function BranchOrdersView() {
           <MetricCard label="Listos" value={readyOrders.length.toString()} tone="emerald" Icon={CheckCircle2} />
           <MetricCard label="Venta finalizada" value={currency(todayTotal)} tone="red" Icon={CreditCard} />
         </div>
-        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400 lg:w-80">
-          <p className="font-black uppercase tracking-[0.18em] text-white">Permisos activos</p>
-          <p className="mt-1 leading-snug">{roleConfig[role].description}</p>
-        </div>
       </section>
 
       <nav className="flex gap-2 overflow-x-auto border-b border-white/10 bg-[#11100f] px-4 py-2 lg:px-6">
         <TabButton active={activeTab === 'active'} onClick={() => setActiveTab('active')} Icon={ShoppingBag}>
-          Pedidos activos <span>{activeOrders.length}</span>
+          Pedidos activos <span>{pendingOrders.length + preparingOrders.length + readyOrders.length}</span>
         </TabButton>
         <TabButton active={activeTab === 'completed'} onClick={() => setActiveTab('completed')} Icon={CheckCircle2}>
           Finalizados <span>{completedOrders.length}</span>
@@ -413,13 +477,10 @@ export function BranchOrdersView() {
               <OrderCard
                 key={order.id}
                 order={order}
-                role={role}
                 canCancel={canCancel}
-                canFinalize={canFinalize}
-                onAccept={() => handleUpdateStatus(order, 'preparing')}
-                onReady={() => handleUpdateStatus(order, 'ready')}
-                onFinalize={() => handleUpdateStatus(order, 'delivered')}
-                onCancel={() => handleUpdateStatus(order, 'cancelled')}
+                onAccept={() => handleAccept(order)}
+                onReject={() => openRejectModal(order)}
+                onAdvance={(status) => handleAdvance(order, status)}
                 onPrint={() => handlePrint(order)}
               />
             ))}
@@ -430,13 +491,10 @@ export function BranchOrdersView() {
               <OrderCard
                 key={order.id}
                 order={order}
-                role={role}
                 canCancel={canCancel}
-                canFinalize={canFinalize}
-                onAccept={() => handleUpdateStatus(order, 'preparing')}
-                onReady={() => handleUpdateStatus(order, 'ready')}
-                onFinalize={() => handleUpdateStatus(order, 'delivered')}
-                onCancel={() => handleUpdateStatus(order, 'cancelled')}
+                onAccept={() => handleAccept(order)}
+                onReject={() => openRejectModal(order)}
+                onAdvance={(status) => handleAdvance(order, status)}
                 onPrint={() => handlePrint(order)}
               />
             ))}
@@ -447,13 +505,10 @@ export function BranchOrdersView() {
               <OrderCard
                 key={order.id}
                 order={order}
-                role={role}
                 canCancel={canCancel}
-                canFinalize={canFinalize}
-                onAccept={() => handleUpdateStatus(order, 'preparing')}
-                onReady={() => handleUpdateStatus(order, 'ready')}
-                onFinalize={() => handleUpdateStatus(order, 'delivered')}
-                onCancel={() => handleUpdateStatus(order, 'cancelled')}
+                onAccept={() => handleAccept(order)}
+                onReject={() => openRejectModal(order)}
+                onAdvance={(status) => handleAdvance(order, status)}
                 onPrint={() => handlePrint(order)}
               />
             ))}
@@ -467,23 +522,41 @@ export function BranchOrdersView() {
             <OrderCard
               key={order.id}
               order={order}
-              role={role}
               canCancel={canCancel}
-              canFinalize={canFinalize}
               compact
-              onAccept={() => handleUpdateStatus(order, 'preparing')}
-              onReady={() => handleUpdateStatus(order, 'ready')}
-              onFinalize={() => handleUpdateStatus(order, 'delivered')}
-              onCancel={() => handleUpdateStatus(order, 'cancelled')}
+              onAccept={() => handleAccept(order)}
+              onReject={() => openRejectModal(order)}
+              onAdvance={(status) => handleAdvance(order, status)}
               onPrint={() => handlePrint(order)}
             />
           ))}
-          {completedOrders.length === 0 && <EmptyState icon={CheckCircle2} text="Todavia no hay pedidos finalizados o cancelados en esta sucursal." />}
+          {completedOrders.length === 0 && <EmptyState icon={CheckCircle2} text="Todavia no hay pedidos finalizados, rechazados o cancelados en esta sucursal." />}
         </section>
       )}
 
       {activeTab === 'redemptions' && (
         <section className="grid gap-3 overflow-y-auto p-4 md:grid-cols-2 xl:grid-cols-3 lg:p-6">
+          {!redemptionsKey && (
+            <form
+              className="rounded-lg border border-white/10 bg-[#181818] p-4 md:col-span-2 xl:col-span-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const key = new FormData(e.currentTarget).get('key');
+                if (typeof key === 'string' && key) {
+                  sessionStorage.setItem(REDEMPTIONS_ADMIN_KEY, key);
+                  setRedemptionsKey(key);
+                }
+              }}
+            >
+              <p className="mb-2 text-xs font-bold text-gray-400">
+                Los canjes de puntos se administran con la clave de catálogo (fuera del alcance de esta actualización de pedidos).
+              </p>
+              <div className="flex gap-2">
+                <Input name="key" type="password" placeholder="Clave administrativa" />
+                <Button type="submit">Ver canjes</Button>
+              </div>
+            </form>
+          )}
           {redemptions.map((redemption) => (
             <div key={redemption.id} className="rounded-lg border border-white/10 bg-[#181818] p-4">
               <div className="flex items-start justify-between gap-3">
@@ -505,8 +578,28 @@ export function BranchOrdersView() {
               </Button>
             </div>
           ))}
-          {redemptions.length === 0 && <EmptyState icon={Gift} text="No hay canjes recientes registrados." />}
+          {redemptionsKey && redemptions.length === 0 && <EmptyState icon={Gift} text="No hay canjes recientes registrados." />}
         </section>
+      )}
+
+      {rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#181818] p-5">
+            <h2 className="font-display text-2xl">Rechazar pedido {rejectTarget.folio}</h2>
+            <p className="mt-1 text-xs font-semibold text-gray-400">El cliente verá este motivo inmediatamente.</p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Ej. Producto agotado, sucursal saturada, fuera de horario…"
+              className="mt-3 h-24 w-full rounded-lg border border-white/10 bg-[#101010] p-3 text-sm text-white outline-none focus:border-primary"
+              autoFocus
+            />
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" onClick={() => setRejectTarget(null)}>Cancelar</Button>
+              <Button type="button" onClick={confirmReject} disabled={!rejectReason.trim()}>Confirmar rechazo</Button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
@@ -566,39 +659,34 @@ function OrderColumn({ title, count, tone, children }: { title: string; count: n
 
 function OrderCard({
   order,
-  role,
   canCancel,
-  canFinalize,
   compact = false,
   onAccept,
-  onReady,
-  onFinalize,
-  onCancel,
+  onReject,
+  onAdvance,
   onPrint,
 }: {
   key?: React.Key;
   order: Order;
-  role: StaffRole;
   canCancel: boolean;
-  canFinalize: boolean;
   compact?: boolean;
   onAccept: () => void;
-  onReady: () => void;
-  onFinalize: () => void;
-  onCancel: () => void;
+  onReject: () => void;
+  onAdvance: (status: Exclude<OrderStatus, 'PENDING_APPROVAL' | 'ACCEPTED' | 'REJECTED'>) => void;
   onPrint: () => void;
 }) {
   const meta = statusMeta[order.status];
+  const canPrint = order.status !== 'PENDING_APPROVAL'; // never print before the branch accepts (VEINTE)
 
   return (
-    <article className={cn('rounded-lg border bg-[#1b1a19] p-4 shadow-lg', order.status === 'pending' ? 'border-amber-400/25' : order.status === 'preparing' ? 'border-sky-400/25' : order.status === 'ready' ? 'border-emerald-400/25' : 'border-white/10')}>
+    <article className={cn('rounded-lg border bg-[#1b1a19] p-4 shadow-lg', order.status === 'PENDING_APPROVAL' ? 'border-amber-400/25' : order.status === 'ACCEPTED' || order.status === 'PREPARING' ? 'border-sky-400/25' : order.status === 'READY' ? 'border-emerald-400/25' : 'border-white/10')}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-2xl leading-none tracking-wide">#{shortOrderId(order.id)}</h3>
+            <h3 className="font-display text-2xl leading-none tracking-wide">{order.folio}</h3>
             <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase', meta.tone)}>
               <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
-              {meta.label}
+              {ORDER_STATUS_LABELS_ES[order.status]}
             </span>
           </div>
           <p className="mt-1 text-xs font-bold text-gray-400">{order.customerName} | {order.customerPhone}</p>
@@ -640,37 +728,47 @@ function OrderCard({
               Nota: {order.notes}
             </div>
           )}
+          {order.status === 'REJECTED' && order.rejectionReason && (
+            <div className="mt-3 rounded-md border border-red-400/20 bg-red-400/10 p-2 text-xs font-bold text-red-300">
+              Motivo de rechazo: {order.rejectionReason}
+            </div>
+          )}
         </div>
       )}
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <Button type="button" size="sm" variant="outline" onClick={onPrint} className="border-white/10">
+        <Button type="button" size="sm" variant="outline" onClick={onPrint} disabled={!canPrint} className="border-white/10" title={canPrint ? undefined : 'No se imprime hasta que el pedido sea aceptado.'}>
           <Printer size={14} className="mr-1" /> Imprimir
         </Button>
-        {order.status === 'pending' && (
-          <Button type="button" size="sm" onClick={onAccept} className="bg-sky-600 hover:bg-sky-700">
+        {order.status === 'PENDING_APPROVAL' && (
+          <>
+            <Button type="button" size="sm" onClick={onAccept} className="bg-emerald-600 hover:bg-emerald-700">
+              <Check size={14} className="mr-1" /> Aceptar
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={onReject} className="col-span-2 border-primary/25 text-primary hover:bg-primary/10">
+              <X size={14} className="mr-1" /> Rechazar
+            </Button>
+          </>
+        )}
+        {order.status === 'ACCEPTED' && (
+          <Button type="button" size="sm" onClick={() => onAdvance('PREPARING')} className="bg-sky-600 hover:bg-sky-700">
             <ChefHat size={14} className="mr-1" /> Preparar
           </Button>
         )}
-        {order.status === 'preparing' && canFinalize && (
-          <Button type="button" size="sm" onClick={onReady} className="bg-emerald-600 hover:bg-emerald-700">
+        {order.status === 'PREPARING' && (
+          <Button type="button" size="sm" onClick={() => onAdvance('READY')} className="bg-emerald-600 hover:bg-emerald-700">
             <Check size={14} className="mr-1" /> Listo
           </Button>
         )}
-        {order.status === 'ready' && canFinalize && (
-          <Button type="button" size="sm" onClick={onFinalize} className="bg-emerald-600 hover:bg-emerald-700">
+        {order.status === 'READY' && (
+          <Button type="button" size="sm" onClick={() => onAdvance('COMPLETED')} className="bg-emerald-600 hover:bg-emerald-700">
             <Check size={14} className="mr-1" /> Entregado
           </Button>
         )}
-        {(order.status === 'pending' || order.status === 'preparing' || order.status === 'ready') && canCancel && (
-          <Button type="button" size="sm" variant="outline" onClick={onCancel} className="border-primary/25 text-primary hover:bg-primary/10">
+        {(order.status === 'ACCEPTED' || order.status === 'PREPARING') && canCancel && (
+          <Button type="button" size="sm" variant="outline" onClick={() => onAdvance('CANCELLED')} className="border-primary/25 text-primary hover:bg-primary/10">
             <X size={14} className="mr-1" /> Cancelar
           </Button>
-        )}
-        {(role === 'cashier' && order.status === 'pending') && (
-          <span className="rounded-md border border-white/10 px-2 py-2 text-center text-[10px] font-black uppercase text-gray-500">
-            Caja recibe e imprime
-          </span>
         )}
       </div>
     </article>

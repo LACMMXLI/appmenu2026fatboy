@@ -37,6 +37,7 @@ import {
   updateAdminSystemSettings,
   defaultProductImage,
   resolveMediaUrl,
+  ORDER_STATUS_LABELS_ES,
   type Branch,
   type Category,
   type Customer,
@@ -1431,18 +1432,18 @@ interface OrdersAdminProps {
   orders: Order[];
   branches: Branch[];
   branchFilter: string;
-  isLoading: boolean;
   onBranchFilterChange: (id: string) => void;
-  onUpdateStatus: (orderId: string, status: string) => void;
 }
 
+// Búsqueda/consulta administrativa de solo lectura (VEINTISÉIS). Aceptar,
+// rechazar y avanzar estados vive exclusivamente en la Pantalla de Sucursal
+// (BranchOrdersView), autenticada con cuentas de personal reales — así cada
+// cambio de estado queda atribuido a una persona, no a esta clave compartida.
 export function OrdersAdmin({
   orders,
   branches,
   branchFilter,
-  isLoading,
   onBranchFilterChange,
-  onUpdateStatus,
 }: OrdersAdminProps) {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
@@ -1455,56 +1456,50 @@ export function OrdersAdmin({
     });
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusBadgeClass = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
-      case 'preparing': return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
-      case 'ready': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-      case 'delivered': return 'bg-green-500/10 text-green-400 border-green-500/30';
-      case 'cancelled': return 'bg-red-500/10 text-red-400 border-red-500/30';
+      case 'PENDING_APPROVAL': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
+      case 'ACCEPTED':
+      case 'PREPARING': return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+      case 'READY': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+      case 'COMPLETED': return 'bg-green-500/10 text-green-400 border-green-500/30';
+      case 'REJECTED':
+      case 'CANCELLED': return 'bg-red-500/10 text-red-400 border-red-500/30';
       default: return 'bg-gray-500/10 text-gray-400 border-gray-500/30';
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusIcon = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return 'Pendiente';
-      case 'preparing': return 'Preparando';
-      case 'ready': return 'Listo';
-      case 'delivered': return 'Entregado';
-      case 'cancelled': return 'Cancelado';
-      default: return status;
+      case 'PENDING_APPROVAL': return Clock;
+      case 'ACCEPTED':
+      case 'PREPARING': return Flame;
+      case 'READY': return Truck;
+      case 'COMPLETED': return CheckCircle2;
+      default: return X;
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getOrderBorderClass = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return Clock;
-      case 'preparing': return Flame;
-      case 'ready': return Truck;
-      case 'delivered': return CheckCircle2;
-      case 'cancelled': return X;
-      default: return AlertCircle;
-    }
-  };
-
-  const getOrderBorderClass = (status: string) => {
-    switch (status) {
-      case 'pending': return 'admin-order-pending';
-      case 'preparing': return 'admin-order-preparing';
-      case 'ready': return 'admin-order-ready';
-      case 'delivered': return 'admin-order-delivered';
-      case 'cancelled': return 'admin-order-cancelled';
+      case 'PENDING_APPROVAL': return 'admin-order-pending';
+      case 'ACCEPTED':
+      case 'PREPARING': return 'admin-order-preparing';
+      case 'READY': return 'admin-order-ready';
+      case 'COMPLETED': return 'admin-order-delivered';
+      case 'REJECTED':
+      case 'CANCELLED': return 'admin-order-cancelled';
       default: return '';
     }
   };
 
   // Progress timeline steps
-  const STEPS = ['pending', 'preparing', 'ready', 'delivered'];
-  const getStepIndex = (status: string) => {
+  const STEPS: Order['status'][] = ['PENDING_APPROVAL', 'ACCEPTED', 'PREPARING', 'READY', 'COMPLETED'];
+  const getStepIndex = (status: Order['status']) => {
     const idx = STEPS.indexOf(status);
     return idx === -1 ? -1 : idx;
   };
+  const isTerminalNegative = (status: Order['status']) => status === 'REJECTED' || status === 'CANCELLED';
 
   return (
     <div className="space-y-4">
@@ -1512,7 +1507,6 @@ export function OrdersAdmin({
       <div className="flex flex-col gap-4">
         <AnimatePresence initial={false}>
           {orders.map((order, index) => {
-            const shortId = order.id.substring(0, 8).toUpperCase();
             const isExpanded = expandedOrders.has(order.id);
             const StatusIcon = getStatusIcon(order.status);
             const currentStep = getStepIndex(order.status);
@@ -1540,11 +1534,11 @@ export function OrdersAdmin({
                 <div className="flex justify-between items-start flex-wrap gap-4 border-b border-outline/30 pb-3 mb-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="font-display text-lg tracking-wider text-white">PEDIDO #{shortId}</span>
+                      <span className="font-display text-lg tracking-wider text-white">{order.folio}</span>
                       <span className={cn('flex items-center gap-1 text-xs font-bold border px-2 py-0.5 rounded-full uppercase', getStatusBadgeClass(order.status))}>
                         <StatusIcon size={12} />
-                        {getStatusLabel(order.status)}
-                        {(order.status === 'pending' || order.status === 'preparing' || order.status === 'ready') && (
+                        {ORDER_STATUS_LABELS_ES[order.status]}
+                        {!isTerminalNegative(order.status) && order.status !== 'COMPLETED' && (
                           <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
                         )}
                       </span>
@@ -1552,7 +1546,7 @@ export function OrdersAdmin({
                     <span className="mt-0.5 block break-words text-xs text-gray-400">Fatboy {order.branchName} - {new Date(order.createdAt).toLocaleString()}</span>
 
                     {/* Progress Timeline */}
-                    {order.status !== 'cancelled' && (
+                    {!isTerminalNegative(order.status) && (
                       <div className="flex items-center gap-1 mt-2.5">
                         {STEPS.map((step, i) => (
                           <React.Fragment key={step}>
@@ -1569,9 +1563,12 @@ export function OrdersAdmin({
                           </React.Fragment>
                         ))}
                         <span className="ml-2 text-[10px] font-bold text-gray-500 uppercase">
-                          {order.status === 'delivered' ? 'Completado' : `Paso ${currentStep + 1}/4`}
+                          {order.status === 'COMPLETED' ? 'Completado' : `Paso ${currentStep + 1}/${STEPS.length}`}
                         </span>
                       </div>
+                    )}
+                    {order.status === 'REJECTED' && order.rejectionReason && (
+                      <p className="mt-2 text-[11px] font-bold text-red-400">Rechazado: {order.rejectionReason}</p>
                     )}
                   </div>
 
@@ -1579,24 +1576,6 @@ export function OrdersAdmin({
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-gray-500 block uppercase tracking-widest leading-none">TOTAL</span>
                       <span className="font-display text-2xl text-gold font-bold bg-gradient-to-r from-gold to-gold-dark bg-clip-text">${order.total}</span>
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-2">
-                      {order.status === 'pending' && (
-                        <Button size="sm" onClick={() => onUpdateStatus(order.id, 'preparing')} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">Aceptar / Cocinar</Button>
-                      )}
-                      {order.status === 'preparing' && (
-                        <Button size="sm" onClick={() => onUpdateStatus(order.id, 'ready')} disabled={isLoading} className="bg-emerald-600 hover:bg-emerald-700">
-                          <CheckCircle2 size={14} className="mr-1.5" /> Listo
-                        </Button>
-                      )}
-                      {order.status === 'ready' && (
-                        <Button size="sm" onClick={() => onUpdateStatus(order.id, 'delivered')} disabled={isLoading} className="bg-green-600 hover:bg-green-700">
-                          <Truck size={14} className="mr-1.5" /> Entregado
-                        </Button>
-                      )}
-                      {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                        <Button size="sm" variant="outline" onClick={() => onUpdateStatus(order.id, 'cancelled')} disabled={isLoading} className="border-primary/50 text-primary hover:bg-primary/10">Cancelar</Button>
-                      )}
                     </div>
                   </div>
                 </div>
