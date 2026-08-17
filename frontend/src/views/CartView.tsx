@@ -94,8 +94,7 @@ export function CartView({ onNavigate }: CartViewProps) {
       const order = await createOrder(payload, token);
       
       // WhatsApp message formatting
-      const shortId = order.id.substring(0, 8).toUpperCase();
-      let text = `*NUEVO PEDIDO #${shortId} - Fatboy ${order.branchName}*\n\n`;
+      let text = `*NUEVO PEDIDO ${order.folio} - Fatboy ${order.branchName}*\n\n`;
       text += `*Cliente:* ${order.customerName}\n*Teléfono:* ${order.customerPhone}\n\n*Detalles del pedido:*\n`;
       
       items.forEach(item => {
@@ -110,7 +109,7 @@ export function CartView({ onNavigate }: CartViewProps) {
         text += `\n*Descuento Puntos:* -$${order.pointsRedeemed}\n`;
       }
       text += `\n*TOTAL: $${order.total}*\n`;
-      text += `\n_Pedido registrado en el sistema. Estado: Recibido._`;
+      text += `\n_Pedido ${order.folio} registrado. Pendiente de aceptación por la sucursal._`;
       
       const destinationPhone = selectedBranch?.phone || '526860000000';
       window.open(`https://wa.me/${destinationPhone}?text=${encodeURIComponent(text)}`, '_blank');

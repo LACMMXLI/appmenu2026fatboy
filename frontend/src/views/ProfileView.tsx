@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Star, Flame, Phone, ChevronRight, Lock, CreditCard, LogOut, Store, Gift, Zap, ShieldCheck, History, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { Button } from '@/components/ui/Button';
-import { getBranches, getMyOrders, type Branch, type PublicOrderTracking } from '@/lib/api';
+import { ORDER_STATUS_LABELS_ES, getBranches, getMyOrders, type Branch, type PublicOrderTracking } from '@/lib/api';
+
+const TERMINAL_STATUSES = new Set(['COMPLETED', 'REJECTED', 'CANCELLED']);
 
 interface ProfileViewProps {
   onNavigate: (view: any) => void;
@@ -41,9 +43,9 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
 
     let isMounted = true;
     setOrdersLoading(true);
-    getMyOrders(token)
-      .then((history) => {
-        if (isMounted) setOrders(history);
+    getMyOrders(token, { limit: 30 })
+      .then((result) => {
+        if (isMounted) setOrders(result.items);
       })
       .catch(() => {
         if (isMounted) setOrders([]);
@@ -56,6 +58,9 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
       isMounted = false;
     };
   }, [isAuthenticated, token]);
+
+  const activeOrders = useMemo(() => orders.filter((o) => !TERMINAL_STATUSES.has(o.status)), [orders]);
+  const previousOrders = useMemo(() => orders.filter((o) => TERMINAL_STATUSES.has(o.status)), [orders]);
 
   const handleLogout = async () => {
     await logout();
@@ -146,45 +151,34 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
             </div>
           </div>
 
-          {/* Purchase History */}
+          {/* Active orders */}
           <div className="w-full shrink-0">
             <h3 className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400">
-              <History size={11} /> Historial de compras
+              <ShoppingBag size={11} /> Pedidos activos
             </h3>
             <div className="overflow-hidden rounded-lg border border-outline/50 bg-surface">
               {ordersLoading ? (
                 <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Cargando tus pedidos...</p>
-              ) : orders.length === 0 ? (
-                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Todavía no tienes pedidos registrados.</p>
+              ) : activeOrders.length === 0 ? (
+                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">No tienes pedidos activos en este momento.</p>
               ) : (
-                <div className="divide-y divide-outline/50">
-                  {orders.map((order) => (
-                    <button
-                      key={order.id}
-                      type="button"
-                      onClick={() => {
-                        sessionStorage.setItem('fatboy-last-order-id', order.id);
-                        onNavigate('order-tracking');
-                      }}
-                      className="flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-surface-hover"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <ShoppingBag size={14} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-2">
-                          <strong className="truncate text-[10px] text-white">#{order.id.slice(0, 8).toUpperCase()} · Fatboy {order.branchName}</strong>
-                          <span className="shrink-0 text-[10px] font-black text-accent">${order.total}</span>
-                        </span>
-                        <span className="mt-0.5 flex items-center justify-between gap-2 text-[8.5px] font-semibold text-gray-500">
-                          <span>{new Date(order.createdAt).toLocaleDateString('es-MX')} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} productos</span>
-                          <span className="uppercase text-gray-400">{formatOrderStatus(order.status)}</span>
-                        </span>
-                      </span>
-                      <ChevronRight size={12} className="shrink-0 text-gray-600" />
-                    </button>
-                  ))}
-                </div>
+                <OrderList orders={activeOrders} onNavigate={onNavigate} />
+              )}
+            </div>
+          </div>
+
+          {/* Previous orders */}
+          <div className="w-full shrink-0">
+            <h3 className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400">
+              <History size={11} /> Pedidos anteriores
+            </h3>
+            <div className="overflow-hidden rounded-lg border border-outline/50 bg-surface">
+              {ordersLoading ? (
+                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Cargando tus pedidos...</p>
+              ) : previousOrders.length === 0 ? (
+                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Todavía no tienes pedidos anteriores.</p>
+              ) : (
+                <OrderList orders={previousOrders} onNavigate={onNavigate} />
               )}
             </div>
           </div>
@@ -302,13 +296,35 @@ function formatWhatsAppLink(value: string): string {
   return `https://wa.me/${cleanNumber}`;
 }
 
-function formatOrderStatus(status: PublicOrderTracking['status']): string {
-  const labels: Record<PublicOrderTracking['status'], string> = {
-    pending: 'Recibido',
-    preparing: 'Preparando',
-    ready: 'Listo',
-    delivered: 'Entregado',
-    cancelled: 'Cancelado',
-  };
-  return labels[status];
+function OrderList({ orders, onNavigate }: { orders: PublicOrderTracking[]; onNavigate: (view: any) => void }) {
+  return (
+    <div className="divide-y divide-outline/50">
+      {orders.map((order) => (
+        <button
+          key={order.id}
+          type="button"
+          onClick={() => {
+            sessionStorage.setItem('fatboy-last-order-id', order.id);
+            onNavigate('order-tracking');
+          }}
+          className="flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-surface-hover"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ShoppingBag size={14} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center justify-between gap-2">
+              <strong className="truncate text-[10px] text-white">{order.folio} · Fatboy {order.branchName}</strong>
+              <span className="shrink-0 text-[10px] font-black text-accent">${order.total}</span>
+            </span>
+            <span className="mt-0.5 flex items-center justify-between gap-2 text-[8.5px] font-semibold text-gray-500">
+              <span>{new Date(order.createdAt).toLocaleDateString('es-MX')} · {order.items.reduce((sum, item) => sum + item.quantity, 0)} productos</span>
+              <span className="uppercase text-gray-400">{ORDER_STATUS_LABELS_ES[order.status]}</span>
+            </span>
+          </span>
+          <ChevronRight size={12} className="shrink-0 text-gray-600" />
+        </button>
+      ))}
+    </div>
+  );
 }
