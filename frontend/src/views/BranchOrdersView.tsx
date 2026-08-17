@@ -182,10 +182,19 @@ export function BranchOrdersView() {
   }, [staffToken]);
 
   useEffect(() => {
-    if (isAuthorized) {
-      getBranches().then(setBranches).catch(() => undefined);
-    }
-  }, [isAuthorized]);
+    if (!isAuthorized) return;
+    getBranches()
+      .then((list) => {
+        setBranches(list);
+        // ADMIN has no fixed branch — default to the first one so the board
+        // actually loads instead of sitting on an empty selection while the
+        // <select> visually shows its first <option> regardless of state.
+        if (staff?.role === 'ADMIN') {
+          setSelectedBranchId((current) => (current && list.some((b) => b.id === current) ? current : list[0]?.id ?? ''));
+        }
+      })
+      .catch(() => undefined);
+  }, [isAuthorized, staff?.role]);
 
   // Real-time sync: Socket.IO is authoritative for "something changed", the
   // REST refetch is authoritative for "what it actually is now" (TRECE/DIECISÉIS/DIECISIETE).
