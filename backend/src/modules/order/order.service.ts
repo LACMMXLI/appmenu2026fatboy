@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { randomUUID } from 'node:crypto';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '../../lib/promotion-window.js';
+import { isTransitionAllowed } from './order-status.js';
 
 const DELIVERY_TYPES = new Set(['pickup', 'delivery']);
 const PAYMENT_METHODS = new Set(['cash', 'card']);
@@ -295,21 +296,82 @@ export class OrderService {
     }));
   }
 
+  /**
+   * The only way an order's status is ever allowed to change. Runs the whole
+   * check-transition + update + history-write as one atomic operation:
+   *
+   * - Validates the transition against the state machine (order-status.ts).
+   * - Uses an optimistic lock (`updateMany` scoped to the status we just
+   *   read) so that two concurrent transitions can never both "win" — the
+   *   loser gets 0 affected rows and a 409, exactly like DIECIOCHO/TREINTA Y
+   *   NUEVE in nuevo modulo.md require.
+   * - Writes an immutable OrderStatusHistory row in the same transaction, so
+   *   Order.status and its history can never diverge (TREINTA Y CUATRO).
+   *
+   * Authorization (who is allowed to request `to` for this order/branch) is
+   * the caller's responsibility — see Fase 3/5.
+   */
+  async transitionOrder(
+    orderId: string,
+    to: OrderStatus,
+    opts: { staffId?: string | null; reason?: string | null; metadata?: Prisma.InputJsonValue } = {},
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.order.findUnique({ where: { id: orderId }, select: { status: true } });
+      if (!current) {
+        throw new NotFoundException('Pedido no encontrado.');
+      }
+
+      if (!isTransitionAllowed(current.status, to)) {
+        throw new BadRequestException(`No se puede pasar de "${current.status}" a "${to}".`);
+      }
+
+      const reason = opts.reason?.trim() || null;
+
+      const updated = await tx.order.updateMany({
+        where: { id: orderId, status: current.status },
+        data: {
+          status: to,
+          ...(to === OrderStatus.REJECTED ? { rejectionReason: reason } : {}),
+        },
+      });
+
+      if (updated.count === 0) {
+        // Someone else changed this order between our read and our write.
+        throw new ConflictException('El pedido ya fue actualizado por otra operación. Vuelve a consultarlo.');
+      }
+
+      await tx.orderStatusHistory.create({
+        data: {
+          id: randomUUID(),
+          orderId,
+          fromStatus: current.status,
+          toStatus: to,
+          staffId: opts.staffId ?? null,
+          reason,
+          metadata: opts.metadata,
+        },
+      });
+
+      const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+      return {
+        ...order,
+        total: Number(order.total),
+        items: order.items.map((i) => ({ ...i, price: Number(i.price) })),
+      };
+    });
+  }
+
   // TEMPORARY: kept only so the pre-existing PATCH /admin/orders/:id/status
   // route still compiles/works during the migration. It will be replaced in
-  // Fase 2 (motor de estados) / Fase 5 (API operativa) by transition-checked,
-  // history-writing, concurrency-safe endpoints.
+  // Fase 5 (API operativa) by the dedicated accept/reject/status endpoints,
+  // authorized against a real Staff session (Fase 3).
   async updateOrderStatus(id: string, status: string) {
     if (!this.isOrderStatus(status)) {
       throw new BadRequestException('Estado inválido.');
     }
 
-    const order = await this.prisma.order.update({
-      where: { id },
-      data: { status },
-    });
-
-    return order;
+    return this.transitionOrder(id, status);
   }
 
   private isOrderStatus(value: string): value is OrderStatus {
