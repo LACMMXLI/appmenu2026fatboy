@@ -737,11 +737,11 @@ function OrderCard({
               Nota: {order.notes}
             </div>
           )}
-          {order.status === 'REJECTED' && order.rejectionReason && (
-            <div className="mt-3 rounded-md border border-red-400/20 bg-red-400/10 p-2 text-xs font-bold text-red-300">
-              Motivo de rechazo: {order.rejectionReason}
-            </div>
-          )}
+        </div>
+      )}
+      {order.status === 'REJECTED' && order.rejectionReason && (
+        <div className="mt-3 rounded-md border border-red-400/20 bg-red-400/10 p-2 text-xs font-bold text-red-300">
+          Motivo de rechazo: {order.rejectionReason}
         </div>
       )}
 
