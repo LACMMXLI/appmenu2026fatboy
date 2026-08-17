@@ -19,6 +19,22 @@ enum PromotionStatus {
   EXPIRED
 }
 
+enum OrderStatus {
+  PENDING_APPROVAL
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum StaffRole {
+  STAFF
+  MANAGER
+  ADMIN
+}
+
 model Branch {
   id        String   @id @db.Uuid
   name      String
@@ -122,24 +138,74 @@ model Session {
 }
 
 model Order {
-  id             String      @id @db.Uuid
-  customerId     String?     @map("customer_id") @db.Uuid
-  customer       Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  customerName   String      @map("customer_name")
-  customerPhone  String      @map("customer_phone")
-  branchId       String      @map("branch_id") @db.Uuid
-  branchName     String      @map("branch_name")
-  status         String      @default("pending") // pending, preparing, ready, delivered, cancelled
-  total          Decimal     @db.Decimal(10, 2)
-  pointsEarned   Int         @default(0) @map("points_earned")
-  pointsRedeemed Int         @default(0) @map("points_redeemed")
-  deliveryType   String      @map("delivery_type") // delivery, pickup
-  paymentMethod  String      @map("payment_method") // cash, card
-  notes          String?
-  createdAt      DateTime    @default(now()) @map("created_at")
-  items          OrderItem[]
+  id               String              @id @db.Uuid
+  folio            String              @unique
+  customerId       String?             @map("customer_id") @db.Uuid
+  customer         Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName     String              @map("customer_name")
+  customerPhone    String              @map("customer_phone")
+  branchId         String              @map("branch_id") @db.Uuid
+  branchName       String              @map("branch_name")
+  status           OrderStatus         @default(PENDING_APPROVAL)
+  rejectionReason  String?             @map("rejection_reason")
+  total            Decimal             @db.Decimal(10, 2)
+  pointsEarned     Int                 @default(0) @map("points_earned")
+  pointsRedeemed   Int                 @default(0) @map("points_redeemed")
+  deliveryType     String              @map("delivery_type") // delivery, pickup
+  paymentMethod    String              @map("payment_method") // cash, card
+  notes            String?
+  createdAt        DateTime            @default(now()) @map("created_at")
+  items            OrderItem[]
+  statusHistory    OrderStatusHistory[]
 
+  @@index([status])
+  @@index([branchId, status])
+  @@index([branchId, createdAt])
+  @@index([customerId, createdAt])
   @@map("orders")
+}
+
+model OrderStatusHistory {
+  id         String       @id @db.Uuid
+  orderId    String       @map("order_id") @db.Uuid
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus? @map("from_status")
+  toStatus   OrderStatus  @map("to_status")
+  staffId    String?      @map("staff_id") @db.Uuid
+  staff      Staff?       @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  @@index([orderId, createdAt])
+  @@map("order_status_history")
+}
+
+model Staff {
+  id            String               @id @db.Uuid
+  name          String
+  username      String               @unique
+  password      String
+  role          StaffRole            @default(STAFF)
+  branchId      String?              @map("branch_id") @db.Uuid
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now()) @map("created_at")
+  sessions      StaffSession[]
+  statusChanges OrderStatusHistory[]
+
+  @@index([branchId])
+  @@map("staff")
+}
+
+model StaffSession {
+  id        String   @id @db.Uuid
+  staffId   String   @map("staff_id") @db.Uuid
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([staffId])
+  @@map("staff_sessions")
 }
 
 model OrderItem {

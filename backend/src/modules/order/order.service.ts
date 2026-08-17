@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { randomUUID } from 'node:crypto';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '../../lib/promotion-window.js';
 
 const DELIVERY_TYPES = new Set(['pickup', 'delivery']);
@@ -176,15 +177,18 @@ export class OrderService {
 
     // Save order
     const order = await this.prisma.$transaction(async (tx) => {
+      const folio = await this.generateFolio(tx);
+
       const newOrder = await tx.order.create({
         data: {
           id: randomUUID(),
+          folio,
           customerId: customer.id,
           customerName: customer.name,
           customerPhone: customer.phone,
           branchId: branch.id,
           branchName: branch.name,
-          status: 'pending',
+          status: OrderStatus.PENDING_APPROVAL,
           total: calculatedTotal,
           pointsEarned,
           pointsRedeemed,
@@ -231,6 +235,15 @@ export class OrderService {
         price: Number(i.price),
       })),
     };
+  }
+
+  // Generates a human-facing folio (FB-000123) from a dedicated PostgreSQL
+  // sequence. nextval() is atomic under concurrency, so two simultaneous
+  // orders can never collide — unlike a naive count()+1 approach.
+  private async generateFolio(tx: Prisma.TransactionClient): Promise<string> {
+    const rows = await tx.$queryRaw<{ nextval: bigint }[]>`SELECT nextval('order_folio_seq') AS nextval`;
+    const value = rows[0]?.nextval ?? 0n;
+    return `FB-${value.toString().padStart(6, '0')}`;
   }
 
   async getOrder(id: string) {
@@ -282,9 +295,12 @@ export class OrderService {
     }));
   }
 
+  // TEMPORARY: kept only so the pre-existing PATCH /admin/orders/:id/status
+  // route still compiles/works during the migration. It will be replaced in
+  // Fase 2 (motor de estados) / Fase 5 (API operativa) by transition-checked,
+  // history-writing, concurrency-safe endpoints.
   async updateOrderStatus(id: string, status: string) {
-    const validStatuses = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(status)) {
+    if (!this.isOrderStatus(status)) {
       throw new BadRequestException('Estado inválido.');
     }
 
@@ -294,6 +310,10 @@ export class OrderService {
     });
 
     return order;
+  }
+
+  private isOrderStatus(value: string): value is OrderStatus {
+    return (Object.values(OrderStatus) as string[]).includes(value);
   }
 }
 
