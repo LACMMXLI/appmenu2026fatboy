@@ -16,8 +16,12 @@ const MAX_REMOVALS_PER_ITEM = 10;
 const MAX_REMOVAL_LENGTH = 80;
 const TRACKING_ORDER_SELECT = {
   id: true,
+  folio: true,
+  customerId: true,
+  branchId: true,
   branchName: true,
   status: true,
+  rejectionReason: true,
   total: true,
   deliveryType: true,
   paymentMethod: true,
@@ -225,6 +229,21 @@ export class OrderService {
         },
       });
 
+      // Immutable audit trail starts here, in the same transaction as the
+      // order itself (TREINTA Y CUATRO) — Order and its history can never
+      // diverge. No staff is responsible for the order existing; the actor
+      // is the customer.
+      await tx.orderStatusHistory.create({
+        data: {
+          id: randomUUID(),
+          orderId: newOrder.id,
+          fromStatus: null,
+          toStatus: OrderStatus.PENDING_APPROVAL,
+          staffId: null,
+          reason: 'Pedido creado por el cliente.',
+        },
+      });
+
       return newOrder;
     });
 
@@ -261,6 +280,16 @@ export class OrderService {
       ...order,
       total: Number(order.total),
     };
+  }
+
+  // Immutable trail (OCHO). Ownership/branch authorization is checked by the
+  // caller (OrderController) before this is reached.
+  async getOrderHistory(orderId: string) {
+    return this.prisma.orderStatusHistory.findMany({
+      where: { orderId },
+      orderBy: { createdAt: 'asc' },
+      include: { staff: { select: { id: true, name: true } } },
+    });
   }
 
   async listCustomerOrders(customerId: string) {
@@ -364,14 +393,15 @@ export class OrderService {
 
   // TEMPORARY: kept only so the pre-existing PATCH /admin/orders/:id/status
   // route still compiles/works during the migration. It will be replaced in
-  // Fase 5 (API operativa) by the dedicated accept/reject/status endpoints,
-  // authorized against a real Staff session (Fase 3).
-  async updateOrderStatus(id: string, status: string) {
+  // Fase 5 (API operativa) by the dedicated accept/reject/status endpoints.
+  // Authorization (staff session + branch scoping) is now enforced by
+  // OrderController (Fase 3) before this is called.
+  async updateOrderStatus(id: string, status: string, staffId?: string) {
     if (!this.isOrderStatus(status)) {
       throw new BadRequestException('Estado inválido.');
     }
 
-    return this.transitionOrder(id, status);
+    return this.transitionOrder(id, status, { staffId });
   }
 
   private isOrderStatus(value: string): value is OrderStatus {
