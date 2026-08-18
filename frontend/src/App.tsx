@@ -65,6 +65,28 @@ export default function App() {
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
+  // The app never pushed browser history entries for in-app navigation
+  // (product detail, cart, tracking, tabs, etc.) — so the device/browser
+  // back button had nothing of ours to step back into and exited the app
+  // instead. This seeds the initial entry and restores `currentView` on
+  // popstate (Android back button / swipe, browser back). It never calls
+  // `navigate()` from here — that would push a *new* entry and turn every
+  // back press into a no-op loop.
+  useEffect(() => {
+    if (isAdminCatalogPath || isBranchOrdersPath || isSurveyPath) return;
+
+    window.history.replaceState({ view: currentView }, '', window.location.pathname);
+
+    const handlePopState = (event: PopStateEvent) => {
+      const nextView = (event.state as { view?: string } | null)?.view ?? 'home';
+      setCurrentView(nextView);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (isAdminCatalogPath || isBranchOrdersPath || isSurveyPath || sessionStorage.getItem(VISIT_TRACKED_SESSION_KEY)) {
       return;
@@ -182,15 +204,23 @@ export default function App() {
       setPendingAuthView(extra);
     }
 
+    const requiresAuth = privateViews.includes(view) && !isAuthenticated;
+    const nextView = requiresAuth ? 'auth' : view;
+
+    // One history entry per real navigation, so the back button/gesture
+    // steps back into the app instead of exiting it. The google-review
+    // route additionally carries its own URL, so it keeps managing the
+    // pathname itself; every other transition just tags the current path
+    // with the view it should restore on popstate.
     if (view === 'google-review' && !isGoogleReviewRoutePath(window.location.pathname)) {
-      window.history.pushState(null, '', GOOGLE_REVIEW_ROUTE);
+      window.history.pushState({ view: nextView }, '', GOOGLE_REVIEW_ROUTE);
+    } else if (view !== 'google-review' && isGoogleReviewRoutePath(window.location.pathname)) {
+      window.history.replaceState({ view: nextView }, '', '/');
+    } else if (nextView !== currentView) {
+      window.history.pushState({ view: nextView }, '', window.location.pathname);
     }
 
-    if (view !== 'google-review' && isGoogleReviewRoutePath(window.location.pathname)) {
-      window.history.replaceState(null, '', '/');
-    }
-
-    if (privateViews.includes(view) && !isAuthenticated) {
+    if (requiresAuth) {
       setPendingAuthView(view);
       setCurrentView('auth');
       return;
@@ -212,7 +242,7 @@ export default function App() {
       setPendingAuthView(null);
     }
 
-    setCurrentView(view);
+    setCurrentView(nextView);
   };
 
   const handleLogin = () => {
