@@ -154,7 +154,12 @@ model Order {
   cancellationRequestedAt    DateTime? @map("cancellation_requested_at")
   cancellationRequestReason  String?   @map("cancellation_request_reason")
   total            Decimal             @db.Decimal(10, 2)
+  // pointsEarned is calculated (and frozen) at creation time, but only
+  // credited to the customer's balance when the order reaches COMPLETED
+  // (delivered) — never on creation/acceptance/preparation. pointsCredited
+  // guards against crediting the same order twice.
   pointsEarned     Int                 @default(0) @map("points_earned")
+  pointsCredited   Boolean             @default(false) @map("points_credited")
   pointsRedeemed   Int                 @default(0) @map("points_redeemed")
   deliveryType     String              @map("delivery_type") // delivery, pickup
   paymentMethod    String              @map("payment_method") // cash, card

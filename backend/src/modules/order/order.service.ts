@@ -240,14 +240,11 @@ export class OrderService {
           throw new BadRequestException('Puntos insuficientes.');
         }
       }
-      await tx.customer.update({
-        where: { id: customer.id },
-        data: {
-          points: {
-            increment: pointsEarned,
-          },
-        },
-      });
+      // pointsEarned is calculated and frozen here, but NOT credited to the
+      // customer yet — that only happens when the order reaches COMPLETED
+      // (delivered), in transitionOrder. Crediting at creation would let a
+      // cancelled/rejected order still leave the customer with points for a
+      // purchase that never happened.
 
       // Immutable audit trail starts here, in the same transaction as the
       // order itself (TREINTA Y CUATRO) — Order and its history can never
@@ -384,7 +381,10 @@ export class OrderService {
     opts: { staffId?: string | null; reason?: string | null; metadata?: Prisma.InputJsonValue } = {},
   ) {
     const order = await this.prisma.$transaction(async (tx) => {
-      const current = await tx.order.findUnique({ where: { id: orderId }, select: { status: true } });
+      const current = await tx.order.findUnique({
+        where: { id: orderId },
+        select: { status: true, customerId: true, pointsEarned: true, pointsCredited: true },
+      });
       if (!current) {
         throw new NotFoundException('Pedido no encontrado.');
       }
@@ -394,12 +394,14 @@ export class OrderService {
       }
 
       const reason = opts.reason?.trim() || null;
+      const shouldCreditPoints = to === OrderStatus.COMPLETED && !current.pointsCredited && current.pointsEarned > 0;
 
       const updated = await tx.order.updateMany({
         where: { id: orderId, status: current.status },
         data: {
           status: to,
           ...(to === OrderStatus.REJECTED ? { rejectionReason: reason } : {}),
+          ...(shouldCreditPoints ? { pointsCredited: true } : {}),
           // Any real status change resolves whatever pending cancellation
           // request existed (approving it *is* this transition to
           // CANCELLED; any other transition makes a stale request moot).
@@ -411,6 +413,18 @@ export class OrderService {
       if (updated.count === 0) {
         // Someone else changed this order between our read and our write.
         throw new ConflictException('El pedido ya fue actualizado por otra operación. Vuelve a consultarlo.');
+      }
+
+      if (shouldCreditPoints && current.customerId) {
+        // Points are only ever credited here — the one transition into
+        // COMPLETED (delivered) — guarded by pointsCredited so a retried or
+        // otherwise re-entered transition can never credit the same order
+        // twice. A cancelled/rejected order never reaches this branch, so it
+        // never generates points.
+        await tx.customer.update({
+          where: { id: current.customerId },
+          data: { points: { increment: current.pointsEarned } },
+        });
       }
 
       await tx.orderStatusHistory.create({

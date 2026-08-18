@@ -8,6 +8,7 @@ let app: Awaited<ReturnType<typeof bootstrapTestApp>>['app'];
 let branchAId: string;
 let branchBId: string;
 let productId: string;
+let productPrice: number;
 
 // Registered/created once in `before` and reused across tests — /auth/register
 // and /auth/login are rate-limited (AuthRateLimitGuard, a real production
@@ -61,6 +62,36 @@ async function createOrder(token: string, branchId: string) {
   });
 }
 
+// pointsEarned = floor(total / 10) — enough quantity of the real seeded
+// product to guarantee at least 1 point is at stake, split across multiple
+// line items since a single item is capped at MAX_ITEM_QTY (20).
+async function createOrderThatEarnsPoints(token: string, branchId: string) {
+  const totalQtyNeeded = Math.max(1, Math.ceil(10 / productPrice));
+  const items: { id: string; title: string; price: number; qty: number }[] = [];
+  let remaining = totalQtyNeeded;
+  while (remaining > 0) {
+    const qty = Math.min(20, remaining);
+    items.push({ id: productId, title: 'x', price: 1, qty });
+    remaining -= qty;
+  }
+  const res = await fetch(`${baseUrl}/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ branchId, deliveryType: 'pickup', paymentMethod: 'cash', items }),
+  });
+  const order = await json(res);
+  assert.equal(res.status, 201, JSON.stringify(order));
+  assert.ok(order.pointsEarned > 0, 'test product price too low to exercise points logic — adjust seed data');
+  return order;
+}
+
+async function getPoints(token: string): Promise<number> {
+  const res = await fetch(`${baseUrl}/auth/profile`, { headers: { Authorization: `Bearer ${token}` } });
+  const body = await json(res);
+  assert.equal(res.status, 200, JSON.stringify(body));
+  return body.points;
+}
+
 before(async () => {
   if (!process.env.ADMIN_CATALOG_KEY) {
     throw new Error('ADMIN_CATALOG_KEY must be set in backend/.env to run these tests.');
@@ -78,6 +109,7 @@ before(async () => {
   const products = await json(await fetch(`${baseUrl}/products?status=active`));
   assert.ok(Array.isArray(products) && products.length >= 1, 'Need at least 1 active product.');
   productId = products[0].id;
+  productPrice = Number(products[0].price);
 
   // Distinct suffixes per identity — registerCustomer derives the phone
   // number from the last 10 digits of the suffix, so reusing one suffix
@@ -440,4 +472,100 @@ test('a READY order can no longer be cancelled by the customer', async () => {
 
   const res = await fetch(`${baseUrl}/orders/${order.id}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${owner.token}` } });
   assert.equal(res.status, 400);
+});
+
+// --- Points are only credited on delivery (COMPLETED), never before, and
+// never twice for the same order. ---
+
+test('creating an order does not credit points yet', async () => {
+  const before = await getPoints(owner.token);
+  await createOrderThatEarnsPoints(owner.token, branchAId);
+  const after = await getPoints(owner.token);
+  assert.equal(after, before, 'points must not change until the order is delivered');
+});
+
+test('accepting/preparing/marking ready does not credit points either', async () => {
+  const before = await getPoints(owner.token);
+  const order = await createOrderThatEarnsPoints(owner.token, branchAId);
+  await acceptOrder(order.id);
+  await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'PREPARING' }),
+  });
+  await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'READY' }),
+  });
+  const after = await getPoints(owner.token);
+  assert.equal(after, before, 'points must not change before COMPLETED, no matter how far along the order is');
+});
+
+test('marking an order COMPLETED credits exactly pointsEarned, once', async () => {
+  const before = await getPoints(owner.token);
+  const order = await createOrderThatEarnsPoints(owner.token, branchAId);
+  await acceptOrder(order.id);
+  await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'PREPARING' }),
+  });
+  await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'READY' }),
+  });
+  const completed = await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'COMPLETED' }),
+  });
+  assert.equal(completed.status, 200);
+
+  const afterFirstCompletion = await getPoints(owner.token);
+  assert.equal(afterFirstCompletion, before + order.pointsEarned);
+
+  // COMPLETED is terminal — the state machine itself forbids re-entering it,
+  // so a second "complete" attempt must be rejected outright, and points
+  // must not move again.
+  const secondAttempt = await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'COMPLETED' }),
+  });
+  assert.equal(secondAttempt.status, 400);
+  const afterSecondAttempt = await getPoints(owner.token);
+  assert.equal(afterSecondAttempt, afterFirstCompletion, 'points must never be credited twice for the same order');
+});
+
+test('cancelling an order before delivery never generates points', async () => {
+  const before = await getPoints(owner.token);
+  const order = await createOrderThatEarnsPoints(owner.token, branchAId);
+
+  // Cancel immediately, before the branch even accepts it.
+  const cancel = await fetch(`${baseUrl}/orders/${order.id}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${owner.token}` },
+  });
+  assert.equal(cancel.status, 201);
+  assert.equal((await json(cancel)).status, 'CANCELLED');
+
+  const after = await getPoints(owner.token);
+  assert.equal(after, before, 'a cancelled order must never leave the customer with points');
+});
+
+test('a rejected order never generates points', async () => {
+  const before = await getPoints(owner.token);
+  const order = await createOrderThatEarnsPoints(owner.token, branchAId);
+
+  const reject = await fetch(`${baseUrl}/orders/${order.id}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ reason: 'Sin existencias' }),
+  });
+  assert.equal(reject.status, 201);
+
+  const after = await getPoints(owner.token);
+  assert.equal(after, before, 'a rejected order must never generate points');
 });
