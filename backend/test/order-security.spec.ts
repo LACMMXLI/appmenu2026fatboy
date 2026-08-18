@@ -297,3 +297,147 @@ test('accept vs reject race: only one operation wins, the other is rejected (409
   // Exactly one transition away from PENDING_APPROVAL was recorded, never both.
   assert.equal(history.length, 2);
 });
+
+// --- Customer-initiated cancellation ---
+
+async function acceptOrder(orderId: string) {
+  const res = await fetch(`${baseUrl}/orders/${orderId}/accept`, { method: 'POST', headers: { Authorization: `Bearer ${staffA.token}` } });
+  assert.equal(res.status, 201);
+  return json(res);
+}
+
+test('customer cancels a PENDING_APPROVAL order directly — no branch approval needed', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}` },
+    body: JSON.stringify({}),
+  });
+  const cancelled = await json(res);
+  assert.equal(res.status, 201);
+  assert.equal(cancelled.status, 'CANCELLED');
+});
+
+test('a customer cannot cancel another customer\'s order', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${intruder.token}` },
+    body: JSON.stringify({}),
+  });
+  assert.equal(res.status, 404);
+});
+
+test('customer requests cancellation of an ACCEPTED order — status stays ACCEPTED until the branch decides', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptOrder(order.id);
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}` },
+    body: JSON.stringify({ reason: 'Ya no lo quiero' }),
+  });
+  const requested = await json(res);
+  assert.equal(res.status, 201);
+  assert.equal(requested.status, 'ACCEPTED'); // unchanged — pending branch decision
+  assert.ok(requested.cancellationRequestedAt);
+  assert.equal(requested.cancellationRequestReason, 'Ya no lo quiero');
+});
+
+test('requesting cancellation twice on the same order is rejected (409)', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptOrder(order.id);
+
+  const first = await fetch(`${baseUrl}/orders/${order.id}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${owner.token}` } });
+  assert.equal(first.status, 201);
+
+  const second = await fetch(`${baseUrl}/orders/${order.id}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${owner.token}` } });
+  assert.equal(second.status, 409);
+});
+
+test('branch approves a cancellation request — order becomes CANCELLED, staff attributed', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptOrder(order.id);
+  await fetch(`${baseUrl}/orders/${order.id}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${owner.token}` } });
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancellation/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({}),
+  });
+  const resolved = await json(res);
+  assert.equal(res.status, 201);
+  assert.equal(resolved.status, 'CANCELLED');
+  assert.equal(resolved.cancellationRequestedAt, null);
+
+  const history = await json(await fetch(`${baseUrl}/orders/${order.id}/history`, { headers: { Authorization: `Bearer ${owner.token}` } }));
+  assert.equal(history[history.length - 1].toStatus, 'CANCELLED');
+  assert.equal(history[history.length - 1].staff.id, staffA.staff.id);
+});
+
+test('branch rejects a cancellation request — order keeps going, request flag cleared', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptOrder(order.id);
+  await fetch(`${baseUrl}/orders/${order.id}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${owner.token}` } });
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancellation/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ note: 'Ya está en preparación' }),
+  });
+  const resolved = await json(res);
+  assert.equal(res.status, 201);
+  assert.equal(resolved.status, 'ACCEPTED'); // still going
+  assert.equal(resolved.cancellationRequestedAt, null);
+
+  // The order can still be advanced normally afterwards.
+  const preparing = await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'PREPARING' }),
+  });
+  assert.equal(preparing.status, 200); // PATCH defaults to 200, unlike POST's 201
+});
+
+test('staff of another branch cannot resolve a cancellation request', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptOrder(order.id);
+  await fetch(`${baseUrl}/orders/${order.id}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${owner.token}` } });
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancellation/approve`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${staffB.token}` },
+  });
+  assert.equal(res.status, 403);
+});
+
+test('resolving a cancellation request that was never made is rejected', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptOrder(order.id);
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancellation/approve`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${staffA.token}` },
+  });
+  assert.equal(res.status, 400);
+});
+
+test('a READY order can no longer be cancelled by the customer', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptOrder(order.id);
+  await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'PREPARING' }),
+  });
+  await fetch(`${baseUrl}/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ status: 'READY' }),
+  });
+
+  const res = await fetch(`${baseUrl}/orders/${order.id}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${owner.token}` } });
+  assert.equal(res.status, 400);
+});

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChefHat,
   Clock,
+  Clock3,
   CreditCard,
   Gift,
   KeyRound,
@@ -29,6 +30,8 @@ import { connectOrdersSocket } from '@/lib/socket';
 import {
   ORDER_STATUS_LABELS_ES,
   acceptOrder,
+  approveCancellation,
+  rejectCancellation,
   getAdminRewardRedemptions,
   getBranches,
   getAdminOrders,
@@ -302,6 +305,14 @@ export function BranchOrdersView() {
     await withOrderAction(order, () => rejectOrder(staffToken, order.id, rejectReason.trim()), 'rechazado.');
   }
 
+  function handleApproveCancellation(order: Order) {
+    return withOrderAction(order, () => approveCancellation(staffToken, order.id), 'cancelación aprobada.');
+  }
+
+  function handleRejectCancellation(order: Order) {
+    return withOrderAction(order, () => rejectCancellation(staffToken, order.id), 'cancelación rechazada, el pedido continúa.');
+  }
+
   function handlePrint(order: Order) {
     const lines = order.items
       .map((item) => {
@@ -489,6 +500,8 @@ export function BranchOrdersView() {
                 canCancel={canCancel}
                 onAccept={() => handleAccept(order)}
                 onReject={() => openRejectModal(order)}
+                onApproveCancellation={() => handleApproveCancellation(order)}
+                onRejectCancellation={() => handleRejectCancellation(order)}
                 onAdvance={(status) => handleAdvance(order, status)}
                 onPrint={() => handlePrint(order)}
               />
@@ -503,6 +516,8 @@ export function BranchOrdersView() {
                 canCancel={canCancel}
                 onAccept={() => handleAccept(order)}
                 onReject={() => openRejectModal(order)}
+                onApproveCancellation={() => handleApproveCancellation(order)}
+                onRejectCancellation={() => handleRejectCancellation(order)}
                 onAdvance={(status) => handleAdvance(order, status)}
                 onPrint={() => handlePrint(order)}
               />
@@ -517,6 +532,8 @@ export function BranchOrdersView() {
                 canCancel={canCancel}
                 onAccept={() => handleAccept(order)}
                 onReject={() => openRejectModal(order)}
+                onApproveCancellation={() => handleApproveCancellation(order)}
+                onRejectCancellation={() => handleRejectCancellation(order)}
                 onAdvance={(status) => handleAdvance(order, status)}
                 onPrint={() => handlePrint(order)}
               />
@@ -535,6 +552,8 @@ export function BranchOrdersView() {
               compact
               onAccept={() => handleAccept(order)}
               onReject={() => openRejectModal(order)}
+              onApproveCancellation={() => handleApproveCancellation(order)}
+              onRejectCancellation={() => handleRejectCancellation(order)}
               onAdvance={(status) => handleAdvance(order, status)}
               onPrint={() => handlePrint(order)}
             />
@@ -674,6 +693,8 @@ function OrderCard({
   onReject,
   onAdvance,
   onPrint,
+  onApproveCancellation,
+  onRejectCancellation,
 }: {
   key?: React.Key;
   order: Order;
@@ -683,6 +704,8 @@ function OrderCard({
   onReject: () => void;
   onAdvance: (status: Exclude<OrderStatus, 'PENDING_APPROVAL' | 'ACCEPTED' | 'REJECTED'>) => void;
   onPrint: () => void;
+  onApproveCancellation: () => void;
+  onRejectCancellation: () => void;
 }) {
   const meta = statusMeta[order.status];
   const canPrint = order.status !== 'PENDING_APPROVAL'; // never print before the branch accepts (VEINTE)
@@ -742,6 +765,25 @@ function OrderCard({
       {order.status === 'REJECTED' && order.rejectionReason && (
         <div className="mt-3 rounded-md border border-red-400/20 bg-red-400/10 p-2 text-xs font-bold text-red-300">
           Motivo de rechazo: {order.rejectionReason}
+        </div>
+      )}
+
+      {order.cancellationRequestedAt && (
+        <div className="mt-3 rounded-md border border-amber-400/25 bg-amber-400/10 p-2">
+          <p className="flex items-center gap-1.5 text-xs font-black uppercase text-amber-300">
+            <Clock3 size={13} /> Cliente solicitó cancelar
+          </p>
+          {order.cancellationRequestReason && (
+            <p className="mt-1 text-[11px] font-semibold text-amber-200/90">Motivo: {order.cancellationRequestReason}</p>
+          )}
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Button type="button" size="sm" onClick={onApproveCancellation} className="bg-emerald-600 hover:bg-emerald-700">
+              <Check size={14} className="mr-1" /> Aprobar
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={onRejectCancellation} className="border-amber-400/30 text-amber-300 hover:bg-amber-400/10">
+              <X size={14} className="mr-1" /> Rechazar
+            </Button>
+          </div>
         </div>
       )}
 

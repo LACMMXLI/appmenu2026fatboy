@@ -432,6 +432,8 @@ export interface Order {
   branchName: string;
   status: OrderStatus;
   rejectionReason: string | null;
+  cancellationRequestedAt: string | null;
+  cancellationRequestReason: string | null;
   total: number;
   pointsEarned: number;
   pointsRedeemed: number;
@@ -457,6 +459,8 @@ export interface PublicOrderTracking {
   branchName: string;
   status: OrderStatus;
   rejectionReason: string | null;
+  cancellationRequestedAt: string | null;
+  cancellationRequestReason: string | null;
   total: number;
   deliveryType: string;
   paymentMethod: string;
@@ -599,6 +603,20 @@ export async function updateOrderStatus(
   status: Exclude<OrderStatus, 'PENDING_APPROVAL' | 'ACCEPTED' | 'REJECTED'>,
 ): Promise<Order> {
   return requestWithAuth<Order>(`/orders/${id}/status`, token, 'PATCH', { status });
+}
+
+// Customer-initiated cancellation. PENDING_APPROVAL cancels immediately;
+// ACCEPTED/PREPARING only requests it — the branch approves or rejects.
+export async function cancelOrder(token: string, id: string, reason?: string): Promise<PublicOrderTracking> {
+  return requestWithAuth<PublicOrderTracking>(`/orders/${id}/cancel`, token, 'POST', { reason });
+}
+
+export async function approveCancellation(token: string, id: string, note?: string): Promise<Order> {
+  return requestWithAuth<Order>(`/orders/${id}/cancellation/approve`, token, 'POST', { note });
+}
+
+export async function rejectCancellation(token: string, id: string, note?: string): Promise<Order> {
+  return requestWithAuth<Order>(`/orders/${id}/cancellation/reject`, token, 'POST', { note });
 }
 
 // Admin Customers API

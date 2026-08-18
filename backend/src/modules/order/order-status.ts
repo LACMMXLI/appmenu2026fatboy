@@ -4,14 +4,21 @@ import { OrderStatus } from '@prisma/client';
  * The order state machine. Backend is the sole authority over which
  * transitions are legal — see "SIETE — MÁQUINA DE ESTADOS" in nuevo modulo.md.
  *
- * PENDING_APPROVAL → ACCEPTED | REJECTED
+ * PENDING_APPROVAL → ACCEPTED | REJECTED | CANCELLED
  * ACCEPTED         → PREPARING | CANCELLED
  * PREPARING        → READY | CANCELLED
  * READY            → COMPLETED
  * COMPLETED / REJECTED / CANCELLED are terminal.
+ *
+ * CANCELLED from PENDING_APPROVAL is the customer cancelling before the
+ * branch has acted — immediate, no approval needed. CANCELLED from
+ * ACCEPTED/PREPARING is reachable either directly by staff, or via a
+ * customer cancellation *request* that staff approves (see
+ * OrderService.requestCancellation / resolveCancellationRequest) — the
+ * request itself is not a status transition, so it isn't represented here.
  */
 export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  [OrderStatus.PENDING_APPROVAL]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED],
+  [OrderStatus.PENDING_APPROVAL]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED, OrderStatus.CANCELLED],
   [OrderStatus.ACCEPTED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELLED],
   [OrderStatus.READY]: [OrderStatus.COMPLETED],

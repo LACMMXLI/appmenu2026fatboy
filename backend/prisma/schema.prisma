@@ -148,6 +148,11 @@ model Order {
   branchName       String              @map("branch_name")
   status           OrderStatus         @default(PENDING_APPROVAL)
   rejectionReason  String?             @map("rejection_reason")
+  // Customer-initiated cancellation request while ACCEPTED/PREPARING — the
+  // branch must approve or reject it (status itself doesn't change until
+  // then). Never set together with a terminal status.
+  cancellationRequestedAt    DateTime? @map("cancellation_requested_at")
+  cancellationRequestReason  String?   @map("cancellation_request_reason")
   total            Decimal             @db.Decimal(10, 2)
   pointsEarned     Int                 @default(0) @map("points_earned")
   pointsRedeemed   Int                 @default(0) @map("points_redeemed")

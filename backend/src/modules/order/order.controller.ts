@@ -158,6 +158,50 @@ export class OrderController {
     return this.orderService.transitionOrder(id, status, { staffId: staff.id, reason });
   }
 
+  // Customer-initiated. PENDING_APPROVAL cancels immediately (branch hasn't
+  // acted yet); ACCEPTED/PREPARING only *requests* cancellation — the branch
+  // decides below, since by then preparation may already be underway.
+  @Post('orders/:id/cancel')
+  async cancelOrder(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Param('id') id: string,
+    @Body('reason') reason?: string,
+  ) {
+    const token = extractBearerToken(authHeader);
+    if (!token) {
+      throw new UnauthorizedException('Debes iniciar sesión para cancelar este pedido.');
+    }
+    const customer = await this.authService.validateSession(token);
+    return this.orderService.cancelOrder(id, customer.id, reason);
+  }
+
+  // Branch approves the customer's cancellation request → CANCELLED.
+  @Post('orders/:id/cancellation/approve')
+  async approveCancellation(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Param('id') id: string,
+    @Body('note') note?: string,
+  ) {
+    const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
+    const order = await this.orderService.getOrder(id);
+    this.assertBranchAccess(staff, order.branchId);
+    return this.orderService.resolveCancellationRequest(id, staff.id, true, note);
+  }
+
+  // Branch rejects the customer's cancellation request — order keeps going
+  // (e.g. "ya está en preparación, no se puede cancelar").
+  @Post('orders/:id/cancellation/reject')
+  async rejectCancellation(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Param('id') id: string,
+    @Body('note') note?: string,
+  ) {
+    const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
+    const order = await this.orderService.getOrder(id);
+    this.assertBranchAccess(staff, order.branchId);
+    return this.orderService.resolveCancellationRequest(id, staff.id, false, note);
+  }
+
   /** Non-ADMIN staff are locked to their own branch; ADMIN can pass any/none. */
   private resolveBranchScope(
     staff: { role: StaffRole; branchId: string | null },

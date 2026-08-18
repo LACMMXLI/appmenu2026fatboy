@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Check, X, Store, AlertCircle, LogIn } from 'lucide-react';
+import { ArrowLeft, Check, X, Store, AlertCircle, LogIn, Ban, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { connectOrdersSocket } from '@/lib/socket';
-import { getOrder, type PublicOrderTracking } from '@/lib/api';
+import { getOrder, cancelOrder, type PublicOrderTracking, type OrderStatus } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 
 interface OrderTrackingProps {
@@ -15,12 +15,20 @@ interface OrderTrackingProps {
 // below is a fallback only; Socket.IO is the primary sync mechanism.
 const SAFETY_POLL_MS = 20_000;
 
+// PENDING_APPROVAL cancels immediately; ACCEPTED/PREPARING only requests it
+// (the branch decides). Anything else is too late to cancel.
+const DIRECT_CANCEL_STATUSES = new Set<OrderStatus>(['PENDING_APPROVAL']);
+const REQUEST_CANCEL_STATUSES = new Set<OrderStatus>(['ACCEPTED', 'PREPARING']);
+
 export function OrderTrackingView({ onNavigate }: OrderTrackingProps) {
   const { isAuthenticated, token } = useUser();
   const [orderId] = useState<string | null>(() => sessionStorage.getItem('fatboy-last-order-id'));
   const [order, setOrder] = useState<PublicOrderTracking | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!orderId || !isAuthenticated || !token) {
@@ -62,6 +70,22 @@ export function OrderTrackingView({ onNavigate }: OrderTrackingProps) {
       socket.disconnect();
     };
   }, [orderId, isAuthenticated, token]);
+
+  async function handleConfirmCancel() {
+    if (!orderId || !token) return;
+    try {
+      setCancelling(true);
+      setError('');
+      const updated = await cancelOrder(token, orderId, cancelReason.trim() || undefined);
+      setOrder(updated);
+      setShowCancelModal(false);
+      setCancelReason('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cancelar el pedido.');
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   if (!isAuthenticated) {
     return (
@@ -209,10 +233,64 @@ export function OrderTrackingView({ onNavigate }: OrderTrackingProps) {
               <span className="font-bold text-accent text-[15px]">${order.total}</span>
             </div>
           </div>
+
+          {order.cancellationRequestedAt ? (
+            <div className="mt-3 rounded-2xl border border-accent/25 bg-accent/10 p-4 flex items-start gap-3">
+              <Clock3 size={18} className="text-accent shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-accent">Solicitud de cancelación enviada</p>
+                <p className="mt-0.5 text-xs text-gray-300">Esperando respuesta de la sucursal.</p>
+                {order.cancellationRequestReason && (
+                  <p className="mt-1 text-xs text-gray-400">Motivo: {order.cancellationRequestReason}</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            (DIRECT_CANCEL_STATUSES.has(order.status) || REQUEST_CANCEL_STATUSES.has(order.status)) && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => setShowCancelModal(true)}
+              >
+                <Ban size={16} className="mr-2" />
+                {DIRECT_CANCEL_STATUSES.has(order.status) ? 'Cancelar pedido' : 'Solicitar cancelación'}
+              </Button>
+            )
+          )}
         </div>
       )}
 
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none z-0"></div>
+
+      {showCancelModal && order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+          <div className="w-full max-w-sm rounded-2xl border border-outline bg-surface p-5">
+            <h2 className="font-display text-2xl text-white">
+              {DIRECT_CANCEL_STATUSES.has(order.status) ? 'Cancelar pedido' : 'Solicitar cancelación'}
+            </h2>
+            <p className="mt-1 text-xs text-gray-400">
+              {DIRECT_CANCEL_STATUSES.has(order.status)
+                ? 'La sucursal aún no aceptó tu pedido, así que se cancelará de inmediato.'
+                : 'Tu pedido ya fue aceptado — la sucursal deberá aprobar o rechazar esta solicitud, según qué tan avanzada esté la preparación.'}
+            </p>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Motivo (opcional)"
+              className="mt-3 h-20 w-full rounded-lg border border-outline bg-background p-3 text-sm text-white outline-none focus:border-primary"
+            />
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowCancelModal(false)} disabled={cancelling}>
+                Volver
+              </Button>
+              <Button type="button" onClick={handleConfirmCancel} isLoading={cancelling}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
