@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+/* Mismos tokens de marca que el menú público (frontend/src/index.css),
+   recortados a lo que Fatboy Pedidos usa — es una herramienta de trabajo,
+   no la vitrina del restaurante (Sección Treinta del plan). */
+@theme {
+  --color-primary:       #e8000a;
+  --color-primary-dark:  #b50008;
+  --color-primary-hover: #ff1a25;
+  --color-background:    #101010;
+  --color-surface:       #181818;
+  --color-surface-2:     #1f1f1f;
+  --color-outline:       #2a2a2a;
+  --color-gold:          #fabd00;
+  --color-gold-dark:     #d49e00;
+  --color-text:          #ffffff;
+  --color-text-muted:    #888888;
+  --color-green:         #22c55e;
+
+  --font-display: 'Bebas Neue', 'Arial Black', sans-serif;
+  --font-sans:    'Montserrat', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; padding: 0; }
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button, input, select, textarea { font: inherit; }
+
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(232,0,10,0.25); border-radius: 2px; }
