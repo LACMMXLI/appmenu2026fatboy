@@ -31,12 +31,15 @@ export function OrderDetailModal({
   order: Order;
   canCancel: boolean;
   onClose: () => void;
-  onAccept: () => void;
-  onReject: () => void;
-  onAdvance: (status: Exclude<OrderStatus, 'PENDING_APPROVAL' | 'ACCEPTED' | 'REJECTED'>) => void;
   onPrint: () => void;
-  onApproveCancellation: () => void;
-  onRejectCancellation: () => void;
+  // Un pedido terminal (Historial) nunca renderiza los botones que
+  // llamarían a esto — no permitir modificar pedidos terminales (Sección
+  // Veinte) — así que ahí ni siquiera hace falta pasarlos.
+  onAccept?: () => void;
+  onReject?: () => void;
+  onAdvance?: (status: Exclude<OrderStatus, 'PENDING_APPROVAL' | 'ACCEPTED' | 'REJECTED'>) => void;
+  onApproveCancellation?: () => void;
+  onRejectCancellation?: () => void;
 }) {
   const isTerminal = order.status === 'COMPLETED' || order.status === 'REJECTED' || order.status === 'CANCELLED';
   const canPrint = order.status !== 'PENDING_APPROVAL';
@@ -125,10 +128,10 @@ export function OrderDetailModal({
                 <p className="mt-1 text-xs font-semibold text-amber-200/90">Motivo: {order.cancellationRequestReason}</p>
               )}
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <Button type="button" size="sm" onClick={onApproveCancellation} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button type="button" size="sm" onClick={() => onApproveCancellation?.()} className="bg-emerald-600 hover:bg-emerald-700">
                   <Check size={14} className="mr-1" /> Aprobar
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={onRejectCancellation} className="border-amber-400/30 text-amber-300 hover:bg-amber-400/10">
+                <Button type="button" size="sm" variant="outline" onClick={() => onRejectCancellation?.()} className="border-amber-400/30 text-amber-300 hover:bg-amber-400/10">
                   <X size={14} className="mr-1" /> Rechazar
                 </Button>
               </div>
@@ -156,31 +159,31 @@ export function OrderDetailModal({
             </Button>
             {order.status === 'PENDING_APPROVAL' && (
               <>
-                <Button type="button" variant="outline" onClick={onReject} size="lg" className="border-primary/25 text-primary hover:bg-primary/10">
+                <Button type="button" variant="outline" onClick={() => onReject?.()} size="lg" className="border-primary/25 text-primary hover:bg-primary/10">
                   <X size={16} className="mr-2" /> Rechazar
                 </Button>
-                <Button type="button" onClick={onAccept} size="lg" className="bg-emerald-600 hover:bg-emerald-700">
+                <Button type="button" onClick={() => onAccept?.()} size="lg" className="bg-emerald-600 hover:bg-emerald-700">
                   <Check size={16} className="mr-2" /> Aceptar
                 </Button>
               </>
             )}
             {order.status === 'ACCEPTED' && (
-              <Button type="button" onClick={() => onAdvance('PREPARING')} size="lg" className={cn('bg-sky-600 hover:bg-sky-700', canCancel ? '' : 'col-span-2')}>
+              <Button type="button" onClick={() => onAdvance?.('PREPARING')} size="lg" className={cn('bg-sky-600 hover:bg-sky-700', canCancel ? '' : 'col-span-2')}>
                 Iniciar preparación
               </Button>
             )}
             {order.status === 'PREPARING' && (
-              <Button type="button" onClick={() => onAdvance('READY')} size="lg" className={cn('bg-emerald-600 hover:bg-emerald-700', canCancel ? '' : 'col-span-2')}>
+              <Button type="button" onClick={() => onAdvance?.('READY')} size="lg" className={cn('bg-emerald-600 hover:bg-emerald-700', canCancel ? '' : 'col-span-2')}>
                 <Check size={16} className="mr-2" /> Marcar listo
               </Button>
             )}
             {order.status === 'READY' && (
-              <Button type="button" onClick={() => onAdvance('COMPLETED')} size="lg" className="col-span-2 bg-emerald-600 hover:bg-emerald-700">
+              <Button type="button" onClick={() => onAdvance?.('COMPLETED')} size="lg" className="col-span-2 bg-emerald-600 hover:bg-emerald-700">
                 <Check size={16} className="mr-2" /> Marcar entregado
               </Button>
             )}
             {(order.status === 'ACCEPTED' || order.status === 'PREPARING') && canCancel && (
-              <Button type="button" variant="outline" onClick={() => onAdvance('CANCELLED')} size="lg" className="border-primary/25 text-primary hover:bg-primary/10">
+              <Button type="button" variant="outline" onClick={() => onAdvance?.('CANCELLED')} size="lg" className="border-primary/25 text-primary hover:bg-primary/10">
                 <X size={16} className="mr-2" /> Cancelar
               </Button>
             )}

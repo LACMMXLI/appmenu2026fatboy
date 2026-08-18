@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyColumn, OrderSummaryCard } from '@/components/OrderSummaryCard';
 import { OrderDetailModal } from '@/components/OrderDetailModal';
 import { RejectOrderModal } from '@/components/RejectOrderModal';
+import { HistoryPanel } from '@/views/HistoryPanel';
 import { cn } from '@/lib/utils';
 import { useStaffSession } from '@/context/StaffSessionContext';
 import { useOrdersSocket } from '@/lib/useOrdersSocket';
@@ -57,13 +58,6 @@ export function OperationView() {
     [orders],
   );
   const readyOrders = useMemo(() => sortOldestFirst(orders.filter((o) => o.status === 'READY')), [orders]);
-  const completedOrders = useMemo(
-    () =>
-      orders
-        .filter((o) => o.status === 'COMPLETED' || o.status === 'REJECTED' || o.status === 'CANCELLED')
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [orders],
-  );
 
   // Toda acción sigue el mismo patrón: esperar la respuesta del backend,
   // aplicar exactamente lo que devolvió (nunca un estado adivinado), y ante
@@ -181,7 +175,7 @@ export function OperationView() {
           Pedidos activos <span>{pendingOrders.length + preparingOrders.length + readyOrders.length}</span>
         </TabButton>
         <TabButton active={activeTab === 'completed'} onClick={() => setActiveTab('completed')} Icon={CheckCircle2}>
-          Historial <span>{completedOrders.length}</span>
+          Historial
         </TabButton>
       </nav>
 
@@ -207,14 +201,7 @@ export function OperationView() {
         </section>
       )}
 
-      {activeTab === 'completed' && (
-        <section className="grid gap-3 overflow-y-auto p-4 md:grid-cols-2 xl:grid-cols-3 lg:p-6">
-          {completedOrders.map((order) => (
-            <OrderSummaryCard key={order.id} order={order} onOpen={() => setSelectedOrderId(order.id)} />
-          ))}
-          {completedOrders.length === 0 && <EmptyColumn text="Todavía no hay pedidos finalizados, rechazados o cancelados en esta sucursal." />}
-        </section>
-      )}
+      {activeTab === 'completed' && <HistoryPanel token={token} branchId={effectiveBranchId} />}
 
       {selectedOrder && (
         <OrderDetailModal

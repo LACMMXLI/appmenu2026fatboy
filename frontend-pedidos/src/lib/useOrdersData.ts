@@ -7,6 +7,12 @@ import { playNewOrderChime } from './orderHelpers';
 // socket no notó (Sección Dieciocho/Diecinueve).
 const SAFETY_POLL_MS = 30_000;
 
+// El tablero activo solo necesita pedidos no terminales — los terminales
+// viven en el historial paginado (useOrderHistory), que ya los trae
+// filtrados server-side. Pedirlos aquí también sería descargar de más sin
+// necesidad (Sección Veintiuno, mismo espíritu aplicado al tablero).
+const ACTIVE_STATUSES = ['PENDING_APPROVAL', 'ACCEPTED', 'PREPARING', 'READY'] as const;
+
 /**
  * Consulta y mantiene sincronizada la lista de pedidos de una sucursal.
  * El socket (useOrdersSocket) solo dispara `refetch()` — nunca decide por
@@ -25,7 +31,7 @@ export function useOrdersData(token: string, branchId: string) {
       if (!token || !branchId) return;
       try {
         if (showSpinner) setSyncing(true);
-        const result = await getAdminOrders(token, { branchId, limit: 200 });
+        const result = await getAdminOrders(token, { branchId, limit: 200, statuses: [...ACTIVE_STATUSES] });
 
         // Chime solo por pedidos PENDING_APPROVAL vistos por primera vez —
         // nunca se repite para el mismo pedido (Sección Nueve).

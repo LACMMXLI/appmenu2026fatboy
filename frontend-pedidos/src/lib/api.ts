@@ -130,15 +130,21 @@ export interface PaginatedResult<T> {
 // Tablero operativo — autoscopeado a la sucursal del operador por el
 // backend (Sección Seis/Veinticuatro): un STAFF/MANAGER nunca puede pedir
 // pedidos de otra sucursal aunque mande otro branchId.
+//
+// `query` (folio/cliente/teléfono) y `statuses` filtran server-side — el
+// historial nunca descarga miles de pedidos al frontend para buscar
+// localmente (Sección Veintiuno).
 export async function getAdminOrders(
   token: string,
-  params: { branchId?: string; limit?: number; cursor?: string } = {},
+  params: { branchId?: string; limit?: number; cursor?: string; query?: string; statuses?: OrderStatus[] } = {},
 ): Promise<PaginatedResult<Order>> {
-  const query = new URLSearchParams();
-  if (params.branchId) query.set('branchId', params.branchId);
-  if (params.limit) query.set('limit', String(params.limit));
-  if (params.cursor) query.set('cursor', params.cursor);
-  const suffix = query.size ? `?${query.toString()}` : '';
+  const search = new URLSearchParams();
+  if (params.branchId) search.set('branchId', params.branchId);
+  if (params.limit) search.set('limit', String(params.limit));
+  if (params.cursor) search.set('cursor', params.cursor);
+  if (params.query) search.set('q', params.query);
+  if (params.statuses?.length) search.set('status', params.statuses.join(','));
+  const suffix = search.size ? `?${search.toString()}` : '';
   return requestWithAuth<PaginatedResult<Order>>(`/admin/orders${suffix}`, token);
 }
 

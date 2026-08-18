@@ -100,13 +100,33 @@ export class OrderController {
     @Query('branchId') branchId?: string,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
+    @Query('q') query?: string,
+    @Query('status') status?: string,
   ) {
     let scopedBranchId = branchId;
     if (!adminKey || !this.isValidAdminKey(adminKey)) {
       const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
       scopedBranchId = this.resolveBranchScope(staff, branchId);
     }
-    return this.orderService.listOrders({ branchId: scopedBranchId, limit: Number(limit), cursor });
+    return this.orderService.listOrders({
+      branchId: scopedBranchId,
+      limit: Number(limit),
+      cursor,
+      query,
+      statuses: this.parseStatusFilter(status),
+    });
+  }
+
+  // Comma-separated list of OrderStatus, silently dropping anything invalid
+  // rather than 400ing — a stale/typo'd filter should just show nothing
+  // extra, never break Historial.
+  private parseStatusFilter(value?: string): OrderStatus[] | undefined {
+    if (!value) return undefined;
+    const statuses = value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(isOrderStatusValue);
+    return statuses.length ? statuses : undefined;
   }
 
   // PENDING_APPROVAL → ACCEPTED. Only staff of the receiving branch (or ADMIN).

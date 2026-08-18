@@ -339,11 +339,33 @@ export class OrderService {
     };
   }
 
-  async listOrders(filters: { branchId?: string; limit?: number; cursor?: string }) {
-    const limit = clampLimit(filters.limit, DEFAULT_BOARD_LIMIT, 500);
+  // `query`/`statuses` power the branch history search (Fatboy Pedidos —
+  // Sección Veintiuno del plan: buscar por folio/cliente/teléfono sin
+  // descargar miles de pedidos). Same `contains`+insensitive pattern
+  // CatalogService already uses for productos/clientes — no motor de
+  // búsqueda nuevo. A search/history call defaults to a small paginated
+  // page instead of the board's larger default; the board (no query, no
+  // status filter) keeps its existing behavior untouched.
+  async listOrders(filters: { branchId?: string; limit?: number; cursor?: string; query?: string; statuses?: OrderStatus[] }) {
+    const isFilteredSearch = Boolean(filters.query?.trim() || filters.statuses?.length);
+    const limit = isFilteredSearch
+      ? clampLimit(filters.limit, DEFAULT_PAGE_LIMIT)
+      : clampLimit(filters.limit, DEFAULT_BOARD_LIMIT, 500);
+    const trimmedQuery = filters.query?.trim();
+
     const rows = await this.prisma.order.findMany({
       where: {
         ...(filters.branchId ? { branchId: filters.branchId } : {}),
+        ...(filters.statuses?.length ? { status: { in: filters.statuses } } : {}),
+        ...(trimmedQuery
+          ? {
+              OR: [
+                { folio: { contains: trimmedQuery, mode: 'insensitive' } },
+                { customerName: { contains: trimmedQuery, mode: 'insensitive' } },
+                { customerPhone: { contains: trimmedQuery, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
       },
       include: { items: true },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
