@@ -18,6 +18,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "backend"],
       "port": 8372
+    },
+    {
+      "name": "frontend-pedidos-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--prefix", "frontend-pedidos", "--", "--port", "8374", "--host", "0.0.0.0"],
+      "port": 8374
     }
   ]
 }
