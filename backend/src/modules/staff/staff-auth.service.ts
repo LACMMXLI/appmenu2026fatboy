@@ -10,6 +10,7 @@ const MAX_PASSWORD_LENGTH = 128;
 // One operating shift/day — long enough that staff aren't logged out mid-service,
 // short enough that a lost/shared tablet session doesn't stay valid indefinitely.
 const SESSION_HOURS = 14;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Authenticates internal staff (branch operators) as real, individually
@@ -52,7 +53,10 @@ export class StaffAuthService {
 
   /** Resolves a bearer token to the active Staff it belongs to, or throws. */
   async validateSession(token: string) {
-    if (!token) {
+    // Same reasoning as AuthService.validateSession: a malformed id would
+    // otherwise make Prisma throw a validation error, surfacing as a 500
+    // instead of 401.
+    if (!token || !UUID_PATTERN.test(token)) {
       throw new UnauthorizedException('Sesión de personal inválida.');
     }
 

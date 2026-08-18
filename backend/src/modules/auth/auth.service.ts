@@ -23,6 +23,8 @@ const LEGACY_PBKDF2_PATTERN = /^[a-f0-9]{32}:[a-f0-9]{128}$/i;
 // Modern hashes use the standard PHC string format emitted by Argon2id: $argon2id$...
 const ARGON2ID_PREFIX = '$argon2id$';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
@@ -109,6 +111,13 @@ export class AuthService {
   }
 
   async validateSession(token: string) {
+    // Session ids are UUIDs; a malformed token would otherwise make Prisma
+    // throw a validation error on the query below, surfacing as a 500
+    // instead of the 401 an invalid/garbage token should produce.
+    if (!UUID_PATTERN.test(token)) {
+      throw new UnauthorizedException('Sesión inválida o expirada.');
+    }
+
     const session = await this.prisma.session.findUnique({
       where: { id: token },
       include: { customer: true },

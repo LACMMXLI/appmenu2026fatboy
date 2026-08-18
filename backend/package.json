@@ -11,7 +11,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "import:base": "tsx scripts/import-base-catalog.ts"
+    "import:base": "tsx scripts/import-base-catalog.ts",
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/test/**/*.spec.js",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
