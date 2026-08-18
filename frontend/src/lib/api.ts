@@ -399,7 +399,6 @@ export interface OrderPayload {
   paymentMethod: 'cash' | 'card';
   notes?: string;
   items: OrderItemPayload[];
-  pointsToRedeem?: number;
 }
 
 export type OrderStatus =

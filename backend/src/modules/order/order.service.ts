@@ -59,7 +59,7 @@ export class OrderService {
   ) {}
 
   async createOrder(customerId: string, body: any) {
-    const { branchId, notes, items, pointsToRedeem } = body;
+    const { branchId, notes, items } = body;
 
     const deliveryType = typeof body.deliveryType === 'string' ? body.deliveryType : 'pickup';
     if (!DELIVERY_TYPES.has(deliveryType)) {
@@ -182,21 +182,13 @@ export class OrderService {
       throw new BadRequestException('Total de pedido inválido.');
     }
 
-    let pointsRedeemed = 0;
-    if (pointsToRedeem !== undefined && pointsToRedeem !== null) {
-      const requestedPoints = Number(pointsToRedeem);
-      if (!Number.isInteger(requestedPoints) || requestedPoints < 0) {
-        throw new BadRequestException('Puntos a redimir inválidos.');
-      }
-      if (requestedPoints > 0) {
-        if (customer.points < requestedPoints) {
-          throw new BadRequestException('Puntos insuficientes.');
-        }
-        // 1 point = $1 discount, and a customer can never redeem more than the order subtotal.
-        pointsRedeemed = Math.min(requestedPoints, Math.floor(calculatedTotal));
-        calculatedTotal = Math.max(0, calculatedTotal - pointsRedeemed);
-      }
-    }
+    // Los puntos NUNCA se canjean como descuento en efectivo sobre un pedido
+    // — solo por productos configurados (RedeemableProduct, vía
+    // POST /redeemable-products/:id/redeem). Un `pointsToRedeem` en el body
+    // se ignora deliberadamente; `pointsRedeemed` queda en 0 para todo
+    // pedido nuevo (el campo se conserva en el esquema/respuesta únicamente
+    // por compatibilidad con pedidos históricos que sí lo usaron).
+    const pointsRedeemed = 0;
 
     const pointsEarned = Math.floor(calculatedTotal / 10);
 
@@ -229,17 +221,6 @@ export class OrderService {
         },
       });
 
-      if (pointsRedeemed > 0) {
-        // Atomic, race-safe deduction: only succeeds if the balance still
-        // covers the redemption at commit time, even under concurrent orders.
-        const deduction = await tx.customer.updateMany({
-          where: { id: customer.id, points: { gte: pointsRedeemed } },
-          data: { points: { decrement: pointsRedeemed } },
-        });
-        if (deduction.count === 0) {
-          throw new BadRequestException('Puntos insuficientes.');
-        }
-      }
       // pointsEarned is calculated and frozen here, but NOT credited to the
       // customer yet — that only happens when the order reaches COMPLETED
       // (delivered), in transitionOrder. Crediting at creation would let a

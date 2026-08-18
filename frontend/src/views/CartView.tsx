@@ -18,9 +18,6 @@ export function CartView({ onNavigate }: CartViewProps) {
   const [selectedBranchId, setSelectedBranchId] = useState('');
   
   const [notes, setNotes] = useState('');
-  
-  const [redeemPointsChecked, setRedeemPointsChecked] = useState(false);
-  const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,9 +48,9 @@ export function CartView({ onNavigate }: CartViewProps) {
     return acc + (itemTotal * item.qty);
   }, 0);
 
-  // Discount calculation based on points (1 pt = $1)
-  const discount = redeemPointsChecked ? Math.min(subtotal, pointsToRedeem, customer?.points || 0) : 0;
-  const total = Math.max(0, subtotal - discount);
+  // Los puntos solo se canjean por productos configurados (RewardsView) —
+  // nunca como descuento en efectivo aquí.
+  const total = subtotal;
 
   const handleGenerateOrder = async () => {
     if (!selectedBranchId) {
@@ -77,7 +74,6 @@ export function CartView({ onNavigate }: CartViewProps) {
         deliveryType: 'pickup' as const, // Default pickup
         paymentMethod: 'cash' as const,  // Default cash
         notes: notes || undefined,
-        pointsToRedeem: redeemPointsChecked ? pointsToRedeem : undefined,
         items: items.map(item => ({
           id: item.id,
           title: item.title,
@@ -105,9 +101,6 @@ export function CartView({ onNavigate }: CartViewProps) {
         if (item.notes) text += `  Notas: ${item.notes}\n`;
       });
       
-      if (order.pointsRedeemed > 0) {
-        text += `\n*Descuento Puntos:* -$${order.pointsRedeemed}\n`;
-      }
       text += `\n*TOTAL: $${order.total}*\n`;
       text += `\n_Pedido ${order.folio} registrado. Pendiente de aceptación por la sucursal._`;
       
@@ -225,54 +218,20 @@ export function CartView({ onNavigate }: CartViewProps) {
             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">SUBTOTAL</span>
             <span className="font-display text-xl tracking-wide text-white">${subtotal}</span>
           </div>
-          
-          {redeemPointsChecked && discount > 0 && (
-            <div className="flex justify-between items-end text-primary">
-              <span className="text-xs font-bold uppercase tracking-widest">DESCUENTO PUNTOS</span>
-              <span className="font-display text-xl tracking-wide">-${discount}</span>
-            </div>
-          )}
         </div>
 
-        {/* Points Redemption Panel */}
+        {/* El canje de puntos vive únicamente en Recompensas (RewardsView),
+            por productos configurados — nunca como descuento en efectivo
+            aquí en el checkout. */}
         {isAuthenticated && customer && customer.points > 0 && (
           <div className="w-full mb-6 bg-surface border border-outline/50 p-4 rounded-xl animate-fade-in-up" style={{ animationDelay: '0.55s' }}>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input 
-                type="checkbox"
-                checked={redeemPointsChecked}
-                onChange={(e) => {
-                  setRedeemPointsChecked(e.target.checked);
-                  setPointsToRedeem(e.target.checked ? Math.min(customer.points, subtotal) : 0);
-                }}
-                className="w-5 h-5 rounded border border-gray-500 accent-primary"
-              />
+            <div className="flex items-center gap-3">
+              <History size={18} className="text-accent shrink-0" />
               <div>
-                <span className="text-sm font-semibold text-white">Redimir puntos acumulados</span>
-                <span className="text-xs text-accent block">Tienes {customer.points} puntos disponibles (1 pt = $1)</span>
+                <span className="text-sm font-semibold text-white">Tienes {customer.points} puntos acumulados</span>
+                <span className="text-xs text-accent block">Cánjealos por productos en la sección Recompensas.</span>
               </div>
-            </label>
-            
-            {redeemPointsChecked && (
-              <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
-                <span className="text-xs text-gray-400 font-bold uppercase">PUNTOS A USAR:</span>
-                <div className="flex items-center justify-between border border-outline rounded-xl h-10 px-1 w-[120px] bg-background">
-                  <button 
-                    onClick={() => setPointsToRedeem(p => Math.max(0, p - 10))} 
-                    className="w-8 h-full flex items-center justify-center text-gray-400 hover:text-white"
-                  >
-                    -10
-                  </button>
-                  <span className="font-bold text-sm text-center text-white">{pointsToRedeem}</span>
-                  <button 
-                    onClick={() => setPointsToRedeem(p => Math.min(customer.points, subtotal, p + 10))} 
-                    className="w-8 h-full flex items-center justify-center text-gray-400 hover:text-white"
-                  >
-                    +10
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         )}
 
