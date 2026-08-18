@@ -26,6 +26,34 @@ export function orderAge(createdAt: string): string {
   return `Hace ${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
+// Sección Treinta y uno: "el tiempo transcurrido es operacionalmente más
+// importante que la fecha completa" — pero la hora de reloj sigue siendo
+// el ancla que el operador reconoce de un vistazo.
+export function orderClockTime(createdAt: string): string {
+  return new Date(createdAt).toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+}
+
+function orderAgeMinutes(createdAt: string): number {
+  return Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 60000);
+}
+
+// Umbrales por estado — "demasiado tiempo" no significa lo mismo esperando
+// aceptación que esperando que el cliente recoja un pedido ya listo
+// (Sección Treinta y uno: destacar visualmente los pedidos que se
+// atrasan). Solo aplica a estados activos; los terminales no se destacan.
+const STALE_MINUTES_BY_STATUS: Partial<Record<string, number>> = {
+  PENDING_APPROVAL: 8,
+  ACCEPTED: 15,
+  PREPARING: 20,
+  READY: 10,
+};
+
+export function isOrderStale(order: { status: string; createdAt: string }): boolean {
+  const threshold = STALE_MINUTES_BY_STATUS[order.status];
+  if (!threshold) return false;
+  return orderAgeMinutes(order.createdAt) >= threshold;
+}
+
 // Ping corto por WebAudio — sin asset externo. El navegador solo exige un
 // gesto previo del usuario (el submit del login) antes de permitir audio
 // (Sección Nueve del plan).

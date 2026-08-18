@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { AlertCircle, BadgeCheck, CheckCircle2, LogOut, MapPin, RefreshCw, ShoppingBag, Store, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, Bell, BadgeCheck, CheckCircle2, ChefHat, LogOut, MapPin, RefreshCw, ShoppingBag, Store, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { EmptyState, OrderCard } from '@/components/OrderCard';
+import { EmptyColumn, OrderSummaryCard } from '@/components/OrderSummaryCard';
+import { OrderDetailModal } from '@/components/OrderDetailModal';
 import { RejectOrderModal } from '@/components/RejectOrderModal';
 import { cn } from '@/lib/utils';
 import { useStaffSession } from '@/context/StaffSessionContext';
@@ -20,11 +21,17 @@ import {
 
 type Tab = 'active' | 'completed';
 
-// Tablero operativo (Sección Siete/Nueve-Diecisiete del plan): agrupa por
-// estado, sincroniza por socket + refetch HTTP, y ejecuta acciones siempre
-// esperando la confirmación del backend antes de reflejarlas (Sección
-// Once: nunca optimistic UI). El layout final de columnas/tarjetas se
-// refina en la Fase tres — esto ya es la operación real, funcionando.
+// Del más antiguo al más reciente dentro de cada estado (Sección Treinta y
+// dos): un pedido nuevo nunca debe hacer desaparecer visualmente uno que
+// lleva más tiempo esperando.
+function sortOldestFirst(list: Order[]): Order[] {
+  return [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+// Pantalla principal (Sección Siete del plan): fila de métricas + columnas
+// por estado con tarjetas compactas — no un dashboard administrativo lleno
+// de tablas pequeñas. El detalle de alta legibilidad (Sección Diez) se abre
+// aparte, en OrderDetailModal.
 export function OperationView() {
   const { staff, token, branches, effectiveBranchId, selectedBranchId, setSelectedBranchId, logout } = useStaffSession();
   const { orders, syncing, error, setError, refetch, applyUpdatedOrder } = useOrdersData(token, effectiveBranchId);
@@ -33,18 +40,28 @@ export function OperationView() {
   const { connected } = useOrdersSocket(token, effectiveBranchId, staff?.role === 'ADMIN', handleOrderEvent);
 
   const [activeTab, setActiveTab] = useState<Tab>('active');
-  const [isActing, setIsActing] = useState(false);
   const [message, setMessage] = useState('');
   const [rejectTarget, setRejectTarget] = useState<Order | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const canCancel = staff?.role === 'MANAGER' || staff?.role === 'ADMIN';
   const selectedBranch = branches.find((b) => b.id === effectiveBranchId);
+  // El pedido seleccionado se resuelve contra `orders` en cada render, así
+  // que si un refetch/socket lo actualiza mientras el modal está abierto,
+  // el modal siempre muestra el estado real del servidor (nunca uno viejo).
+  const selectedOrder = orders.find((o) => o.id === selectedOrderId) ?? null;
 
-  const pendingOrders = useMemo(() => orders.filter((o) => o.status === 'PENDING_APPROVAL'), [orders]);
-  const preparingOrders = useMemo(() => orders.filter((o) => o.status === 'ACCEPTED' || o.status === 'PREPARING'), [orders]);
-  const readyOrders = useMemo(() => orders.filter((o) => o.status === 'READY'), [orders]);
+  const pendingOrders = useMemo(() => sortOldestFirst(orders.filter((o) => o.status === 'PENDING_APPROVAL')), [orders]);
+  const preparingOrders = useMemo(
+    () => sortOldestFirst(orders.filter((o) => o.status === 'ACCEPTED' || o.status === 'PREPARING')),
+    [orders],
+  );
+  const readyOrders = useMemo(() => sortOldestFirst(orders.filter((o) => o.status === 'READY')), [orders]);
   const completedOrders = useMemo(
-    () => orders.filter((o) => o.status === 'COMPLETED' || o.status === 'REJECTED' || o.status === 'CANCELLED'),
+    () =>
+      orders
+        .filter((o) => o.status === 'COMPLETED' || o.status === 'REJECTED' || o.status === 'CANCELLED')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [orders],
   );
 
@@ -55,7 +72,6 @@ export function OperationView() {
   const runAction = useCallback(
     async (order: Order, action: () => Promise<Order>, successLabel: string) => {
       try {
-        setIsActing(true);
         setMessage('');
         setError('');
         const updated = await action();
@@ -65,8 +81,6 @@ export function OperationView() {
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al actualizar el pedido.');
         refetch(false);
-      } finally {
-        setIsActing(false);
       }
     },
     [applyUpdatedOrder, refetch, setError],
@@ -98,6 +112,11 @@ export function OperationView() {
   function handlePrint(order: Order) {
     const failure = printOrder(order);
     if (failure) setError(failure);
+  }
+
+  function openReject(order: Order) {
+    setSelectedOrderId(null);
+    setRejectTarget(order);
   }
 
   return (
@@ -151,6 +170,12 @@ export function OperationView() {
         </div>
       </header>
 
+      <section className="grid grid-cols-3 gap-2 border-b border-white/10 bg-[#151413] px-4 py-3 lg:px-6">
+        <MetricTile label="Nuevos" value={pendingOrders.length} tone="amber" Icon={Bell} />
+        <MetricTile label="Preparación" value={preparingOrders.length} tone="sky" Icon={ChefHat} />
+        <MetricTile label="Listos" value={readyOrders.length} tone="emerald" Icon={CheckCircle2} />
+      </section>
+
       <nav className="flex gap-2 overflow-x-auto border-b border-white/10 bg-[#11100f] px-4 py-2 lg:px-6">
         <TabButton active={activeTab === 'active'} onClick={() => setActiveTab('active')} Icon={ShoppingBag}>
           Pedidos activos <span>{pendingOrders.length + preparingOrders.length + readyOrders.length}</span>
@@ -164,49 +189,19 @@ export function OperationView() {
         <section className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-3">
           <OrderColumn title="Nuevos" count={pendingOrders.length} tone="amber">
             {pendingOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                canCancel={canCancel}
-                onAccept={() => handleAccept(order)}
-                onReject={() => setRejectTarget(order)}
-                onApproveCancellation={() => handleApproveCancellation(order)}
-                onRejectCancellation={() => handleRejectCancellation(order)}
-                onAdvance={(status) => handleAdvance(order, status)}
-                onPrint={() => handlePrint(order)}
-              />
+              <OrderSummaryCard key={order.id} order={order} onOpen={() => setSelectedOrderId(order.id)} />
             ))}
           </OrderColumn>
 
           <OrderColumn title="Aceptados / preparación" count={preparingOrders.length} tone="sky">
             {preparingOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                canCancel={canCancel}
-                onAccept={() => handleAccept(order)}
-                onReject={() => setRejectTarget(order)}
-                onApproveCancellation={() => handleApproveCancellation(order)}
-                onRejectCancellation={() => handleRejectCancellation(order)}
-                onAdvance={(status) => handleAdvance(order, status)}
-                onPrint={() => handlePrint(order)}
-              />
+              <OrderSummaryCard key={order.id} order={order} onOpen={() => setSelectedOrderId(order.id)} />
             ))}
           </OrderColumn>
 
           <OrderColumn title="Listos" count={readyOrders.length} tone="emerald">
             {readyOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                canCancel={canCancel}
-                onAccept={() => handleAccept(order)}
-                onReject={() => setRejectTarget(order)}
-                onApproveCancellation={() => handleApproveCancellation(order)}
-                onRejectCancellation={() => handleRejectCancellation(order)}
-                onAdvance={(status) => handleAdvance(order, status)}
-                onPrint={() => handlePrint(order)}
-              />
+              <OrderSummaryCard key={order.id} order={order} onOpen={() => setSelectedOrderId(order.id)} />
             ))}
           </OrderColumn>
         </section>
@@ -215,29 +210,49 @@ export function OperationView() {
       {activeTab === 'completed' && (
         <section className="grid gap-3 overflow-y-auto p-4 md:grid-cols-2 xl:grid-cols-3 lg:p-6">
           {completedOrders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              canCancel={canCancel}
-              compact
-              onAccept={() => handleAccept(order)}
-              onReject={() => setRejectTarget(order)}
-              onApproveCancellation={() => handleApproveCancellation(order)}
-              onRejectCancellation={() => handleRejectCancellation(order)}
-              onAdvance={(status) => handleAdvance(order, status)}
-              onPrint={() => handlePrint(order)}
-            />
+            <OrderSummaryCard key={order.id} order={order} onOpen={() => setSelectedOrderId(order.id)} />
           ))}
-          {completedOrders.length === 0 && <EmptyState text="Todavía no hay pedidos finalizados, rechazados o cancelados en esta sucursal." />}
+          {completedOrders.length === 0 && <EmptyColumn text="Todavía no hay pedidos finalizados, rechazados o cancelados en esta sucursal." />}
         </section>
+      )}
+
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          canCancel={canCancel}
+          onClose={() => setSelectedOrderId(null)}
+          onAccept={() => handleAccept(selectedOrder)}
+          onReject={() => openReject(selectedOrder)}
+          onApproveCancellation={() => handleApproveCancellation(selectedOrder)}
+          onRejectCancellation={() => handleRejectCancellation(selectedOrder)}
+          onAdvance={(status) => handleAdvance(selectedOrder, status)}
+          onPrint={() => handlePrint(selectedOrder)}
+        />
       )}
 
       {rejectTarget && (
         <RejectOrderModal order={rejectTarget} onCancel={() => setRejectTarget(null)} onConfirm={confirmReject} />
       )}
-
-      {isActing && <div className="fixed inset-0 z-40 cursor-wait" aria-hidden />}
     </main>
+  );
+}
+
+function MetricTile({ label, value, tone, Icon }: { label: string; value: number; tone: 'amber' | 'sky' | 'emerald'; Icon: typeof Bell }) {
+  const tones = {
+    amber: 'text-amber-300 bg-amber-400/10',
+    sky: 'text-sky-300 bg-sky-400/10',
+    emerald: 'text-emerald-300 bg-emerald-400/10',
+  };
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#1a1918] p-3">
+      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', tones[tone])}>
+        <Icon size={20} />
+      </span>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">{label}</p>
+        <p className="text-2xl font-black leading-none tracking-tight text-white">{value}</p>
+      </div>
+    </div>
   );
 }
 
@@ -266,7 +281,7 @@ function OrderColumn({ title, count, tone, children }: { title: string; count: n
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-4 lg:p-6">
         {children}
-        {count === 0 && <EmptyState text="Sin pedidos en esta columna." />}
+        {count === 0 && <EmptyColumn text="Sin pedidos en esta columna." />}
       </div>
     </div>
   );
