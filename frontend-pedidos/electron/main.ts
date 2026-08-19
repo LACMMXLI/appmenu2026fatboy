@@ -23,7 +23,7 @@ import {
   printTestTicket,
   savePrinterSettings,
 } from './printing/print-service';
-import { parsePrintableOrder, parsePrinterSettingsInput } from './printing/validation';
+import { parsePrintableOrder, parsePrinterBranchId, parsePrinterSettingsInput } from './printing/validation';
 
 const RENDERER_SCHEME = 'fatboy';
 let mainWindow: BrowserWindow | null = null;
@@ -55,9 +55,9 @@ function requireTrustedSender(event: IpcMainInvokeEvent): BrowserWindow {
   return mainWindow;
 }
 
-async function configuredPrinter(window: BrowserWindow): Promise<PrinterSettings> {
-  const settings = await loadPrinterSettings();
-  if (!settings) throw new Error('Configura una impresora antes de imprimir.');
+async function configuredPrinter(window: BrowserWindow, branchId: string): Promise<PrinterSettings> {
+  const settings = await loadPrinterSettings(branchId);
+  if (!settings) throw new Error('Configura una impresora para esta sucursal antes de imprimir.');
   const printers = await listPrinters(window.webContents);
   if (!printers.some((printer) => printer.name === settings.deviceName)) {
     throw new Error('La impresora configurada no está disponible en Windows.');
@@ -75,10 +75,11 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle(DESKTOP_CHANNELS.getPrinterSettings, async (event): Promise<DesktopResponse<PrinterSettings | null>> => {
+  ipcMain.handle(DESKTOP_CHANNELS.getPrinterSettings, async (event, value): Promise<DesktopResponse<PrinterSettings | null>> => {
     try {
       requireTrustedSender(event);
-      return { ok: true, data: await loadPrinterSettings() };
+      const branchId = parsePrinterBranchId(value);
+      return { ok: true, data: await loadPrinterSettings(branchId) };
     } catch (error) {
       return { ok: false, error: errorMessage(error) };
     }
@@ -99,16 +100,17 @@ function registerIpcHandlers() {
     try {
       const window = requireTrustedSender(event);
       const order = parsePrintableOrder(value);
-      return await printOrderTicket(order, await configuredPrinter(window));
+      return await printOrderTicket(order, await configuredPrinter(window, order.branchId));
     } catch (error) {
       return { ok: false, message: errorMessage(error) };
     }
   });
 
-  ipcMain.handle(DESKTOP_CHANNELS.printTest, async (event): Promise<PrintResult> => {
+  ipcMain.handle(DESKTOP_CHANNELS.printTest, async (event, value): Promise<PrintResult> => {
     try {
       const window = requireTrustedSender(event);
-      return await printTestTicket(await configuredPrinter(window));
+      const branchId = parsePrinterBranchId(value);
+      return await printTestTicket(await configuredPrinter(window, branchId));
     } catch (error) {
       return { ok: false, message: errorMessage(error) };
     }

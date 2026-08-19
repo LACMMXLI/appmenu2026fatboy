@@ -13,12 +13,49 @@ import { buildTicketHtml } from '../../src/lib/ticketTemplate';
 import { parsePrinterSettingsInput } from './validation';
 
 const SETTINGS_FILE = 'printer-settings.json';
+const SETTINGS_VERSION = 2;
 const MICRONS_PER_CSS_PIXEL = 25_400 / 96;
 const MIN_TICKET_HEIGHT_MICRONS = 50_000;
 const MAX_TICKET_HEIGHT_MICRONS = 3_000_000;
 
 function settingsPath(): string {
   return join(app.getPath('userData'), SETTINGS_FILE);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function readSettingsFile(): Promise<unknown | null> {
+  try {
+    return JSON.parse(await readFile(settingsPath(), 'utf8')) as unknown;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return null;
+    console.error('No se pudo leer la configuración de impresora:', error);
+    return null;
+  }
+}
+
+function parseStoredSettings(value: unknown, branchId: string): PrinterSettings | null {
+  if (!isRecord(value)) return null;
+  try {
+    // Compatibilidad con el archivo de la Fase 2, que guardaba una sola
+    // impresora y todavía no conocía sucursales ni aceptación automática.
+    const parsed = parsePrinterSettingsInput({
+      ...value,
+      branchId: value.branchId ?? branchId,
+      branchName: value.branchName ?? 'Sucursal actual',
+      autoAcceptEnabled: value.autoAcceptEnabled ?? false,
+    });
+    if (parsed.branchId !== branchId) return null;
+    const displayName = typeof value.displayName === 'string' && value.displayName.trim()
+      ? value.displayName.trim()
+      : parsed.deviceName;
+    return { ...parsed, displayName };
+  } catch {
+    return null;
+  }
 }
 
 export async function listPrinters(contents: WebContents): Promise<DesktopPrinter[]> {
@@ -38,20 +75,15 @@ export async function listPrinters(contents: WebContents): Promise<DesktopPrinte
     .sort((left, right) => Number(right.isDefault) - Number(left.isDefault) || left.displayName.localeCompare(right.displayName, 'es'));
 }
 
-export async function loadPrinterSettings(): Promise<PrinterSettings | null> {
-  try {
-    const raw = JSON.parse(await readFile(settingsPath(), 'utf8')) as unknown;
-    const parsed = parsePrinterSettingsInput(raw);
-    const displayName = typeof (raw as Record<string, unknown>).displayName === 'string'
-      ? (raw as Record<string, string>).displayName
-      : parsed.deviceName;
-    return { ...parsed, displayName };
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code === 'ENOENT') return null;
-    console.error('No se pudo leer la configuración de impresora:', error);
-    return null;
+export async function loadPrinterSettings(branchId: string): Promise<PrinterSettings | null> {
+  const raw = await readSettingsFile();
+  if (!raw) return null;
+
+  if (isRecord(raw) && raw.version === SETTINGS_VERSION && isRecord(raw.branches)) {
+    return parseStoredSettings(raw.branches[branchId], branchId);
   }
+
+  return parseStoredSettings(raw, branchId);
 }
 
 export async function savePrinterSettings(
@@ -62,11 +94,23 @@ export async function savePrinterSettings(
   if (!printer) throw new Error('La impresora seleccionada ya no está disponible en Windows.');
 
   const settings: PrinterSettings = {
+    branchId: input.branchId,
+    branchName: input.branchName,
     deviceName: printer.name,
     displayName: printer.displayName,
     paperWidthMm: input.paperWidthMm,
+    autoAcceptEnabled: input.autoAcceptEnabled,
   };
-  await writeFile(settingsPath(), `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
+
+  const current = await readSettingsFile();
+  const branches: Record<string, unknown> = isRecord(current)
+    && current.version === SETTINGS_VERSION
+    && isRecord(current.branches)
+    ? { ...current.branches }
+    : {};
+  branches[input.branchId] = settings;
+
+  await writeFile(settingsPath(), `${JSON.stringify({ version: SETTINGS_VERSION, branches }, null, 2)}\n`, 'utf8');
   return settings;
 }
 
@@ -141,6 +185,7 @@ export function buildTestOrder(): PrintableOrder {
   return {
     id: 'printer-test',
     folio: 'PRUEBA',
+    branchId: 'printer-test',
     branchName: 'Configuración de impresora',
     customerName: 'Ticket de prueba',
     customerPhone: '—',

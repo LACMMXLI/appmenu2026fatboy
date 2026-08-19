@@ -15,6 +15,7 @@ export function toPrintableOrder(order: Order): PrintableOrder {
   return {
     id: order.id,
     folio: order.folio,
+    branchId: order.branchId,
     branchName: order.branchName,
     customerName: order.customerName,
     customerPhone: order.customerPhone,

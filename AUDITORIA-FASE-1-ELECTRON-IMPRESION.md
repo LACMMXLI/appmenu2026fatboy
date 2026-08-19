@@ -213,3 +213,19 @@ Verificación local:
 - Arranque de la aplicación Windows empaquetada: correcto.
 
 El empaquetador alcanzó y creó `win-unpacked`, pero la protección del entorno bloqueó la modificación final del ejecutable para insertar la integridad ASAR. La configuración está preparada; el instalador NSIS debe generarse nuevamente en una estación donde el antivirus no bloquee temporalmente el ejecutable. Esto no sustituye la prueba física con la impresora de la sucursal piloto.
+
+## 13. Aceptación automática por sucursal
+
+Implementada el 2026-08-19:
+
+- Configuración independiente por sucursal en cada equipo Electron.
+- Selector persistente para habilitar o deshabilitar la aceptación automática.
+- Impresora y ancho de papel guardados junto con la sucursal correspondiente.
+- El pedido sólo se imprime cuando el backend confirma el estado `ACCEPTED`.
+- Una carrera entre dos equipos no imprime dos veces: únicamente imprime el equipo cuya aceptación fue confirmada.
+- Los fallos de Windows al imprimir quedan en una cola local y se reintentan sin volver a aceptar el pedido.
+- El formato anterior de configuración de impresora se conserva como migración compatible y comienza con la automatización deshabilitada.
+- El formulario de impresión se renderiza mediante un portal centrado en la ventana, con altura máxima y desplazamiento interno para evitar texto cortado.
+- El backend agrega `fatboy://app` a CORS para HTTP y Socket.IO, conservando los orígenes web configurados.
+
+La automatización necesita una sesión de personal vigente, conexión al backend y una impresora disponible. La configuración es local al equipo y está separada por sucursal; no altera automáticamente otros receptores instalados.

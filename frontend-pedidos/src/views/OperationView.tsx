@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AlertCircle, Bell, BadgeCheck, CheckCircle2, ChefHat, LogOut, MapPin, RefreshCw, ShoppingBag, Store, UserCog, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { EmptyColumn, OrderSummaryCard } from '@/components/OrderSummaryCard';
@@ -11,7 +11,10 @@ import { cn } from '@/lib/utils';
 import { useStaffSession } from '@/context/StaffSessionContext';
 import { useOrdersSocket } from '@/lib/useOrdersSocket';
 import { useOrdersData } from '@/lib/useOrdersData';
+import { useAutoAcceptOrders } from '@/lib/useAutoAcceptOrders';
 import { printOrder } from '@/lib/printOrder';
+import { getDesktopApi } from '@/desktop/desktop-bridge';
+import type { PrinterSettings } from '@/desktop/desktop-types';
 import {
   acceptOrder,
   approveCancellation,
@@ -46,9 +49,49 @@ export function OperationView() {
   const [message, setMessage] = useState('');
   const [rejectTarget, setRejectTarget] = useState<Order | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [printerSettings, setPrinterSettings] = useState<PrinterSettings | null>(null);
 
   const canCancel = staff?.role === 'MANAGER' || staff?.role === 'ADMIN';
   const selectedBranch = branches.find((b) => b.id === effectiveBranchId);
+
+  useEffect(() => {
+    const desktopApi = getDesktopApi();
+    setPrinterSettings(null);
+    if (!desktopApi || !effectiveBranchId) return;
+
+    let active = true;
+    void desktopApi.getPrinterSettings(effectiveBranchId).then((response) => {
+      if (!active) return;
+      if (response.ok === false) {
+        setError(response.error);
+        return;
+      }
+      setPrinterSettings(response.data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [effectiveBranchId, setError]);
+
+  const showAutomaticMessage = useCallback((value: string) => {
+    setMessage(value);
+    window.setTimeout(() => setMessage(''), 4_000);
+  }, []);
+  const showAutomaticError = useCallback((value: string) => setError(value), [setError]);
+  const refetchSilently = useCallback(() => {
+    void refetch(false);
+  }, [refetch]);
+
+  useAutoAcceptOrders({
+    token,
+    branchId: effectiveBranchId,
+    settings: printerSettings,
+    orders,
+    onUpdated: applyUpdatedOrder,
+    onMessage: showAutomaticMessage,
+    onError: showAutomaticError,
+    refetch: refetchSilently,
+  });
   // El pedido seleccionado se resuelve contra `orders` en cada render, así
   // que si un refetch/socket lo actualiza mientras el modal está abierto,
   // el modal siempre muestra el estado real del servidor (nunca uno viejo).
@@ -163,7 +206,12 @@ export function OperationView() {
                 ))}
               </select>
             )}
-            <PrinterSettingsDialog />
+            <PrinterSettingsDialog
+              branchId={effectiveBranchId}
+              branchName={selectedBranch?.name ?? 'Sucursal'}
+              settings={printerSettings}
+              onSettingsChange={setPrinterSettings}
+            />
             <Button type="button" size="sm" variant="outline" onClick={() => refetch(true)} isLoading={syncing}>
               <RefreshCw size={15} className="mr-1" /> Sync
             </Button>

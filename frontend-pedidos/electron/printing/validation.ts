@@ -36,10 +36,22 @@ export function parsePrinterSettingsInput(value: unknown): PrinterSettingsInput 
   if (paperWidthMm !== 58 && paperWidthMm !== 80) {
     throw new Error('El ancho de papel debe ser 58 mm u 80 mm.');
   }
+  if (typeof value.autoAcceptEnabled !== 'boolean') {
+    throw new Error('La aceptación automática debe estar habilitada o deshabilitada.');
+  }
   return {
+    branchId: parsePrinterBranchId(value.branchId),
+    branchName: requiredText(value.branchName, 'Sucursal', 200),
     deviceName: requiredText(value.deviceName, 'Impresora', 512),
     paperWidthMm,
+    autoAcceptEnabled: value.autoAcceptEnabled,
   };
+}
+
+export function parsePrinterBranchId(value: unknown): string {
+  const branchId = requiredText(value, 'Id de sucursal', 100);
+  if (!/^[A-Za-z0-9_-]+$/.test(branchId)) throw new Error('Id de sucursal inválido.');
+  return branchId;
 }
 
 function parseOrderItem(value: unknown): PrintableOrderItem {
@@ -72,6 +84,7 @@ export function parsePrintableOrder(value: unknown): PrintableOrder {
   return {
     id: requiredText(value.id, 'Id de pedido', 100),
     folio: requiredText(value.folio, 'Folio', 100),
+    branchId: requiredText(value.branchId, 'Id de sucursal', 100),
     branchName: requiredText(value.branchName, 'Sucursal', 200),
     customerName: requiredText(value.customerName, 'Cliente', 300),
     customerPhone: requiredText(value.customerPhone, 'Teléfono', 100),

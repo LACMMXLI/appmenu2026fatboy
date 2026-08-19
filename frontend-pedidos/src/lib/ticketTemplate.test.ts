@@ -5,6 +5,7 @@ import { buildTicketHtml, escapeHtml } from './ticketTemplate';
 const order: PrintableOrder = {
   id: 'order-1',
   folio: 'FB-100',
+  branchId: 'branch-centro',
   branchName: 'Sucursal Centro',
   customerName: '<script>alert("cliente")</script>',
   customerPhone: '686-000-0000',

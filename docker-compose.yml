@@ -31,6 +31,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8371}
+      DESKTOP_CORS_ORIGIN: ${DESKTOP_CORS_ORIGIN:-fatboy://app}
     depends_on:
       postgres:
         condition: service_healthy

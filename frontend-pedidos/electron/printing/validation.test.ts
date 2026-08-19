@@ -5,6 +5,7 @@ import { parsePrintableOrder, parsePrinterSettingsInput } from './validation';
 const validOrder = {
   id: 'order-1',
   folio: 'FB-100',
+  branchId: 'branch-centro',
   branchName: 'Centro',
   customerName: 'Cliente',
   customerPhone: '6860000000',
@@ -28,11 +29,16 @@ const validOrder = {
 
 describe('contrato IPC de impresión', () => {
   it('acepta únicamente anchos térmicos soportados', () => {
-    expect(parsePrinterSettingsInput({ deviceName: 'EPSON-TM', paperWidthMm: 80 })).toEqual({
+    const settings = {
+      branchId: 'branch-centro',
+      branchName: 'Centro',
       deviceName: 'EPSON-TM',
       paperWidthMm: 80,
-    });
-    expect(() => parsePrinterSettingsInput({ deviceName: 'EPSON-TM', paperWidthMm: 72 })).toThrow('58 mm u 80 mm');
+      autoAcceptEnabled: true,
+    } as const;
+    expect(parsePrinterSettingsInput(settings)).toEqual(settings);
+    expect(() => parsePrinterSettingsInput({ ...settings, paperWidthMm: 72 })).toThrow('58 mm u 80 mm');
+    expect(() => parsePrinterSettingsInput({ ...settings, autoAcceptEnabled: 'sí' })).toThrow('habilitada o deshabilitada');
   });
 
   it('clona un pedido válido y rechaza estructuras peligrosas', () => {

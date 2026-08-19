@@ -12,6 +12,7 @@ export interface PrintableOrderItem {
 export interface PrintableOrder {
   id: string;
   folio: string;
+  branchId: string;
   branchName: string;
   customerName: string;
   customerPhone: string;
@@ -33,8 +34,11 @@ export interface DesktopPrinter {
 }
 
 export interface PrinterSettingsInput {
+  branchId: string;
+  branchName: string;
   deviceName: string;
   paperWidthMm: PaperWidthMm;
+  autoAcceptEnabled: boolean;
 }
 
 export interface PrinterSettings extends PrinterSettingsInput {
@@ -53,10 +57,10 @@ export interface PrintResult {
 export interface FatboyDesktopApi {
   readonly isDesktop: true;
   getPrinters: () => Promise<DesktopResponse<DesktopPrinter[]>>;
-  getPrinterSettings: () => Promise<DesktopResponse<PrinterSettings | null>>;
+  getPrinterSettings: (branchId: string) => Promise<DesktopResponse<PrinterSettings | null>>;
   savePrinterSettings: (settings: PrinterSettingsInput) => Promise<DesktopResponse<PrinterSettings>>;
   printOrder: (order: PrintableOrder) => Promise<PrintResult>;
-  printTest: () => Promise<PrintResult>;
+  printTest: (branchId: string) => Promise<PrintResult>;
 }
 
 export const DESKTOP_CHANNELS = {
