@@ -95,7 +95,8 @@ export function useAutoAcceptOrders({
       const failure = events.find(
         (event) => event.type === 'accept-failed'
           || event.type === 'print-failed'
-          || event.type === 'queue-failed',
+          || event.type === 'queue-failed'
+          || event.type === 'queue-unavailable',
       );
       const accepted = events.filter((event) => event.type === 'accepted');
 
@@ -113,7 +114,11 @@ export function useAutoAcceptOrders({
           + 'Revísala en Impresora antes de reintentar para evitar un duplicado.',
         );
       } else if (failure) {
-        onError(`Pedido ${failure.order.folio}: ${failure.message} La cola volverá a intentarlo.`);
+        onError(
+          failure.type === 'queue-unavailable'
+            ? `${failure.message} Se volverá a consultar automáticamente.`
+            : `Pedido ${failure.order.folio}: ${failure.message} La cola volverá a intentarlo.`,
+        );
       }
 
       if (accepted.length > 0 || failure || uncertain) refetch();

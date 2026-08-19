@@ -9,6 +9,7 @@ export type AutoOrderEvent =
   | { type: 'print-failed'; order: Order; job: PrintJob; message: string }
   | { type: 'ack-failed'; order: Order; job: PrintJob; message: string }
   | { type: 'queue-failed'; order: Order; job: PrintJob; message: string }
+  | { type: 'queue-unavailable'; message: string }
   | { type: 'accept-failed'; order: Order; message: string };
 
 interface AutoOrderProcessorOptions {
@@ -77,14 +78,10 @@ export async function processAutomaticOrdersOnce({
     try {
       claimed = await claim();
     } catch (error) {
-      const fallback = pendingOrders.at(0);
-      if (fallback) {
-        events.push({
-          type: 'accept-failed',
-          order: fallback,
-          message: errorMessage(error, 'No se pudo consultar la cola de impresión.'),
-        });
-      }
+      events.push({
+        type: 'queue-unavailable',
+        message: errorMessage(error, 'No se pudo consultar la cola de impresión.'),
+      });
       break;
     }
 

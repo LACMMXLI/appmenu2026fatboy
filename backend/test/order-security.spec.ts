@@ -2,9 +2,11 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { bootstrapTestApp, uniqueSuffix, json } from './helpers/app.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
 
 let baseUrl: string;
 let app: Awaited<ReturnType<typeof bootstrapTestApp>>['app'];
+let prisma: PrismaService;
 
 let branchAId: string;
 let branchBId: string;
@@ -19,6 +21,7 @@ let owner: { token: string; customer: { id: string } };
 let intruder: { token: string; customer: { id: string } };
 let staffA: { token: string; staff: { id: string } }; // assigned to branchA
 let staffB: { token: string; staff: { id: string } }; // assigned to branchB
+let admin: { token: string; staff: { id: string } };
 
 async function registerCustomer(suffix: string) {
   const res = await fetch(`${baseUrl}/auth/register`, {
@@ -100,6 +103,7 @@ before(async () => {
 
   const booted = await bootstrapTestApp();
   app = booted.app;
+  prisma = app.get(PrismaService);
   baseUrl = booted.baseUrl;
 
   const branches = await json(await fetch(`${baseUrl}/branches`));
@@ -121,6 +125,7 @@ before(async () => {
   const staffSuffix = uniqueSuffix();
   staffA = await createStaff(`a${staffSuffix}`, branchAId);
   staffB = await createStaff(`b${staffSuffix}`, branchBId);
+  admin = await createStaff(`admin${staffSuffix}`, null, 'ADMIN');
 });
 
 after(async () => {
@@ -573,10 +578,10 @@ test('a rejected order never generates points', async () => {
 
 // --- Fase 3: cola durable de impresión por sucursal/estación ---
 
-async function acceptWithProductionPrintJob(orderId: string) {
+async function acceptWithProductionPrintJob(orderId: string, token = staffA.token) {
   const res = await fetch(`${baseUrl}/orders/${orderId}/accept`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ createProductionPrintJob: true }),
   });
   const body = await json(res);
@@ -595,51 +600,53 @@ async function claimPrintJob(token: string, branchId: string, stationId: string,
 }
 
 test('automatic acceptance creates one branch-scoped job and only one station can claim it', async () => {
-  const order = await json(await createOrder(owner.token, branchAId));
-  await acceptWithProductionPrintJob(order.id);
+  const printBranchId = randomUUID();
+  await prisma.branch.create({ data: { id: printBranchId, name: `Impresión ${uniqueSuffix()}` } });
+  const order = await json(await createOrder(owner.token, printBranchId));
+  await acceptWithProductionPrintJob(order.id, admin.token);
   const stationA = randomUUID();
   const stationB = randomUUID();
 
-  const wrongBranch = await claimPrintJob(staffB.token, branchAId, stationB, 'OTRA-SUCURSAL');
+  const wrongBranch = await claimPrintJob(staffB.token, printBranchId, stationB, 'OTRA-SUCURSAL');
   assert.equal(wrongBranch.res.status, 403);
 
-  const first = await claimPrintJob(staffA.token, branchAId, stationA, 'RECEPCION-A');
+  const first = await claimPrintJob(admin.token, printBranchId, stationA, 'RECEPCION-A');
   assert.equal(first.res.status, 201, JSON.stringify(first.body));
   assert.equal(first.body.job.orderId, order.id);
   assert.equal(first.body.job.status, 'CLAIMED');
   assert.equal(first.body.job.attempts, 1);
   assert.equal(first.body.order.id, order.id);
 
-  const second = await claimPrintJob(staffA.token, branchAId, stationB, 'RECEPCION-B');
+  const second = await claimPrintJob(admin.token, printBranchId, stationB, 'RECEPCION-B');
   assert.equal(second.res.status, 201, JSON.stringify(second.body));
   assert.equal(second.body.job, null);
   assert.equal(second.body.order, null);
 
   const wrongStationStart = await fetch(`${baseUrl}/printing/jobs/${first.body.job.id}/start`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
-    body: JSON.stringify({ branchId: branchAId, stationId: stationB }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${admin.token}` },
+    body: JSON.stringify({ branchId: printBranchId, stationId: stationB }),
   });
   assert.equal(wrongStationStart.status, 409);
 
   const start = await fetch(`${baseUrl}/printing/jobs/${first.body.job.id}/start`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
-    body: JSON.stringify({ branchId: branchAId, stationId: stationA }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${admin.token}` },
+    body: JSON.stringify({ branchId: printBranchId, stationId: stationA }),
   });
   assert.equal(start.status, 201);
   assert.equal((await json(start)).status, 'PRINTING');
 
   const complete = await fetch(`${baseUrl}/printing/jobs/${first.body.job.id}/complete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
-    body: JSON.stringify({ branchId: branchAId, stationId: stationA, result: 'Windows aceptó el trabajo.' }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${admin.token}` },
+    body: JSON.stringify({ branchId: printBranchId, stationId: stationA, result: 'Windows aceptó el trabajo.' }),
   });
   assert.equal(complete.status, 201);
   assert.equal((await json(complete)).status, 'PRINTED');
 
-  const recent = await fetch(`${baseUrl}/printing/jobs?branchId=${branchAId}&limit=10`, {
-    headers: { Authorization: `Bearer ${staffA.token}` },
+  const recent = await fetch(`${baseUrl}/printing/jobs?branchId=${printBranchId}&limit=10`, {
+    headers: { Authorization: `Bearer ${admin.token}` },
   });
   const jobs = await json(recent);
   assert.equal(recent.status, 200, JSON.stringify(jobs));
@@ -649,31 +656,64 @@ test('automatic acceptance creates one branch-scoped job and only one station ca
 });
 
 test('a failed print can be manually recovered and claimed again', async () => {
-  const order = await json(await createOrder(owner.token, branchAId));
-  await acceptWithProductionPrintJob(order.id);
+  const printBranchId = randomUUID();
+  await prisma.branch.create({ data: { id: printBranchId, name: `Impresión ${uniqueSuffix()}` } });
+  const order = await json(await createOrder(owner.token, printBranchId));
+  await acceptWithProductionPrintJob(order.id, admin.token);
   const stationA = randomUUID();
-  const claimed = await claimPrintJob(staffA.token, branchAId, stationA, 'RECEPCION-A');
+  const claimed = await claimPrintJob(admin.token, printBranchId, stationA, 'RECEPCION-A');
   assert.equal(claimed.res.status, 201, JSON.stringify(claimed.body));
 
   const failed = await fetch(`${baseUrl}/printing/jobs/${claimed.body.job.id}/fail`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
-    body: JSON.stringify({ branchId: branchAId, stationId: stationA, error: 'Sin papel' }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${admin.token}` },
+    body: JSON.stringify({ branchId: printBranchId, stationId: stationA, error: 'Sin papel' }),
   });
   assert.equal(failed.status, 201);
   assert.equal((await json(failed)).status, 'FAILED');
 
   const retry = await fetch(`${baseUrl}/printing/jobs/${claimed.body.job.id}/retry`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
-    body: JSON.stringify({ branchId: branchAId }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${admin.token}` },
+    body: JSON.stringify({ branchId: printBranchId }),
   });
   assert.equal(retry.status, 201);
   assert.equal((await json(retry)).status, 'PENDING');
 
-  const reclaimed = await claimPrintJob(staffA.token, branchAId, stationA, 'RECEPCION-A');
+  const reclaimed = await claimPrintJob(admin.token, printBranchId, stationA, 'RECEPCION-A');
   assert.equal(reclaimed.res.status, 201, JSON.stringify(reclaimed.body));
   assert.equal(reclaimed.body.job.id, claimed.body.job.id);
   assert.equal(reclaimed.body.job.status, 'CLAIMED');
   assert.equal(reclaimed.body.job.attempts, 2);
+});
+
+test('an expired PRINTING job becomes UNCERTAIN and is never claimed automatically', async () => {
+  const printBranchId = randomUUID();
+  await prisma.branch.create({ data: { id: printBranchId, name: `Impresión ${uniqueSuffix()}` } });
+  const order = await json(await createOrder(owner.token, printBranchId));
+  await acceptWithProductionPrintJob(order.id, admin.token);
+  const stationA = randomUUID();
+  const claimed = await claimPrintJob(admin.token, printBranchId, stationA, 'RECEPCION-A');
+  assert.equal(claimed.res.status, 201, JSON.stringify(claimed.body));
+
+  const start = await fetch(`${baseUrl}/printing/jobs/${claimed.body.job.id}/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${admin.token}` },
+    body: JSON.stringify({ branchId: printBranchId, stationId: stationA }),
+  });
+  assert.equal(start.status, 201);
+
+  await prisma.orderPrintJob.update({
+    where: { id: claimed.body.job.id },
+    data: { leaseExpiresAt: new Date(Date.now() - 1_000) },
+  });
+
+  const stationB = randomUUID();
+  const next = await claimPrintJob(admin.token, printBranchId, stationB, 'RECEPCION-B');
+  assert.equal(next.res.status, 201, JSON.stringify(next.body));
+  assert.equal(next.body.job, null, 'an uncertain ticket must require a human decision');
+
+  const stored = await prisma.orderPrintJob.findUniqueOrThrow({ where: { id: claimed.body.job.id } });
+  assert.equal(stored.status, 'UNCERTAIN');
+  assert.ok(stored.uncertainAt);
 });

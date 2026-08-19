@@ -222,10 +222,33 @@ Implementada el 2026-08-19:
 - Selector persistente para habilitar o deshabilitar la aceptación automática.
 - Impresora y ancho de papel guardados junto con la sucursal correspondiente.
 - El pedido sólo se imprime cuando el backend confirma el estado `ACCEPTED`.
-- Una carrera entre dos equipos no imprime dos veces: únicamente imprime el equipo cuya aceptación fue confirmada.
-- Los fallos de Windows al imprimir quedan en una cola local y se reintentan sin volver a aceptar el pedido.
+- Una carrera entre dos equipos no acepta dos veces el mismo pedido.
+- La cola local de esta primera entrega fue sustituida en la Fase 3 por una cola durable en el backend.
 - El formato anterior de configuración de impresora se conserva como migración compatible y comienza con la automatización deshabilitada.
 - El formulario de impresión se renderiza mediante un portal centrado en la ventana, con altura máxima y desplazamiento interno para evitar texto cortado.
 - El backend agrega `fatboy://app` a CORS para HTTP y Socket.IO, conservando los orígenes web configurados.
 
 La automatización necesita una sesión de personal vigente, conexión al backend y una impresora disponible. La configuración es local al equipo y está separada por sucursal; no altera automáticamente otros receptores instalados.
+
+## 14. Estado de implementación de la Fase 3
+
+Implementada localmente el 2026-08-19:
+
+- La aceptación automática crea el trabajo de producción dentro de la misma transacción que cambia el pedido a `ACCEPTED`.
+- La cola vive en PostgreSQL y está segmentada por sucursal; reinstalar o reiniciar Electron no pierde trabajos pendientes.
+- Cada instalación Electron conserva una identidad UUID y el nombre de la computadora para reclamar trabajos y dejar trazabilidad.
+- Estados explícitos: `PENDING`, `CLAIMED`, `PRINTING`, `PRINTED`, `FAILED` y `UNCERTAIN`.
+- Dos estaciones pueden permanecer activas: una actualización condicional permite que sólo una reclame cada trabajo.
+- Los trabajos fallidos se pueden reintentar; el historial reciente y la recuperación manual aparecen en Configuración de impresora.
+- Si Windows recibió el ticket pero se perdió la confirmación al backend, el trabajo pasa a `UNCERTAIN` al vencer su lease y nunca se reimprime automáticamente. El operador debe verificar el papel antes de pulsar Reintentar.
+- El acceso continúa protegido por `StaffSession` y por el alcance de sucursal del personal.
+- Se agregó una migración Prisma aditiva y pruebas de aceptación, exclusión entre estaciones, alcance de sucursal, ciclo completo, error/recuperación y resultado incierto.
+
+Verificación local:
+
+- Prisma validate y migración sobre la base local: correctos.
+- Backend: 41 pruebas aprobadas, 0 fallidas.
+- Fatboy Pedidos: 13 pruebas aprobadas, 0 fallidas.
+- TypeScript y builds web/backend/Electron: correctos.
+
+Antes de liberar esta versión se debe aplicar la migración del backend y desplegar backend + Electron como una sola actualización coordinada. La validación local no sustituye una prueba física de corte, ancho y legibilidad con la impresora térmica de cada sucursal.
