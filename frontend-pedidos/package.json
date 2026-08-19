@@ -1,14 +1,23 @@
 {
   "name": "@fatboy-pos/frontend-pedidos",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Aplicación de escritorio para recepción e impresión de pedidos Fatboy.",
+  "author": "Fatboy",
   "type": "module",
+  "main": "./out/main/index.js",
   "scripts": {
+    "postinstall": "install-electron",
     "dev": "vite --port=8373 --host=0.0.0.0",
+    "dev:desktop": "electron-vite dev",
     "build": "vite build",
+    "build:desktop": "electron-vite build",
     "preview": "vite preview",
+    "preview:desktop": "electron-vite preview",
+    "package:desktop": "npm run build:desktop && electron-builder --win --x64",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -24,8 +33,39 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
+    "electron": "43.4.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^4.1.11"
+  },
+  "build": {
+    "appId": "com.fatboymexicali.pedidos",
+    "productName": "Fatboy Pedidos",
+    "artifactName": "Fatboy-Pedidos-${version}-${arch}.${ext}",
+    "asar": true,
+    "electronDist": "../node_modules/electron/dist",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/icons/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Fatboy Pedidos"
+    }
   }
 }

@@ -15,10 +15,17 @@ export function HistoryPanel({ token, branchId }: { token: string; branchId: str
   const { query, setQuery, items, hasMore, isLoading, isLoadingMore, error, loadMore } = useOrderHistory(token, branchId);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [printError, setPrintError] = useState('');
+  const [printMessage, setPrintMessage] = useState('');
 
-  function handlePrint(order: Order) {
-    const failure = printOrder(order);
-    setPrintError(failure ?? '');
+  async function handlePrint(order: Order) {
+    setPrintError('');
+    setPrintMessage('');
+    const result = await printOrder(order);
+    if (!result.ok) {
+      setPrintError(result.message);
+      return;
+    }
+    setPrintMessage(result.message);
   }
 
   return (
@@ -38,6 +45,9 @@ export function HistoryPanel({ token, branchId }: { token: string; branchId: str
           <p className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary">
             <AlertCircle size={13} /> {error || printError}
           </p>
+        )}
+        {printMessage && (
+          <p className="mt-2 text-xs font-bold text-emerald-300">{printMessage}</p>
         )}
       </div>
 

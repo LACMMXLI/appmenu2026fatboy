@@ -46,7 +46,7 @@ function activateWaitingServiceWorker(registration: ServiceWorkerRegistration) {
   }
 }
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+if (import.meta.env.PROD && !window.fatboyDesktop && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.addEventListener('controllerchange', reloadForAppUpdate);
 

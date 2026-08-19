@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyColumn, OrderSummaryCard } from '@/components/OrderSummaryCard';
 import { OrderDetailModal } from '@/components/OrderDetailModal';
 import { RejectOrderModal } from '@/components/RejectOrderModal';
+import { PrinterSettingsDialog } from '@/components/PrinterSettingsDialog';
 import { HistoryPanel } from '@/views/HistoryPanel';
 import { AdminPanel } from '@/views/AdminPanel';
 import { cn } from '@/lib/utils';
@@ -104,9 +105,16 @@ export function OperationView() {
     await runAction(order, () => rejectOrder(token, order.id, reason), 'rechazado.');
   }
 
-  function handlePrint(order: Order) {
-    const failure = printOrder(order);
-    if (failure) setError(failure);
+  async function handlePrint(order: Order) {
+    setError('');
+    setMessage('');
+    const result = await printOrder(order);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    setMessage(`Pedido ${order.folio}: ${result.message}`);
+    window.setTimeout(() => setMessage(''), 3500);
   }
 
   function openReject(order: Order) {
@@ -155,6 +163,7 @@ export function OperationView() {
                 ))}
               </select>
             )}
+            <PrinterSettingsDialog />
             <Button type="button" size="sm" variant="outline" onClick={() => refetch(true)} isLoading={syncing}>
               <RefreshCw size={15} className="mr-1" /> Sync
             </Button>

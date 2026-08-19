@@ -3,6 +3,8 @@ build/
 dist/
 dist-test/
 coverage/
+frontend-pedidos/out/
+frontend-pedidos/release*/
 .DS_Store
 *.log
 .env*

@@ -1,5 +1,6 @@
 import { StaffSessionProvider, useStaffSession } from '@/context/StaffSessionContext';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { isDesktopApp } from '@/desktop/desktop-bridge';
 import { LoginView } from '@/views/LoginView';
 import { OperationView } from '@/views/OperationView';
 
@@ -21,7 +22,7 @@ export default function App() {
   return (
     <StaffSessionProvider>
       <AppRoutes />
-      <InstallPrompt />
+      {!isDesktopApp() && <InstallPrompt />}
     </StaffSessionProvider>
   );
 }

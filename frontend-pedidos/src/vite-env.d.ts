@@ -1,3 +1,13 @@
 /// <reference types="vite/client" />
 
-declare const __APP_BUILD_ID__: string;
+import type { FatboyDesktopApi } from './desktop/desktop-types';
+
+declare global {
+  const __APP_BUILD_ID__: string;
+
+  interface Window {
+    fatboyDesktop?: FatboyDesktopApi;
+  }
+}
+
+export {};

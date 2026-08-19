@@ -31,7 +31,7 @@ export function OrderDetailModal({
   order: Order;
   canCancel: boolean;
   onClose: () => void;
-  onPrint: () => void;
+  onPrint: () => void | Promise<void>;
   // Un pedido terminal (Historial) nunca renderiza los botones que
   // llamarían a esto — no permitir modificar pedidos terminales (Sección
   // Veinte) — así que ahí ni siquiera hace falta pasarlos.
