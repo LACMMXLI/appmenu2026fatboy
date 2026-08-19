@@ -43,6 +43,8 @@ export interface PrinterSettingsInput {
 
 export interface PrinterSettings extends PrinterSettingsInput {
   displayName: string;
+  stationId: string;
+  stationName: string;
 }
 
 export type DesktopResponse<T> =

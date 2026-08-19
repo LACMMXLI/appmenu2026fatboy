@@ -207,6 +207,7 @@ export function OperationView() {
               </select>
             )}
             <PrinterSettingsDialog
+              token={token}
               branchId={effectiveBranchId}
               branchName={selectedBranch?.name ?? 'Sucursal'}
               settings={printerSettings}

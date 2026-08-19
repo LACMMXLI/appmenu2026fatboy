@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, CheckCircle2, Power, Printer, RefreshCw, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Power, Printer, RefreshCw, RotateCcw, X } from 'lucide-react';
 import { Button } from './ui/Button';
 import { getDesktopApi } from '../desktop/desktop-bridge';
 import type { DesktopPrinter, PaperWidthMm, PrinterSettings } from '../desktop/desktop-types';
+import { listPrintJobs, retryPrintJob, type PrintJob, type PrintJobStatus } from '../lib/api';
+
+const PRINT_JOB_LABELS: Record<PrintJobStatus, string> = {
+  PENDING: 'Pendiente',
+  CLAIMED: 'Asignado',
+  PRINTING: 'Imprimiendo',
+  PRINTED: 'Impreso',
+  FAILED: 'Con error',
+  UNCERTAIN: 'Resultado incierto',
+};
 
 interface PrinterSettingsDialogProps {
+  token: string;
   branchId: string;
   branchName: string;
   settings: PrinterSettings | null;
@@ -13,6 +24,7 @@ interface PrinterSettingsDialogProps {
 }
 
 export function PrinterSettingsDialog({
+  token,
   branchId,
   branchName,
   settings,
@@ -28,6 +40,10 @@ export function PrinterSettingsDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [jobs, setJobs] = useState<PrintJob[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [retryingJobId, setRetryingJobId] = useState('');
+  const [jobsError, setJobsError] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -69,9 +85,25 @@ export function PrinterSettingsDialog({
     }
   }, [branchId, desktopApi, onSettingsChange]);
 
+  const refreshJobs = useCallback(async () => {
+    if (!token || !branchId) return;
+    setJobsLoading(true);
+    setJobsError('');
+    try {
+      setJobs(await listPrintJobs(token, branchId, 10));
+    } catch (loadError) {
+      setJobsError(loadError instanceof Error ? loadError.message : 'No se pudo consultar la cola de impresión.');
+    } finally {
+      setJobsLoading(false);
+    }
+  }, [branchId, token]);
+
   useEffect(() => {
-    if (open) void refresh();
-  }, [open, refresh]);
+    if (open) {
+      void refresh();
+      void refreshJobs();
+    }
+  }, [open, refresh, refreshJobs]);
 
   if (!desktopApi) return null;
 
@@ -126,6 +158,20 @@ export function PrinterSettingsDialog({
     }
   }
 
+  async function handleRetry(job: PrintJob) {
+    setRetryingJobId(job.id);
+    setJobsError('');
+    try {
+      await retryPrintJob(token, job.id, branchId);
+      setMessage(`Pedido ${job.order?.folio ?? job.orderId}: reintento enviado a la cola.`);
+      await refreshJobs();
+    } catch (retryError) {
+      setJobsError(retryError instanceof Error ? retryError.message : 'No se pudo reintentar el ticket.');
+    } finally {
+      setRetryingJobId('');
+    }
+  }
+
   return (
     <>
       <Button
@@ -152,7 +198,7 @@ export function PrinterSettingsDialog({
             role="dialog"
             aria-modal="true"
             aria-labelledby="printer-settings-title"
-            className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#181818] shadow-2xl"
+            className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#181818] shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <header className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 p-5">
@@ -227,10 +273,72 @@ export function PrinterSettingsDialog({
                 </div>
                 {autoAcceptEnabled && (
                   <p className="mt-3 rounded-lg bg-black/20 p-2 text-[11px] font-bold text-amber-200">
-                    Activa esta función en un solo equipo por sucursal para evitar impresiones duplicadas.
+                    La cola asigna cada ticket a una sola estación, incluso si hay más de un receptor conectado.
                   </p>
                 )}
               </div>
+
+              {savedSettings?.stationName && (
+                <p className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-[11px] font-bold text-gray-400">
+                  Estación: <span className="text-gray-200">{savedSettings.stationName}</span>
+                </p>
+              )}
+
+              <section className="rounded-xl border border-white/10 bg-[#101010] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-300">Últimas impresiones</h3>
+                    <p className="mt-1 text-[11px] font-semibold text-gray-500">Registro compartido de esta sucursal.</p>
+                  </div>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => void refreshJobs()} isLoading={jobsLoading}>
+                    <RefreshCw size={14} className="mr-1" /> Cola
+                  </Button>
+                </div>
+
+                {jobs.length === 0 && !jobsLoading && !jobsError && (
+                  <p className="py-3 text-center text-xs font-semibold text-gray-500">Todavía no hay trabajos de impresión.</p>
+                )}
+                <div className="space-y-2">
+                  {jobs.map((job) => {
+                    const recoverable = job.status === 'FAILED' || job.status === 'UNCERTAIN';
+                    return (
+                      <div key={job.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/[0.025] p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-black text-white">
+                            Pedido {job.order?.folio ?? job.orderId}
+                          </p>
+                          <p className={`mt-1 text-[10px] font-black uppercase tracking-wide ${job.status === 'PRINTED' ? 'text-emerald-400' : job.status === 'FAILED' || job.status === 'UNCERTAIN' ? 'text-amber-300' : 'text-sky-300'}`}>
+                            {PRINT_JOB_LABELS[job.status]} · intento {job.attempts}
+                          </p>
+                          {(job.lastError || job.lastResult) && (
+                            <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-relaxed text-gray-500">
+                              {job.lastError ?? job.lastResult}
+                            </p>
+                          )}
+                        </div>
+                        {recoverable && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void handleRetry(job)}
+                            isLoading={retryingJobId === job.id}
+                            disabled={Boolean(retryingJobId)}
+                            title={job.status === 'UNCERTAIN' ? 'Confirma primero que el ticket no salió físicamente.' : 'Volver a intentar'}
+                          >
+                            <RotateCcw size={13} className="mr-1" /> Reintentar
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {jobsError && (
+                  <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-xs font-bold text-amber-200">
+                    <AlertCircle size={15} className="mt-0.5 shrink-0" /> {jobsError}
+                  </p>
+                )}
+              </section>
 
               {error && (
                 <p className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/10 p-3 text-xs font-bold text-primary">

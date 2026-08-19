@@ -131,11 +131,21 @@ export class OrderController {
 
   // PENDING_APPROVAL → ACCEPTED. Only staff of the receiving branch (or ADMIN).
   @Post('orders/:id/accept')
-  async acceptOrder(@Headers('Authorization') authHeader: string | undefined, @Param('id') id: string) {
+  async acceptOrder(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Param('id') id: string,
+    @Body('createProductionPrintJob') createProductionPrintJob?: unknown,
+  ) {
+    if (createProductionPrintJob !== undefined && typeof createProductionPrintJob !== 'boolean') {
+      throw new BadRequestException('La solicitud de impresión automática es inválida.');
+    }
     const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
     const order = await this.orderService.getOrder(id);
     this.assertBranchAccess(staff, order.branchId);
-    return this.orderService.transitionOrder(id, OrderStatus.ACCEPTED, { staffId: staff.id });
+    return this.orderService.transitionOrder(id, OrderStatus.ACCEPTED, {
+      staffId: staff.id,
+      createProductionPrintJob: createProductionPrintJob === true,
+    });
   }
 
   // PENDING_APPROVAL → REJECTED. A reason is mandatory (SEIS).

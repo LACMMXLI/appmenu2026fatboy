@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { randomUUID } from 'node:crypto';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { OrderStatus, Prisma, PrintDocumentType } from '@prisma/client';
 import { areMenuPromotionsOpen, resolvePromotionWindowHours } from '../../lib/promotion-window.js';
 import { isTransitionAllowed } from './order-status.js';
 import { OrdersGateway } from './orders.gateway.js';
@@ -381,12 +381,17 @@ export class OrderService {
   async transitionOrder(
     orderId: string,
     to: OrderStatus,
-    opts: { staffId?: string | null; reason?: string | null; metadata?: Prisma.InputJsonValue } = {},
+    opts: {
+      staffId?: string | null;
+      reason?: string | null;
+      metadata?: Prisma.InputJsonValue;
+      createProductionPrintJob?: boolean;
+    } = {},
   ) {
     const order = await this.prisma.$transaction(async (tx) => {
       const current = await tx.order.findUnique({
         where: { id: orderId },
-        select: { status: true, customerId: true, pointsEarned: true, pointsCredited: true },
+        select: { status: true, branchId: true, customerId: true, pointsEarned: true, pointsCredited: true },
       });
       if (!current) {
         throw new NotFoundException('Pedido no encontrado.');
@@ -441,6 +446,17 @@ export class OrderService {
           metadata: opts.metadata,
         },
       });
+
+      if (to === OrderStatus.ACCEPTED && opts.createProductionPrintJob) {
+        await tx.orderPrintJob.create({
+          data: {
+            id: randomUUID(),
+            orderId,
+            branchId: current.branchId,
+            documentType: PrintDocumentType.PRODUCTION,
+          },
+        });
+      }
 
       const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
       return this.serializeOrder(updatedOrder);

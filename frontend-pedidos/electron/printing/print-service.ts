@@ -1,6 +1,8 @@
 import { app, BrowserWindow, type WebContents } from 'electron';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import type {
   DesktopPrinter,
   PaperWidthMm,
@@ -13,13 +15,26 @@ import { buildTicketHtml } from '../../src/lib/ticketTemplate';
 import { parsePrinterSettingsInput } from './validation';
 
 const SETTINGS_FILE = 'printer-settings.json';
+const STATION_IDENTITY_FILE = 'print-station.json';
 const SETTINGS_VERSION = 2;
 const MICRONS_PER_CSS_PIXEL = 25_400 / 96;
 const MIN_TICKET_HEIGHT_MICRONS = 50_000;
 const MAX_TICKET_HEIGHT_MICRONS = 3_000_000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+interface StationIdentity {
+  stationId: string;
+  stationName: string;
+}
+
+let stationIdentityPromise: Promise<StationIdentity> | null = null;
 
 function settingsPath(): string {
   return join(app.getPath('userData'), SETTINGS_FILE);
+}
+
+function stationIdentityPath(): string {
+  return join(app.getPath('userData'), STATION_IDENTITY_FILE);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -37,7 +52,41 @@ async function readSettingsFile(): Promise<unknown | null> {
   }
 }
 
-function parseStoredSettings(value: unknown, branchId: string): PrinterSettings | null {
+async function readOrCreateStationIdentity(): Promise<StationIdentity> {
+  try {
+    const value = JSON.parse(await readFile(stationIdentityPath(), 'utf8')) as unknown;
+    if (
+      isRecord(value)
+      && typeof value.stationId === 'string'
+      && UUID_PATTERN.test(value.stationId)
+      && typeof value.stationName === 'string'
+      && value.stationName.trim()
+    ) {
+      return { stationId: value.stationId, stationName: value.stationName.trim().slice(0, 120) };
+    }
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT') console.error('No se pudo leer la identidad de la estación:', error);
+  }
+
+  const identity: StationIdentity = {
+    stationId: randomUUID(),
+    stationName: hostname().trim().slice(0, 120) || 'Receptor Fatboy',
+  };
+  await writeFile(stationIdentityPath(), `${JSON.stringify(identity, null, 2)}\n`, 'utf8');
+  return identity;
+}
+
+function loadStationIdentity(): Promise<StationIdentity> {
+  stationIdentityPromise ??= readOrCreateStationIdentity();
+  return stationIdentityPromise;
+}
+
+function parseStoredSettings(
+  value: unknown,
+  branchId: string,
+  identity: StationIdentity,
+): PrinterSettings | null {
   if (!isRecord(value)) return null;
   try {
     // Compatibilidad con el archivo de la Fase 2, que guardaba una sola
@@ -52,7 +101,7 @@ function parseStoredSettings(value: unknown, branchId: string): PrinterSettings 
     const displayName = typeof value.displayName === 'string' && value.displayName.trim()
       ? value.displayName.trim()
       : parsed.deviceName;
-    return { ...parsed, displayName };
+    return { ...parsed, displayName, ...identity };
   } catch {
     return null;
   }
@@ -76,14 +125,14 @@ export async function listPrinters(contents: WebContents): Promise<DesktopPrinte
 }
 
 export async function loadPrinterSettings(branchId: string): Promise<PrinterSettings | null> {
-  const raw = await readSettingsFile();
+  const [raw, identity] = await Promise.all([readSettingsFile(), loadStationIdentity()]);
   if (!raw) return null;
 
   if (isRecord(raw) && raw.version === SETTINGS_VERSION && isRecord(raw.branches)) {
-    return parseStoredSettings(raw.branches[branchId], branchId);
+    return parseStoredSettings(raw.branches[branchId], branchId, identity);
   }
 
-  return parseStoredSettings(raw, branchId);
+  return parseStoredSettings(raw, branchId, identity);
 }
 
 export async function savePrinterSettings(
@@ -92,6 +141,7 @@ export async function savePrinterSettings(
 ): Promise<PrinterSettings> {
   const printer = printers.find((candidate) => candidate.name === input.deviceName);
   if (!printer) throw new Error('La impresora seleccionada ya no está disponible en Windows.');
+  const identity = await loadStationIdentity();
 
   const settings: PrinterSettings = {
     branchId: input.branchId,
@@ -100,6 +150,7 @@ export async function savePrinterSettings(
     displayName: printer.displayName,
     paperWidthMm: input.paperWidthMm,
     autoAcceptEnabled: input.autoAcceptEnabled,
+    ...identity,
   };
 
   const current = await readSettingsFile();

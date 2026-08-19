@@ -1,5 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { bootstrapTestApp, uniqueSuffix, json } from './helpers/app.js';
 
 let baseUrl: string;
@@ -568,4 +569,111 @@ test('a rejected order never generates points', async () => {
 
   const after = await getPoints(owner.token);
   assert.equal(after, before, 'a rejected order must never generate points');
+});
+
+// --- Fase 3: cola durable de impresión por sucursal/estación ---
+
+async function acceptWithProductionPrintJob(orderId: string) {
+  const res = await fetch(`${baseUrl}/orders/${orderId}/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ createProductionPrintJob: true }),
+  });
+  const body = await json(res);
+  assert.equal(res.status, 201, JSON.stringify(body));
+  assert.equal(body.status, 'ACCEPTED');
+  return body;
+}
+
+async function claimPrintJob(token: string, branchId: string, stationId: string, stationName: string) {
+  const res = await fetch(`${baseUrl}/printing/jobs/claim`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ branchId, stationId, stationName }),
+  });
+  return { res, body: await json(res) };
+}
+
+test('automatic acceptance creates one branch-scoped job and only one station can claim it', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptWithProductionPrintJob(order.id);
+  const stationA = randomUUID();
+  const stationB = randomUUID();
+
+  const wrongBranch = await claimPrintJob(staffB.token, branchAId, stationB, 'OTRA-SUCURSAL');
+  assert.equal(wrongBranch.res.status, 403);
+
+  const first = await claimPrintJob(staffA.token, branchAId, stationA, 'RECEPCION-A');
+  assert.equal(first.res.status, 201, JSON.stringify(first.body));
+  assert.equal(first.body.job.orderId, order.id);
+  assert.equal(first.body.job.status, 'CLAIMED');
+  assert.equal(first.body.job.attempts, 1);
+  assert.equal(first.body.order.id, order.id);
+
+  const second = await claimPrintJob(staffA.token, branchAId, stationB, 'RECEPCION-B');
+  assert.equal(second.res.status, 201, JSON.stringify(second.body));
+  assert.equal(second.body.job, null);
+  assert.equal(second.body.order, null);
+
+  const wrongStationStart = await fetch(`${baseUrl}/printing/jobs/${first.body.job.id}/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ branchId: branchAId, stationId: stationB }),
+  });
+  assert.equal(wrongStationStart.status, 409);
+
+  const start = await fetch(`${baseUrl}/printing/jobs/${first.body.job.id}/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ branchId: branchAId, stationId: stationA }),
+  });
+  assert.equal(start.status, 201);
+  assert.equal((await json(start)).status, 'PRINTING');
+
+  const complete = await fetch(`${baseUrl}/printing/jobs/${first.body.job.id}/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ branchId: branchAId, stationId: stationA, result: 'Windows aceptó el trabajo.' }),
+  });
+  assert.equal(complete.status, 201);
+  assert.equal((await json(complete)).status, 'PRINTED');
+
+  const recent = await fetch(`${baseUrl}/printing/jobs?branchId=${branchAId}&limit=10`, {
+    headers: { Authorization: `Bearer ${staffA.token}` },
+  });
+  const jobs = await json(recent);
+  assert.equal(recent.status, 200, JSON.stringify(jobs));
+  const completedJob = jobs.find((job: { id: string }) => job.id === first.body.job.id);
+  assert.equal(completedJob.status, 'PRINTED');
+  assert.equal(completedJob.claimedByStationId, stationA);
+});
+
+test('a failed print can be manually recovered and claimed again', async () => {
+  const order = await json(await createOrder(owner.token, branchAId));
+  await acceptWithProductionPrintJob(order.id);
+  const stationA = randomUUID();
+  const claimed = await claimPrintJob(staffA.token, branchAId, stationA, 'RECEPCION-A');
+  assert.equal(claimed.res.status, 201, JSON.stringify(claimed.body));
+
+  const failed = await fetch(`${baseUrl}/printing/jobs/${claimed.body.job.id}/fail`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ branchId: branchAId, stationId: stationA, error: 'Sin papel' }),
+  });
+  assert.equal(failed.status, 201);
+  assert.equal((await json(failed)).status, 'FAILED');
+
+  const retry = await fetch(`${baseUrl}/printing/jobs/${claimed.body.job.id}/retry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffA.token}` },
+    body: JSON.stringify({ branchId: branchAId }),
+  });
+  assert.equal(retry.status, 201);
+  assert.equal((await json(retry)).status, 'PENDING');
+
+  const reclaimed = await claimPrintJob(staffA.token, branchAId, stationA, 'RECEPCION-A');
+  assert.equal(reclaimed.res.status, 201, JSON.stringify(reclaimed.body));
+  assert.equal(reclaimed.body.job.id, claimed.body.job.id);
+  assert.equal(reclaimed.body.job.status, 'CLAIMED');
+  assert.equal(reclaimed.body.job.attempts, 2);
 });

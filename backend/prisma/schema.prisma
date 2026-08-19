@@ -29,6 +29,19 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum PrintJobStatus {
+  PENDING
+  CLAIMED
+  PRINTING
+  PRINTED
+  FAILED
+  UNCERTAIN
+}
+
+enum PrintDocumentType {
+  PRODUCTION
+}
+
 enum StaffRole {
   STAFF
   MANAGER
@@ -167,6 +180,7 @@ model Order {
   createdAt        DateTime            @default(now()) @map("created_at")
   items            OrderItem[]
   statusHistory    OrderStatusHistory[]
+  printJobs        OrderPrintJob[]
 
   @@index([status])
   @@index([branchId, status])
@@ -189,6 +203,33 @@ model OrderStatusHistory {
 
   @@index([orderId, createdAt])
   @@map("order_status_history")
+}
+
+model OrderPrintJob {
+  id                     String            @id @db.Uuid
+  orderId                String            @map("order_id") @db.Uuid
+  order                  Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branchId               String            @map("branch_id") @db.Uuid
+  documentType           PrintDocumentType @default(PRODUCTION) @map("document_type")
+  status                 PrintJobStatus    @default(PENDING)
+  attempts               Int               @default(0)
+  claimedByStationId     String?           @map("claimed_by_station_id") @db.Uuid
+  claimedByStationName   String?           @map("claimed_by_station_name")
+  claimedAt              DateTime?         @map("claimed_at")
+  leaseExpiresAt         DateTime?         @map("lease_expires_at")
+  nextAttemptAt          DateTime?         @map("next_attempt_at")
+  printingStartedAt      DateTime?         @map("printing_started_at")
+  printedAt              DateTime?         @map("printed_at")
+  uncertainAt            DateTime?         @map("uncertain_at")
+  lastError              String?           @map("last_error")
+  lastResult             String?           @map("last_result")
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  @@unique([orderId, documentType])
+  @@index([branchId, status, createdAt])
+  @@index([claimedByStationId, status])
+  @@map("order_print_jobs")
 }
 
 model Staff {

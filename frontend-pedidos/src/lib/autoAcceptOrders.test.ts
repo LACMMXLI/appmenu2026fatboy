@@ -1,17 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Order } from './api';
-import { processAutomaticOrdersOnce, readAutoPrintQueue } from './autoAcceptOrders';
-
-class MemoryStorage implements Storage {
-  private readonly values = new Map<string, string>();
-
-  get length() { return this.values.size; }
-  clear() { this.values.clear(); }
-  getItem(key: string) { return this.values.get(key) ?? null; }
-  key(index: number) { return [...this.values.keys()][index] ?? null; }
-  removeItem(key: string) { this.values.delete(key); }
-  setItem(key: string, value: string) { this.values.set(key, value); }
-}
+import type { ClaimedPrintJobResponse, Order, PrintJob } from './api';
+import { processAutomaticOrdersOnce } from './autoAcceptOrders';
 
 function buildOrder(overrides: Partial<Order> = {}): Order {
   return {
@@ -38,84 +27,121 @@ function buildOrder(overrides: Partial<Order> = {}): Order {
   };
 }
 
-describe('aceptación e impresión automática por sucursal', () => {
-  it('acepta e imprime sólo pedidos de la sucursal configurada', async () => {
-    const storage = new MemoryStorage();
+function buildJob(order: Order, overrides: Partial<PrintJob> = {}): PrintJob {
+  return {
+    id: 'job-1',
+    orderId: order.id,
+    branchId: order.branchId,
+    documentType: 'PRODUCTION',
+    status: 'CLAIMED',
+    attempts: 1,
+    claimedByStationId: '11111111-1111-4111-8111-111111111111',
+    claimedByStationName: 'RECEPCION-1',
+    claimedAt: '2026-08-19T18:00:01.000Z',
+    leaseExpiresAt: '2026-08-19T18:01:01.000Z',
+    nextAttemptAt: null,
+    printingStartedAt: null,
+    printedAt: null,
+    uncertainAt: null,
+    lastError: null,
+    lastResult: null,
+    createdAt: '2026-08-19T18:00:01.000Z',
+    updatedAt: '2026-08-19T18:00:01.000Z',
+    ...overrides,
+  };
+}
+
+function claimedOnce(job: PrintJob, order: Order) {
+  return vi.fn<() => Promise<ClaimedPrintJobResponse>>()
+    .mockResolvedValueOnce({ job, order })
+    .mockResolvedValue({ job: null, order: null });
+}
+
+function processorDefaults(order: Order, job: PrintJob) {
+  return {
+    branchId: order.branchId,
+    orders: [] as Order[],
+    processingIds: new Set<string>(),
+    accept: vi.fn(async (value: Order) => ({ ...value, status: 'ACCEPTED' as const })),
+    claim: claimedOnce(job, order),
+    start: vi.fn(async () => ({ ...job, status: 'PRINTING' as const })),
+    print: vi.fn(async () => ({ ok: true, message: 'Impreso.' })),
+    complete: vi.fn(async () => ({ ...job, status: 'PRINTED' as const })),
+    fail: vi.fn(async () => ({ ...job, status: 'FAILED' as const })),
+    onUpdated: vi.fn(),
+  };
+}
+
+describe('cola durable de aceptación e impresión', () => {
+  it('acepta sólo pedidos pendientes de la sucursal configurada', async () => {
     const americas = buildOrder();
-    const venecia = buildOrder({ id: 'order-2', folio: 'FB-101', branchId: 'branch-venecia', branchName: 'Venecia' });
+    const venecia = buildOrder({ id: 'order-2', branchId: 'branch-venecia', branchName: 'Venecia' });
     const accepted = { ...americas, status: 'ACCEPTED' as const };
     const accept = vi.fn(async () => accepted);
-    const print = vi.fn(async () => ({ ok: true, message: 'Impreso.' }));
-    const onUpdated = vi.fn();
 
     const events = await processAutomaticOrdersOnce({
-      branchId: americas.branchId,
+      ...processorDefaults(accepted, buildJob(accepted)),
       orders: [venecia, americas],
-      storage,
-      processingIds: new Set(),
       accept,
-      print,
-      onUpdated,
+      claim: vi.fn(async () => ({ job: null, order: null })),
     });
 
     expect(accept).toHaveBeenCalledTimes(1);
     expect(accept).toHaveBeenCalledWith(americas);
-    expect(print).toHaveBeenCalledWith(accepted);
-    expect(onUpdated).toHaveBeenCalledWith(accepted);
-    expect(events.map((event) => event.type)).toEqual(['accepted-and-printed']);
-    expect(readAutoPrintQueue(storage, americas.branchId)).toEqual([]);
+    expect(events.map((event) => event.type)).toEqual(['accepted']);
   });
 
-  it('conserva una impresión fallida y la reintenta sin volver a aceptar', async () => {
-    const storage = new MemoryStorage();
-    const pending = buildOrder();
-    const accepted = { ...pending, status: 'ACCEPTED' as const };
-    const accept = vi.fn(async () => accepted);
+  it('reclama, inicia, imprime y confirma un trabajo', async () => {
+    const order = buildOrder({ status: 'ACCEPTED' });
+    const job = buildJob(order);
+    const options = processorDefaults(order, job);
 
-    const firstEvents = await processAutomaticOrdersOnce({
-      branchId: pending.branchId,
-      orders: [pending],
-      storage,
-      processingIds: new Set(),
-      accept,
-      print: vi.fn(async () => ({ ok: false, message: 'Impresora desconectada.' })),
-      onUpdated: vi.fn(),
-    });
+    const events = await processAutomaticOrdersOnce(options);
 
-    expect(firstEvents[0]?.type).toBe('print-failed');
-    expect(readAutoPrintQueue(storage, pending.branchId)).toEqual([pending.id]);
+    expect(options.start).toHaveBeenCalledWith(job);
+    expect(options.print).toHaveBeenCalledWith(order);
+    expect(options.complete).toHaveBeenCalledWith(job, { ok: true, message: 'Impreso.' });
+    expect(options.fail).not.toHaveBeenCalled();
+    expect(events.map((event) => event.type)).toEqual(['printed']);
+  });
 
-    const retryPrint = vi.fn(async () => ({ ok: true, message: 'Impreso.' }));
-    const retryEvents = await processAutomaticOrdersOnce({
-      branchId: pending.branchId,
-      orders: [accepted],
-      storage,
-      processingIds: new Set(),
-      accept,
-      print: retryPrint,
-      onUpdated: vi.fn(),
-    });
+  it('marca fallido cuando Windows rechaza el trabajo', async () => {
+    const order = buildOrder({ status: 'ACCEPTED' });
+    const job = buildJob(order);
+    const options = processorDefaults(order, job);
+    options.print.mockResolvedValue({ ok: false, message: 'Impresora desconectada.' });
 
-    expect(accept).toHaveBeenCalledTimes(1);
-    expect(retryPrint).toHaveBeenCalledWith(accepted);
-    expect(retryEvents[0]?.type).toBe('queued-print-completed');
-    expect(readAutoPrintQueue(storage, pending.branchId)).toEqual([]);
+    const events = await processAutomaticOrdersOnce(options);
+
+    expect(options.fail).toHaveBeenCalledWith(job, 'Impresora desconectada.');
+    expect(options.complete).not.toHaveBeenCalled();
+    expect(events.map((event) => event.type)).toEqual(['print-failed']);
+  });
+
+  it('no marca fallido si el ticket salió pero se perdió el ACK', async () => {
+    const order = buildOrder({ status: 'ACCEPTED' });
+    const job = buildJob(order);
+    const options = processorDefaults(order, job);
+    options.complete.mockRejectedValue(new Error('Red desconectada'));
+
+    const events = await processAutomaticOrdersOnce(options);
+
+    expect(options.print).toHaveBeenCalledOnce();
+    expect(options.fail).not.toHaveBeenCalled();
+    expect(events).toMatchObject([{ type: 'ack-failed', message: 'Red desconectada' }]);
   });
 
   it('no imprime cuando el backend rechaza la aceptación', async () => {
     const pending = buildOrder();
-    const print = vi.fn();
-    const events = await processAutomaticOrdersOnce({
-      branchId: pending.branchId,
-      orders: [pending],
-      storage: new MemoryStorage(),
-      processingIds: new Set(),
-      accept: vi.fn(async () => { throw new Error('Conflicto 409'); }),
-      print,
-      onUpdated: vi.fn(),
-    });
+    const job = buildJob(pending);
+    const options = processorDefaults(pending, job);
+    options.orders = [pending];
+    options.accept.mockRejectedValue(new Error('Conflicto 409'));
+    options.claim = vi.fn(async () => ({ job: null, order: null }));
 
-    expect(print).not.toHaveBeenCalled();
+    const events = await processAutomaticOrdersOnce(options);
+
+    expect(options.print).not.toHaveBeenCalled();
     expect(events).toMatchObject([{ type: 'accept-failed', message: 'Conflicto 409' }]);
   });
 });

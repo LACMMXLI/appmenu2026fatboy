@@ -157,6 +157,35 @@ export interface PaginatedResult<T> {
   nextCursor: string | null;
 }
 
+export type PrintJobStatus = 'PENDING' | 'CLAIMED' | 'PRINTING' | 'PRINTED' | 'FAILED' | 'UNCERTAIN';
+
+export interface PrintJob {
+  id: string;
+  orderId: string;
+  branchId: string;
+  documentType: 'PRODUCTION';
+  status: PrintJobStatus;
+  attempts: number;
+  claimedByStationId: string | null;
+  claimedByStationName: string | null;
+  claimedAt: string | null;
+  leaseExpiresAt: string | null;
+  nextAttemptAt: string | null;
+  printingStartedAt: string | null;
+  printedAt: string | null;
+  uncertainAt: string | null;
+  lastError: string | null;
+  lastResult: string | null;
+  createdAt: string;
+  updatedAt: string;
+  order?: { folio: string; branchName: string };
+}
+
+export interface ClaimedPrintJobResponse {
+  job: PrintJob | null;
+  order: Order | null;
+}
+
 // Tablero operativo — autoscopeado a la sucursal del operador por el
 // backend (Sección Seis/Veinticuatro): un STAFF/MANAGER nunca puede pedir
 // pedidos de otra sucursal aunque mande otro branchId.
@@ -186,8 +215,12 @@ export async function getOrderHistory(id: string, token: string): Promise<OrderS
   return requestWithAuth<OrderStatusHistoryEntry[]>(`/orders/${id}/history`, token);
 }
 
-export async function acceptOrder(token: string, id: string): Promise<Order> {
-  return requestWithAuth<Order>(`/orders/${id}/accept`, token, 'POST');
+export async function acceptOrder(
+  token: string,
+  id: string,
+  options?: { createProductionPrintJob?: boolean },
+): Promise<Order> {
+  return requestWithAuth<Order>(`/orders/${id}/accept`, token, 'POST', options);
 }
 
 export async function rejectOrder(token: string, id: string, reason: string): Promise<Order> {
@@ -208,6 +241,48 @@ export async function approveCancellation(token: string, id: string, note?: stri
 
 export async function rejectCancellation(token: string, id: string, note?: string): Promise<Order> {
   return requestWithAuth<Order>(`/orders/${id}/cancellation/reject`, token, 'POST', { note });
+}
+
+// ── Cola durable de impresión ────────────────────────────────────────────
+
+export async function claimNextPrintJob(
+  token: string,
+  payload: { branchId: string; stationId: string; stationName: string },
+): Promise<ClaimedPrintJobResponse> {
+  return requestWithAuth<ClaimedPrintJobResponse>('/printing/jobs/claim', token, 'POST', payload);
+}
+
+export async function startPrintJob(
+  token: string,
+  id: string,
+  payload: { branchId: string; stationId: string },
+): Promise<PrintJob> {
+  return requestWithAuth<PrintJob>(`/printing/jobs/${id}/start`, token, 'POST', payload);
+}
+
+export async function completePrintJob(
+  token: string,
+  id: string,
+  payload: { branchId: string; stationId: string; result: string },
+): Promise<PrintJob> {
+  return requestWithAuth<PrintJob>(`/printing/jobs/${id}/complete`, token, 'POST', payload);
+}
+
+export async function failPrintJob(
+  token: string,
+  id: string,
+  payload: { branchId: string; stationId: string; error: string },
+): Promise<PrintJob> {
+  return requestWithAuth<PrintJob>(`/printing/jobs/${id}/fail`, token, 'POST', payload);
+}
+
+export async function retryPrintJob(token: string, id: string, branchId: string): Promise<PrintJob> {
+  return requestWithAuth<PrintJob>(`/printing/jobs/${id}/retry`, token, 'POST', { branchId });
+}
+
+export async function listPrintJobs(token: string, branchId: string, limit = 20): Promise<PrintJob[]> {
+  const search = new URLSearchParams({ branchId, limit: String(limit) });
+  return requestWithAuth<PrintJob[]>(`/printing/jobs?${search.toString()}`, token);
 }
 
 // ── Helpers HTTP internos ────────────────────────────────────────────────
