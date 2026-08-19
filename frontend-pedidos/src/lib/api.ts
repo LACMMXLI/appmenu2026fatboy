@@ -57,6 +57,36 @@ export async function getStaffMe(token: string): Promise<Staff> {
   return requestWithAuth<Staff>('/staff/me', token);
 }
 
+export async function changeStaffPassword(
+  token: string,
+  payload: { currentPassword: string; newPassword: string },
+): Promise<{ ok: boolean }> {
+  return requestWithAuth<{ ok: boolean }>('/staff/change-password', token, 'POST', payload);
+}
+
+export async function listStaff(token: string): Promise<Staff[]> {
+  return requestWithAuth<Staff[]>('/admin/staff', token);
+}
+
+export async function createStaff(
+  token: string,
+  payload: { name: string; username: string; password: string; role: Staff['role']; branchId: string | null },
+): Promise<Staff> {
+  return requestWithAuth<Staff>('/admin/staff', token, 'POST', payload);
+}
+
+export async function updateStaff(
+  token: string,
+  id: string,
+  payload: Partial<Pick<Staff, 'name' | 'role' | 'branchId' | 'active'>>,
+): Promise<Staff> {
+  return requestWithAuth<Staff>(`/admin/staff/${id}`, token, 'PATCH', payload);
+}
+
+export async function resetStaffPassword(token: string, id: string, password: string): Promise<Staff> {
+  return requestWithAuth<Staff>(`/admin/staff/${id}/password`, token, 'POST', { password });
+}
+
 // ── Orders ────────────────────────────────────────────────────────────────
 // Espejo exacto de la máquina de estados del backend (Sección Ocho). No
 // agregar estados aquí — el backend es la única autoridad (Treinta y ocho).

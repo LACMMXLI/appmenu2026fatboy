@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { AlertCircle, Bell, BadgeCheck, CheckCircle2, ChefHat, LogOut, MapPin, RefreshCw, ShoppingBag, Store, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, Bell, BadgeCheck, CheckCircle2, ChefHat, LogOut, MapPin, RefreshCw, ShoppingBag, Store, UserCog, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { EmptyColumn, OrderSummaryCard } from '@/components/OrderSummaryCard';
 import { OrderDetailModal } from '@/components/OrderDetailModal';
 import { RejectOrderModal } from '@/components/RejectOrderModal';
 import { HistoryPanel } from '@/views/HistoryPanel';
+import { AdminPanel } from '@/views/AdminPanel';
 import { cn } from '@/lib/utils';
 import { useStaffSession } from '@/context/StaffSessionContext';
 import { useOrdersSocket } from '@/lib/useOrdersSocket';
@@ -20,7 +21,7 @@ import {
   type OrderStatus,
 } from '@/lib/api';
 
-type Tab = 'active' | 'completed';
+type Tab = 'active' | 'completed' | 'admin';
 
 // Del más antiguo al más reciente dentro de cada estado (Sección Treinta y
 // dos): un pedido nuevo nunca debe hacer desaparecer visualmente uno que
@@ -164,11 +165,13 @@ export function OperationView() {
         </div>
       </header>
 
-      <section className="grid grid-cols-3 gap-2 border-b border-white/10 bg-[#151413] px-4 py-3 lg:px-6">
-        <MetricTile label="Nuevos" value={pendingOrders.length} tone="amber" Icon={Bell} />
-        <MetricTile label="Preparación" value={preparingOrders.length} tone="sky" Icon={ChefHat} />
-        <MetricTile label="Listos" value={readyOrders.length} tone="emerald" Icon={CheckCircle2} />
-      </section>
+      {activeTab !== 'admin' && (
+        <section className="grid grid-cols-3 gap-2 border-b border-white/10 bg-[#151413] px-4 py-3 lg:px-6">
+          <MetricTile label="Nuevos" value={pendingOrders.length} tone="amber" Icon={Bell} />
+          <MetricTile label="Preparación" value={preparingOrders.length} tone="sky" Icon={ChefHat} />
+          <MetricTile label="Listos" value={readyOrders.length} tone="emerald" Icon={CheckCircle2} />
+        </section>
+      )}
 
       <nav className="flex gap-2 overflow-x-auto border-b border-white/10 bg-[#11100f] px-4 py-2 lg:px-6">
         <TabButton active={activeTab === 'active'} onClick={() => setActiveTab('active')} Icon={ShoppingBag}>
@@ -177,7 +180,14 @@ export function OperationView() {
         <TabButton active={activeTab === 'completed'} onClick={() => setActiveTab('completed')} Icon={CheckCircle2}>
           Historial
         </TabButton>
+        {staff?.role === 'ADMIN' && (
+          <TabButton active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} Icon={UserCog}>
+            Administración
+          </TabButton>
+        )}
       </nav>
+
+      {activeTab === 'admin' && staff?.role === 'ADMIN' && <AdminPanel token={token} currentStaff={staff} branches={branches} />}
 
       {activeTab === 'active' && (
         <section className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-3">

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { StaffRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -93,7 +93,22 @@ export class StaffAuthService {
     }
     const password = this.validatePassword(input.password);
     const role = this.validateRole(input.role);
-    const branchId = typeof input.branchId === 'string' && input.branchId ? input.branchId : null;
+    const requestedBranchId = typeof input.branchId === 'string' && input.branchId ? input.branchId : null;
+    const branchId = role === StaffRole.ADMIN ? null : requestedBranchId;
+
+    if (role !== StaffRole.ADMIN && !branchId) {
+      throw new BadRequestException('Los usuarios de sucursal deben tener una sucursal asignada.');
+    }
+
+    if (branchId) {
+      if (!UUID_PATTERN.test(branchId)) {
+        throw new BadRequestException('La sucursal seleccionada no es válida.');
+      }
+      const branch = await this.prisma.branch.findUnique({ where: { id: branchId } });
+      if (!branch) {
+        throw new BadRequestException('La sucursal seleccionada no existe en el catálogo.');
+      }
+    }
 
     const existing = await this.prisma.staff.findUnique({ where: { username } });
     if (existing) {
@@ -106,6 +121,98 @@ export class StaffAuthService {
     });
 
     return this.sanitize(staff);
+  }
+
+  async listStaff() {
+    const staff = await this.prisma.staff.findMany({ orderBy: [{ active: 'desc' }, { name: 'asc' }] });
+    return staff.map((member) => this.sanitize(member));
+  }
+
+  async changePassword(token: string, body: unknown) {
+    const currentStaff = await this.validateSession(token);
+    const input = this.requireBody(body);
+    const currentPassword = typeof input.currentPassword === 'string' ? input.currentPassword : '';
+    const newPassword = this.validatePassword(input.newPassword);
+
+    const storedStaff = await this.prisma.staff.findUnique({ where: { id: currentStaff.id } });
+    if (!storedStaff || !(await this.authService.verifyPassword(currentPassword, storedStaff.password))) {
+      throw new UnauthorizedException('La contraseña actual no es correcta.');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('La nueva contraseña debe ser diferente.');
+    }
+
+    const password = await this.authService.hashPassword(newPassword);
+    await this.prisma.staff.update({ where: { id: currentStaff.id }, data: { password } });
+    await this.prisma.staffSession.deleteMany({
+      where: { staffId: currentStaff.id, id: { not: token } },
+    });
+
+    return { ok: true };
+  }
+
+  async updateStaff(id: string, body: unknown) {
+    if (!UUID_PATTERN.test(id)) {
+      throw new BadRequestException('El usuario seleccionado no es válido.');
+    }
+
+    const existing = await this.prisma.staff.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('El usuario no existe.');
+
+    const input = this.requireBody(body);
+    const data: {
+      name?: string;
+      role?: StaffRole;
+      branchId?: string | null;
+      active?: boolean;
+    } = {};
+
+    if (Object.prototype.hasOwnProperty.call(input, 'name')) data.name = this.validateName(input.name);
+    if (Object.prototype.hasOwnProperty.call(input, 'active')) {
+      if (typeof input.active !== 'boolean') throw new BadRequestException('El estado del usuario no es válido.');
+      data.active = input.active;
+    }
+    if (Object.prototype.hasOwnProperty.call(input, 'role')) data.role = this.validateRole(input.role);
+    if (Object.prototype.hasOwnProperty.call(input, 'branchId')) {
+      const branchId = typeof input.branchId === 'string' && input.branchId ? input.branchId : null;
+      if (branchId && (!UUID_PATTERN.test(branchId) || !(await this.prisma.branch.findUnique({ where: { id: branchId } })))) {
+        throw new BadRequestException('La sucursal seleccionada no existe en el catálogo.');
+      }
+      data.branchId = branchId;
+    }
+
+    const nextRole = data.role ?? existing.role;
+    const nextBranchId = data.branchId === undefined ? existing.branchId : data.branchId;
+    const nextActive = data.active === undefined ? existing.active : data.active;
+    if (existing.role === StaffRole.ADMIN && (nextRole !== StaffRole.ADMIN || !nextActive)) {
+      const activeAdmins = await this.prisma.staff.count({ where: { role: StaffRole.ADMIN, active: true } });
+      if (activeAdmins <= 1) {
+        throw new BadRequestException('Debe permanecer al menos un administrador activo.');
+      }
+    }
+    if (nextRole === StaffRole.ADMIN) {
+      data.branchId = null;
+    } else if (!nextBranchId) {
+      throw new BadRequestException('Los usuarios de sucursal deben tener una sucursal asignada.');
+    }
+
+    if (!Object.keys(data).length) throw new BadRequestException('No hay cambios para guardar.');
+    const updated = await this.prisma.staff.update({ where: { id }, data });
+    return this.sanitize(updated);
+  }
+
+  async resetPassword(id: string, body: unknown, currentToken?: string) {
+    if (!UUID_PATTERN.test(id)) throw new BadRequestException('El usuario seleccionado no es válido.');
+    const existing = await this.prisma.staff.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('El usuario no existe.');
+
+    const input = this.requireBody(body);
+    const password = await this.authService.hashPassword(this.validatePassword(input.password));
+    const updated = await this.prisma.staff.update({ where: { id }, data: { password } });
+    await this.prisma.staffSession.deleteMany({
+      where: { staffId: id, ...(currentToken ? { id: { not: currentToken } } : {}) },
+    });
+    return this.sanitize(updated);
   }
 
   private sessionExpiry(): Date {
