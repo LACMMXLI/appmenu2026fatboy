@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DESKTOP_CHANNELS } from '../../src/desktop/desktop-types';
-import { parsePrintableOrder, parsePrinterSettingsInput } from './validation';
+import { parsePrintableOrder, parsePrintDocumentType, parsePrinterSettingsInput } from './validation';
 
 const validOrder = {
   id: 'order-1',
@@ -52,5 +52,11 @@ describe('contrato IPC de impresión', () => {
     const channels = Object.values(DESKTOP_CHANNELS);
     expect(new Set(channels).size).toBe(channels.length);
     expect(channels.every((channel) => channel.startsWith('desktop:'))).toBe(true);
+  });
+
+  it('acepta sólo los dos tipos de documento soportados', () => {
+    expect(parsePrintDocumentType('PRODUCTION')).toBe('PRODUCTION');
+    expect(parsePrintDocumentType('CUSTOMER')).toBe('CUSTOMER');
+    expect(() => parsePrintDocumentType('REFUND')).toThrow('Tipo de documento');
   });
 });

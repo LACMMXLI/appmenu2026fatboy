@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, NotFoundException, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Headers, NotFoundException, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { OrderStatus, StaffRole } from '@prisma/client';
 import { OrderService } from './order.service.js';
 import { AuthService } from '../auth/auth.service.js';
@@ -117,6 +117,21 @@ export class OrderController {
     });
   }
 
+  @Delete('admin/orders')
+  async deleteAllOrders(
+    @Headers('Authorization') authHeader: string | undefined,
+    @Body('confirmation') confirmation: unknown,
+  ) {
+    const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
+    if (staff.role !== StaffRole.ADMIN) {
+      throw new ForbiddenException('Solo un administrador puede eliminar todos los pedidos.');
+    }
+    if (confirmation !== 'ELIMINAR TODOS LOS PEDIDOS') {
+      throw new BadRequestException('Escribe la frase de confirmación completa para eliminar los pedidos.');
+    }
+    return this.orderService.deleteAllOrders();
+  }
+
   // Comma-separated list of OrderStatus, silently dropping anything invalid
   // rather than 400ing — a stale/typo'd filter should just show nothing
   // extra, never break Historial.
@@ -134,18 +149,11 @@ export class OrderController {
   async acceptOrder(
     @Headers('Authorization') authHeader: string | undefined,
     @Param('id') id: string,
-    @Body('createProductionPrintJob') createProductionPrintJob?: unknown,
   ) {
-    if (createProductionPrintJob !== undefined && typeof createProductionPrintJob !== 'boolean') {
-      throw new BadRequestException('La solicitud de impresión automática es inválida.');
-    }
     const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
     const order = await this.orderService.getOrder(id);
     this.assertBranchAccess(staff, order.branchId);
-    return this.orderService.transitionOrder(id, OrderStatus.ACCEPTED, {
-      staffId: staff.id,
-      createProductionPrintJob: createProductionPrintJob === true,
-    });
+    return this.orderService.transitionOrder(id, OrderStatus.ACCEPTED, { staffId: staff.id });
   }
 
   // PENDING_APPROVAL → REJECTED. A reason is mandatory (SEIS).

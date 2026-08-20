@@ -99,10 +99,20 @@ describe('cola durable de aceptación e impresión', () => {
     const events = await processAutomaticOrdersOnce(options);
 
     expect(options.start).toHaveBeenCalledWith(job);
-    expect(options.print).toHaveBeenCalledWith(order);
+    expect(options.print).toHaveBeenCalledWith(order, job);
     expect(options.complete).toHaveBeenCalledWith(job, { ok: true, message: 'Impreso.' });
     expect(options.fail).not.toHaveBeenCalled();
     expect(events.map((event) => event.type)).toEqual(['printed']);
+  });
+
+  it('envía el tipo CUSTOMER al imprimir el ticket del cliente', async () => {
+    const order = buildOrder({ status: 'READY' });
+    const job = buildJob(order, { documentType: 'CUSTOMER' });
+    const options = processorDefaults(order, job);
+
+    await processAutomaticOrdersOnce(options);
+
+    expect(options.print).toHaveBeenCalledWith(order, job);
   });
 
   it('marca fallido cuando Windows rechaza el trabajo', async () => {

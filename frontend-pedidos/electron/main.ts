@@ -23,7 +23,12 @@ import {
   printTestTicket,
   savePrinterSettings,
 } from './printing/print-service';
-import { parsePrintableOrder, parsePrinterBranchId, parsePrinterSettingsInput } from './printing/validation';
+import {
+  parsePrintableOrder,
+  parsePrintDocumentType,
+  parsePrinterBranchId,
+  parsePrinterSettingsInput,
+} from './printing/validation';
 
 const RENDERER_SCHEME = 'fatboy';
 let mainWindow: BrowserWindow | null = null;
@@ -96,11 +101,12 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle(DESKTOP_CHANNELS.printOrder, async (event, value): Promise<PrintResult> => {
+  ipcMain.handle(DESKTOP_CHANNELS.printOrder, async (event, value, documentTypeValue): Promise<PrintResult> => {
     try {
       const window = requireTrustedSender(event);
       const order = parsePrintableOrder(value);
-      return await printOrderTicket(order, await configuredPrinter(window, order.branchId));
+      const documentType = parsePrintDocumentType(documentTypeValue);
+      return await printOrderTicket(order, documentType, await configuredPrinter(window, order.branchId));
     } catch (error) {
       return { ok: false, message: errorMessage(error) };
     }

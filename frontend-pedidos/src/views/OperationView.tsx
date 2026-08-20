@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AlertCircle, Bell, BadgeCheck, CheckCircle2, ChefHat, LogOut, MapPin, RefreshCw, ShoppingBag, Store, UserCog, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, Bell, CheckCircle2, ChefHat, LogOut, MapPin, RefreshCw, ShoppingBag, Store, UserCog, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { EmptyColumn, OrderSummaryCard } from '@/components/OrderSummaryCard';
 import { OrderDetailModal } from '@/components/OrderDetailModal';
@@ -14,7 +14,7 @@ import { useOrdersData } from '@/lib/useOrdersData';
 import { useAutoAcceptOrders } from '@/lib/useAutoAcceptOrders';
 import { printOrder } from '@/lib/printOrder';
 import { getDesktopApi } from '@/desktop/desktop-bridge';
-import type { PrinterSettings } from '@/desktop/desktop-types';
+import type { PrinterSettings, PrintDocumentType } from '@/desktop/desktop-types';
 import {
   acceptOrder,
   approveCancellation,
@@ -34,10 +34,9 @@ function sortOldestFirst(list: Order[]): Order[] {
   return [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
-// Pantalla principal (Sección Siete del plan): fila de métricas + columnas
-// por estado con tarjetas compactas — no un dashboard administrativo lleno
-// de tablas pequeñas. El detalle de alta legibilidad (Sección Diez) se abre
-// aparte, en OrderDetailModal.
+// Pantalla principal (Sección Siete del plan): los pedidos y sus estados son
+// la superficie dominante. Identidad, sucursal y herramientas viven en una
+// barra compacta; el detalle se abre aparte en OrderDetailModal.
 export function OperationView() {
   const { staff, token, branches, effectiveBranchId, selectedBranchId, setSelectedBranchId, logout } = useStaffSession();
   const { orders, syncing, error, setError, refetch, applyUpdatedOrder } = useOrdersData(token, effectiveBranchId);
@@ -148,10 +147,10 @@ export function OperationView() {
     await runAction(order, () => rejectOrder(token, order.id, reason), 'rechazado.');
   }
 
-  async function handlePrint(order: Order) {
+  async function handlePrint(order: Order, documentType: PrintDocumentType) {
     setError('');
     setMessage('');
-    const result = await printOrder(order);
+    const result = await printOrder(order, documentType);
     if (!result.ok) {
       setError(result.message);
       return;
@@ -167,44 +166,49 @@ export function OperationView() {
 
   return (
     <main className="flex min-h-[100dvh] flex-col bg-[#101010] text-white">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#171615]/95 px-4 py-3 backdrop-blur-xl lg:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <Store size={22} />
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#171615]/95 px-3 py-2 backdrop-blur-xl md:px-4 md:py-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 md:flex-nowrap">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary md:h-8 md:w-8">
+              <Store size={18} />
             </div>
             <div className="min-w-0">
-              <h1 className="font-display text-3xl leading-none tracking-wide">FATBOY PEDIDOS</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold text-gray-400">
-                <span className="inline-flex items-center gap-1">
-                  <BadgeCheck size={13} /> {staff?.name} ({staff?.role})
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="shrink-0 font-display text-xl leading-none tracking-wide md:text-lg">FATBOY PEDIDOS</h1>
+                <span className="hidden truncate text-[10px] font-bold text-gray-500 sm:inline">
+                  {staff?.name} · {staff?.role}
                 </span>
-                {selectedBranch && (
-                  <span className="inline-flex items-center gap-1">
-                    <MapPin size={13} /> {selectedBranch.name}
-                  </span>
-                )}
-                <span className={cn('inline-flex items-center gap-1', connected ? 'text-emerald-400' : 'text-amber-400')}>
-                  {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
-                  {connected ? 'Conectado' : 'Reconectando…'}
+                <span
+                  className={cn('inline-flex shrink-0 items-center gap-1 text-[10px] font-black', connected ? 'text-emerald-400' : 'text-amber-400')}
+                  title={connected ? 'Conectado al servidor' : 'Reconectando al servidor'}
+                >
+                  {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                  <span className="hidden xl:inline">{connected ? 'Conectado' : 'Reconectando'}</span>
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {message && <span className="rounded-md border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-xs font-black text-emerald-300">{message}</span>}
-            {error && <span className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-black text-primary"><AlertCircle size={14} /> {error}</span>}
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 md:flex-nowrap">
             {staff?.role === 'ADMIN' && (
-              <select
-                value={selectedBranchId}
-                onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="h-10 rounded-lg border border-white/10 bg-[#101010] px-3 text-xs font-black uppercase text-white outline-none focus:border-primary"
-              >
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>{branch.name}</option>
-                ))}
-              </select>
+              <label className="relative min-w-0" title="Sucursal operativa">
+                <MapPin size={13} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" />
+                <span className="sr-only">Sucursal</span>
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                  className="h-9 w-[148px] truncate rounded-md border border-white/10 bg-[#101010] pl-7 pr-2 text-[11px] font-black uppercase text-white outline-none focus:border-primary md:w-[132px]"
+                >
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {staff?.role !== 'ADMIN' && selectedBranch && (
+              <span className="inline-flex h-9 max-w-[150px] items-center gap-1.5 truncate rounded-md border border-white/10 bg-[#101010] px-2 text-[11px] font-black uppercase text-gray-200">
+                <MapPin size={13} className="shrink-0 text-gray-500" /> {selectedBranch.name}
+              </span>
             )}
             <PrinterSettingsDialog
               token={token}
@@ -213,39 +217,50 @@ export function OperationView() {
               settings={printerSettings}
               onSettingsChange={setPrinterSettings}
             />
-            <Button type="button" size="sm" variant="outline" onClick={() => refetch(true)} isLoading={syncing}>
-              <RefreshCw size={15} className="mr-1" /> Sync
+            <Button type="button" size="sm" variant="outline" onClick={() => refetch(true)} isLoading={syncing} title="Actualizar pedidos" aria-label="Actualizar pedidos" className="w-9 px-0 xl:w-auto xl:px-3">
+              <RefreshCw size={15} className="xl:mr-1" /> <span className="hidden xl:inline">Actualizar</span>
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={logout}>
-              <LogOut size={15} className="mr-1" /> Salir
+            <Button type="button" size="sm" variant="outline" onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión" className="w-9 px-0 xl:w-auto xl:px-3">
+              <LogOut size={15} className="xl:mr-1" /> <span className="hidden xl:inline">Salir</span>
             </Button>
           </div>
         </div>
       </header>
 
-      {activeTab !== 'admin' && (
-        <section className="grid grid-cols-3 gap-2 border-b border-white/10 bg-[#151413] px-4 py-3 lg:px-6">
-          <MetricTile label="Nuevos" value={pendingOrders.length} tone="amber" Icon={Bell} />
-          <MetricTile label="Preparación" value={preparingOrders.length} tone="sky" Icon={ChefHat} />
-          <MetricTile label="Listos" value={readyOrders.length} tone="emerald" Icon={CheckCircle2} />
-        </section>
+      {(message || error) && (
+        <div className="pointer-events-none fixed right-3 top-14 z-50 max-w-sm space-y-2">
+          {message && <span className="block rounded-md border border-emerald-400/20 bg-[#17211b]/95 px-3 py-2 text-xs font-black text-emerald-300 shadow-xl">{message}</span>}
+          {error && <span className="flex items-start gap-1.5 rounded-md border border-primary/20 bg-[#251617]/95 px-3 py-2 text-xs font-black text-primary shadow-xl"><AlertCircle size={14} className="mt-0.5 shrink-0" /> {error}</span>}
+        </div>
       )}
 
-      <nav className="flex gap-2 overflow-x-auto border-b border-white/10 bg-[#11100f] px-4 py-2 lg:px-6">
-        <TabButton active={activeTab === 'active'} onClick={() => setActiveTab('active')} Icon={ShoppingBag}>
-          Pedidos activos <span>{pendingOrders.length + preparingOrders.length + readyOrders.length}</span>
-        </TabButton>
-        <TabButton active={activeTab === 'completed'} onClick={() => setActiveTab('completed')} Icon={CheckCircle2}>
-          Historial
-        </TabButton>
-        {staff?.role === 'ADMIN' && (
-          <TabButton active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} Icon={UserCog}>
-            Administración
+      <nav className="flex flex-wrap items-center justify-between gap-1.5 border-b border-white/10 bg-[#11100f] px-3 py-1.5 md:flex-nowrap md:px-4">
+        <div className="flex min-w-0 gap-1.5 overflow-x-auto">
+          <TabButton active={activeTab === 'active'} onClick={() => setActiveTab('active')} Icon={ShoppingBag}>
+            Pedidos <span>{pendingOrders.length + preparingOrders.length + readyOrders.length}</span>
           </TabButton>
+          <TabButton active={activeTab === 'completed'} onClick={() => setActiveTab('completed')} Icon={CheckCircle2}>
+            Historial
+          </TabButton>
+          {staff?.role === 'ADMIN' && (
+            <TabButton active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} Icon={UserCog}>
+              Administración
+            </TabButton>
+          )}
+        </div>
+
+        {activeTab !== 'admin' && (
+          <div className="flex shrink-0 items-center gap-1 overflow-x-auto">
+            <StatusCounter label="Por aceptar" value={pendingOrders.length} tone="amber" Icon={Bell} />
+            <StatusCounter label="Preparación" value={preparingOrders.length} tone="sky" Icon={ChefHat} />
+            <StatusCounter label="Listos" value={readyOrders.length} tone="emerald" Icon={CheckCircle2} />
+          </div>
         )}
       </nav>
 
-      {activeTab === 'admin' && staff?.role === 'ADMIN' && <AdminPanel token={token} currentStaff={staff} branches={branches} />}
+      {activeTab === 'admin' && staff?.role === 'ADMIN' && (
+        <AdminPanel token={token} currentStaff={staff} branches={branches} onOrdersDeleted={refetchSilently} />
+      )}
 
       {activeTab === 'active' && (
         <section className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-3">
@@ -281,7 +296,7 @@ export function OperationView() {
           onApproveCancellation={() => handleApproveCancellation(selectedOrder)}
           onRejectCancellation={() => handleRejectCancellation(selectedOrder)}
           onAdvance={(status) => handleAdvance(selectedOrder, status)}
-          onPrint={() => handlePrint(selectedOrder)}
+          onPrint={(documentType) => handlePrint(selectedOrder, documentType)}
         />
       )}
 
@@ -292,21 +307,17 @@ export function OperationView() {
   );
 }
 
-function MetricTile({ label, value, tone, Icon }: { label: string; value: number; tone: 'amber' | 'sky' | 'emerald'; Icon: typeof Bell }) {
+function StatusCounter({ label, value, tone, Icon }: { label: string; value: number; tone: 'amber' | 'sky' | 'emerald'; Icon: typeof Bell }) {
   const tones = {
-    amber: 'text-amber-300 bg-amber-400/10',
-    sky: 'text-sky-300 bg-sky-400/10',
-    emerald: 'text-emerald-300 bg-emerald-400/10',
+    amber: 'border-amber-400/15 bg-amber-400/5 text-amber-300',
+    sky: 'border-sky-400/15 bg-sky-400/5 text-sky-300',
+    emerald: 'border-emerald-400/15 bg-emerald-400/5 text-emerald-300',
   };
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#1a1918] p-3">
-      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', tones[tone])}>
-        <Icon size={20} />
-      </span>
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">{label}</p>
-        <p className="text-2xl font-black leading-none tracking-tight text-white">{value}</p>
-      </div>
+    <div className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-2', tones[tone])}>
+      <Icon size={13} />
+      <span className="hidden text-[10px] font-black uppercase tracking-wide sm:inline">{label}</span>
+      <strong className="min-w-4 text-center text-sm font-black leading-none text-white">{value}</strong>
     </div>
   );
 }
@@ -317,7 +328,7 @@ function TabButton({ active, onClick, Icon, children }: { active: boolean; onCli
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-xs font-black uppercase transition-colors',
+        'inline-flex h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-xs font-black uppercase transition-colors md:h-9',
         active ? 'border-primary bg-primary text-white' : 'border-white/10 bg-[#181818] text-gray-400 hover:text-white',
       )}
     >
@@ -330,11 +341,11 @@ function TabButton({ active, onClick, Icon, children }: { active: boolean; onCli
 function OrderColumn({ title, count, tone, children }: { title: string; count: number; tone: 'amber' | 'sky' | 'emerald'; children: ReactNode }) {
   return (
     <div className="flex min-h-0 flex-col border-r border-white/10">
-      <div className={cn('flex items-center justify-between border-b px-4 py-3 lg:px-6', tone === 'amber' && 'border-amber-400/10 bg-amber-400/5', tone === 'sky' && 'border-sky-400/10 bg-sky-400/5', tone === 'emerald' && 'border-emerald-400/10 bg-emerald-400/5')}>
-        <h2 className={cn('font-display text-2xl leading-none tracking-wide', tone === 'amber' && 'text-amber-300', tone === 'sky' && 'text-sky-300', tone === 'emerald' && 'text-emerald-300')}>{title}</h2>
-        <span className={cn('rounded-full px-2.5 py-1 text-xs font-black text-black', tone === 'amber' && 'bg-amber-300', tone === 'sky' && 'bg-sky-300', tone === 'emerald' && 'bg-emerald-300')}>{count}</span>
+      <div className={cn('flex items-center justify-between border-b px-4 py-2', tone === 'amber' && 'border-amber-400/10 bg-amber-400/5', tone === 'sky' && 'border-sky-400/10 bg-sky-400/5', tone === 'emerald' && 'border-emerald-400/10 bg-emerald-400/5')}>
+        <h2 className={cn('font-display text-xl leading-none tracking-wide', tone === 'amber' && 'text-amber-300', tone === 'sky' && 'text-sky-300', tone === 'emerald' && 'text-emerald-300')}>{title}</h2>
+        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-black text-black', tone === 'amber' && 'bg-amber-300', tone === 'sky' && 'bg-sky-300', tone === 'emerald' && 'bg-emerald-300')}>{count}</span>
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto p-4 lg:p-6">
+      <div className="flex-1 space-y-3 overflow-y-auto p-3 lg:p-4">
         {children}
         {count === 0 && <EmptyColumn text="Sin pedidos en esta columna." />}
       </div>

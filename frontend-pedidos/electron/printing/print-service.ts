@@ -7,6 +7,7 @@ import type {
   DesktopPrinter,
   PaperWidthMm,
   PrintableOrder,
+  PrintDocumentType,
   PrinterSettings,
   PrinterSettingsInput,
   PrintResult,
@@ -228,8 +229,17 @@ async function printHtml(
   }
 }
 
-export function printOrderTicket(order: PrintableOrder, settings: PrinterSettings): Promise<PrintResult> {
-  return printHtml(buildTicketHtml(order, settings.paperWidthMm), settings);
+export async function printOrderTicket(
+  order: PrintableOrder,
+  documentType: PrintDocumentType,
+  settings: PrinterSettings,
+): Promise<PrintResult> {
+  const result = await printHtml(buildTicketHtml(order, settings.paperWidthMm, documentType), settings);
+  if (!result.ok) return result;
+  return {
+    ...result,
+    message: `${documentType === 'PRODUCTION' ? 'Comanda de cocina' : 'Ticket del cliente'} enviado a ${settings.displayName} (${settings.paperWidthMm} mm).`,
+  };
 }
 
 export function buildTestOrder(): PrintableOrder {
@@ -260,5 +270,5 @@ export function buildTestOrder(): PrintableOrder {
 }
 
 export async function printTestTicket(settings: PrinterSettings): Promise<PrintResult> {
-  return printOrderTicket(buildTestOrder(), settings);
+  return printOrderTicket(buildTestOrder(), 'CUSTOMER', settings);
 }

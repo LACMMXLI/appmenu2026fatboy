@@ -1,3 +1,5 @@
+import type { PrintDocumentType } from '../desktop/desktop-types';
+
 // Cliente HTTP del backend NestJS existente — mismo backend que `frontend/`
 // (Sección Cinco del plan: reutilizar todo lo construido, no duplicar
 // lógica de negocio en React). Este archivo contiene deliberadamente solo
@@ -163,7 +165,7 @@ export interface PrintJob {
   id: string;
   orderId: string;
   branchId: string;
-  documentType: 'PRODUCTION';
+  documentType: PrintDocumentType;
   status: PrintJobStatus;
   attempts: number;
   claimedByStationId: string | null;
@@ -207,6 +209,22 @@ export async function getAdminOrders(
   return requestWithAuth<PaginatedResult<Order>>(`/admin/orders${suffix}`, token);
 }
 
+export const DELETE_ALL_ORDERS_CONFIRMATION = 'ELIMINAR TODOS LOS PEDIDOS';
+
+export interface DeleteAllOrdersResult {
+  deletedOrders: number;
+  deletedOrderItems: number;
+  deletedStatusHistory: number;
+  deletedPrintJobs: number;
+  preservedCustomers: number;
+}
+
+export async function deleteAllOrders(token: string): Promise<DeleteAllOrdersResult> {
+  return requestWithAuth<DeleteAllOrdersResult>('/admin/orders', token, 'DELETE', {
+    confirmation: DELETE_ALL_ORDERS_CONFIRMATION,
+  });
+}
+
 export async function getOrder(id: string, token: string): Promise<Order> {
   return requestWithAuth<Order>(`/orders/${id}`, token);
 }
@@ -215,12 +233,8 @@ export async function getOrderHistory(id: string, token: string): Promise<OrderS
   return requestWithAuth<OrderStatusHistoryEntry[]>(`/orders/${id}/history`, token);
 }
 
-export async function acceptOrder(
-  token: string,
-  id: string,
-  options?: { createProductionPrintJob?: boolean },
-): Promise<Order> {
-  return requestWithAuth<Order>(`/orders/${id}/accept`, token, 'POST', options);
+export async function acceptOrder(token: string, id: string): Promise<Order> {
+  return requestWithAuth<Order>(`/orders/${id}/accept`, token, 'POST');
 }
 
 export async function rejectOrder(token: string, id: string, reason: string): Promise<Order> {

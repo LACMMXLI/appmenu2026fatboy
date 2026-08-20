@@ -1,0 +1,1 @@
+ALTER TYPE "PrintDocumentType" ADD VALUE 'CUSTOMER';

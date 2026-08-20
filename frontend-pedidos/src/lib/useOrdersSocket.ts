@@ -39,6 +39,7 @@ export function useOrdersSocket(
     socket.on('connect_error', () => setConnected(false));
     socket.on('order.created', notify);
     socket.on('order.status_changed', notify);
+    socket.on('orders.purged', notify);
 
     return () => {
       socket.disconnect();

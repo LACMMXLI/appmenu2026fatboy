@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { AlertCircle, CheckCircle2, KeyRound, Power, RotateCcw, Save, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { AlertCircle, CheckCircle2, KeyRound, Power, RotateCcw, Save, ShieldCheck, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import {
   changeStaffPassword,
   createStaff,
+  deleteAllOrders,
+  DELETE_ALL_ORDERS_CONFIRMATION,
   listStaff,
   resetStaffPassword,
   updateStaff,
@@ -17,6 +20,7 @@ interface AdminPanelProps {
   token: string;
   currentStaff: Staff;
   branches: Branch[];
+  onOrdersDeleted: () => void;
 }
 
 const emptyCreateForm = {
@@ -27,12 +31,15 @@ const emptyCreateForm = {
   branchId: '',
 };
 
-export function AdminPanel({ token, currentStaff, branches }: AdminPanelProps) {
+export function AdminPanel({ token, currentStaff, branches, onOrdersDeleted }: AdminPanelProps) {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [createForm, setCreateForm] = useState(emptyCreateForm);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmation: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cleanupOpen, setCleanupOpen] = useState(false);
+  const [cleanupConfirmation, setCleanupConfirmation] = useState('');
+  const [deletingOrders, setDeletingOrders] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -99,15 +106,34 @@ export function AdminPanel({ token, currentStaff, branches }: AdminPanelProps) {
     setStaffList((current) => current.map((member) => (member.id === updated.id ? updated : member)));
   }
 
+  async function handleDeleteAllOrders() {
+    if (cleanupConfirmation !== DELETE_ALL_ORDERS_CONFIRMATION) return;
+    setDeletingOrders(true);
+    setError('');
+    try {
+      const result = await deleteAllOrders(token);
+      setCleanupOpen(false);
+      setCleanupConfirmation('');
+      onOrdersDeleted();
+      showMessage(
+        `${result.deletedOrders} pedidos eliminados. ${result.preservedCustomers} clientes permanecen registrados.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron eliminar los pedidos.');
+    } finally {
+      setDeletingOrders(false);
+    }
+  }
+
   return (
     <section className="flex-1 overflow-y-auto bg-[#101010] px-4 py-5 lg:px-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 pb-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">Configuración protegida</p>
-            <h2 className="mt-1 font-display text-4xl leading-none tracking-wide">PERSONAL Y ACCESO</h2>
+            <h2 className="mt-1 font-display text-4xl leading-none tracking-wide">ADMINISTRACIÓN DEL SISTEMA</h2>
             <p className="mt-2 max-w-2xl text-sm text-gray-400">
-              Las sucursales se toman del catálogo existente. Aquí solo asignas usuarios y permisos para recibir pedidos.
+              Gestiona usuarios, permisos y tareas protegidas. Las sucursales se toman del catálogo existente.
             </p>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={() => void loadStaff()} isLoading={loading}>
@@ -186,7 +212,88 @@ export function AdminPanel({ token, currentStaff, branches }: AdminPanelProps) {
             </div>
           )}
         </section>
+
+        <section className="rounded-xl border border-red-400/25 bg-red-400/[0.06] p-4 lg:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-400/15 text-red-300"><Trash2 size={20} /></span>
+              <div>
+                <h3 className="font-display text-2xl leading-none tracking-wide text-white">LIMPIEZA DE PEDIDOS</h3>
+                <p className="mt-1 max-w-3xl text-xs font-semibold leading-relaxed text-gray-400">
+                  Elimina todos los pedidos, productos asociados, historial de estados y trabajos de impresión. Los clientes, puntos, personal, sucursales y catálogo permanecen intactos.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCleanupConfirmation('');
+                setError('');
+                setCleanupOpen(true);
+              }}
+              className="border-red-400/30 text-red-300 hover:bg-red-400/10"
+            >
+              <Trash2 size={15} className="mr-2" /> Eliminar pedidos
+            </Button>
+          </div>
+        </section>
       </div>
+
+      {cleanupOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => { if (!deletingOrders) setCleanupOpen(false); }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cleanup-orders-title"
+            className="w-full max-w-lg rounded-2xl border border-red-400/30 bg-[#181818] p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-300">Acción irreversible</p>
+                <h3 id="cleanup-orders-title" className="mt-1 font-display text-3xl leading-none tracking-wide text-white">ELIMINAR TODOS LOS PEDIDOS</h3>
+              </div>
+              <button type="button" onClick={() => setCleanupOpen(false)} disabled={deletingOrders} className="rounded-lg p-2 text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-40" aria-label="Cerrar">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm font-semibold leading-relaxed text-red-100">
+              Se borrarán pedidos pendientes, pedidos finalizados, sus artículos, historial y cola de impresión. Las cuentas de clientes y sus puntos no se borrarán.
+            </div>
+
+            <label className="mt-4 block">
+              <span className="text-xs font-bold text-gray-300">Escribe exactamente:</span>
+              <code className="mt-1 block rounded-md bg-black/30 px-3 py-2 text-xs font-black text-red-200">{DELETE_ALL_ORDERS_CONFIRMATION}</code>
+              <input
+                type="text"
+                value={cleanupConfirmation}
+                onChange={(event) => setCleanupConfirmation(event.target.value)}
+                autoComplete="off"
+                className="mt-2 h-12 w-full rounded-lg border border-white/10 bg-[#101010] px-3 text-sm font-bold text-white outline-none focus:border-red-400"
+              />
+            </label>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" onClick={() => setCleanupOpen(false)} disabled={deletingOrders}>Cancelar</Button>
+              <Button
+                type="button"
+                onClick={() => void handleDeleteAllOrders()}
+                isLoading={deletingOrders}
+                disabled={cleanupConfirmation !== DELETE_ALL_ORDERS_CONFIRMATION}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Eliminar definitivamente
+              </Button>
+            </div>
+          </section>
+        </div>,
+        document.body,
+      )}
     </section>
   );
 }

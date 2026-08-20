@@ -1,7 +1,7 @@
 {
   "name": "@fatboy-pos/frontend-pedidos",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.3",
   "description": "Aplicación de escritorio para recepción e impresión de pedidos Fatboy.",
   "author": "Fatboy",
   "type": "module",

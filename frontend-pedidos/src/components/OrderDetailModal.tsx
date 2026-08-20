@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { currency, orderAge, orderClockTime, parseJsonList } from '@/lib/orderHelpers';
 import { ORDER_STATUS_LABELS_ES, type Order, type OrderStatus } from '@/lib/api';
+import type { PrintDocumentType } from '@/desktop/desktop-types';
 
 const statusTone: Record<OrderStatus, string> = {
   PENDING_APPROVAL: 'text-amber-300 bg-amber-400/10 border-amber-400/25',
@@ -31,7 +32,7 @@ export function OrderDetailModal({
   order: Order;
   canCancel: boolean;
   onClose: () => void;
-  onPrint: () => void | Promise<void>;
+  onPrint: (documentType: PrintDocumentType) => void | Promise<void>;
   // Un pedido terminal (Historial) nunca renderiza los botones que
   // llamarían a esto — no permitir modificar pedidos terminales (Sección
   // Veinte) — así que ahí ni siquiera hace falta pasarlos.
@@ -42,7 +43,12 @@ export function OrderDetailModal({
   onRejectCancellation?: () => void;
 }) {
   const isTerminal = order.status === 'COMPLETED' || order.status === 'REJECTED' || order.status === 'CANCELLED';
-  const canPrint = order.status !== 'PENDING_APPROVAL';
+  const canPrintProduction = order.status === 'ACCEPTED'
+    || order.status === 'PREPARING'
+    || order.status === 'READY'
+    || order.status === 'COMPLETED'
+    || order.status === 'CANCELLED';
+  const canPrintCustomer = order.status === 'READY' || order.status === 'COMPLETED';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" onClick={onClose}>
@@ -154,9 +160,16 @@ export function OrderDetailModal({
 
         {!isTerminal && (
           <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4">
-            <Button type="button" variant="outline" onClick={onPrint} disabled={!canPrint} className="col-span-2 border-white/10" size="lg">
-              <Printer size={16} className="mr-2" /> Imprimir comanda
-            </Button>
+            {canPrintProduction && (
+              <Button type="button" variant="outline" onClick={() => onPrint('PRODUCTION')} className={cn('border-white/10', canPrintCustomer ? '' : 'col-span-2')} size="lg">
+                <Printer size={16} className="mr-2" /> Comanda cocina
+              </Button>
+            )}
+            {canPrintCustomer && (
+              <Button type="button" variant="outline" onClick={() => onPrint('CUSTOMER')} className="border-white/10" size="lg">
+                <Printer size={16} className="mr-2" /> Ticket cliente
+              </Button>
+            )}
             {order.status === 'PENDING_APPROVAL' && (
               <>
                 <Button type="button" variant="outline" onClick={() => onReject?.()} size="lg" className="border-primary/25 text-primary hover:bg-primary/10">
@@ -190,11 +203,18 @@ export function OrderDetailModal({
           </div>
         )}
 
-        {isTerminal && (
-          <div className="border-t border-white/10 p-4">
-            <Button type="button" variant="outline" onClick={onPrint} className="w-full border-white/10" size="lg">
-              <Printer size={16} className="mr-2" /> Imprimir comanda
-            </Button>
+        {isTerminal && (canPrintProduction || canPrintCustomer) && (
+          <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4">
+            {canPrintProduction && (
+              <Button type="button" variant="outline" onClick={() => onPrint('PRODUCTION')} className={cn('border-white/10', canPrintCustomer ? '' : 'col-span-2')} size="lg">
+                <Printer size={16} className="mr-2" /> Comanda cocina
+              </Button>
+            )}
+            {canPrintCustomer && (
+              <Button type="button" variant="outline" onClick={() => onPrint('CUSTOMER')} className="border-white/10" size="lg">
+                <Printer size={16} className="mr-2" /> Ticket cliente
+              </Button>
+            )}
           </div>
         )}
       </div>

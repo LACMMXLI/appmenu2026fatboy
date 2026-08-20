@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrintDocumentType, PrintJobStatus } from '@prisma/client';
+import { PrintJobStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,7 +45,6 @@ export class PrintJobService {
       const claimable = await tx.orderPrintJob.findFirst({
         where: {
           branchId,
-          documentType: PrintDocumentType.PRODUCTION,
           OR: [
             { status: PrintJobStatus.PENDING },
             {

@@ -38,23 +38,23 @@ export function useAutoAcceptOrders({
   const runningRef = useRef(false);
   const rerunRequestedRef = useRef(false);
   const [pollVersion, setPollVersion] = useState(0);
-  const enabled = Boolean(
+  const printingEnabled = Boolean(
     token
     && branchId
-    && settings?.autoAcceptEnabled
+    && settings
     && settings.branchId === branchId
     && settings.stationId
     && settings.stationName,
   );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!printingEnabled) return;
     const timer = window.setInterval(() => setPollVersion((version) => version + 1), QUEUE_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [enabled]);
+  }, [printingEnabled]);
 
   useEffect(() => {
-    if (!enabled || !settings) return;
+    if (!printingEnabled || !settings) return;
 
     if (runningRef.current) {
       rerunRequestedRef.current = true;
@@ -66,16 +66,16 @@ export function useAutoAcceptOrders({
 
     void processAutomaticOrdersOnce({
       branchId,
-      orders,
+      orders: settings.autoAcceptEnabled ? orders : [],
       processingIds: processingIdsRef.current,
-      accept: (order) => acceptOrder(token, order.id, { createProductionPrintJob: true }),
+      accept: (order) => acceptOrder(token, order.id),
       claim: () => claimNextPrintJob(token, {
         branchId,
         stationId: settings.stationId,
         stationName: settings.stationName,
       }),
       start: (job) => startPrintJob(token, job.id, { branchId, stationId: settings.stationId }),
-      print: printOrder,
+      print: (order, job) => printOrder(order, job.documentType),
       complete: (job, result) => completePrintJob(token, job.id, {
         branchId,
         stationId: settings.stationId,
@@ -102,10 +102,11 @@ export function useAutoAcceptOrders({
 
       if (printed.length > 0) {
         const last = printed.at(-1)!;
-        onMessage(`Pedido ${last.order.folio}: aceptado e impreso automáticamente.`);
+        const documentLabel = last.job.documentType === 'PRODUCTION' ? 'comanda de cocina' : 'ticket del cliente';
+        onMessage(`Pedido ${last.order.folio}: ${documentLabel} impreso automáticamente.`);
       } else if (accepted.length > 0) {
         const last = accepted.at(-1)!;
-        onMessage(`Pedido ${last.order.folio}: aceptado y agregado a la cola de impresión.`);
+        onMessage(`Pedido ${last.order.folio}: aceptado automáticamente.`);
       }
 
       if (uncertain) {
@@ -135,5 +136,5 @@ export function useAutoAcceptOrders({
     return () => {
       active = false;
     };
-  }, [branchId, enabled, onError, onMessage, onUpdated, orders, pollVersion, refetch, settings, token]);
+  }, [branchId, onError, onMessage, onUpdated, orders, pollVersion, printingEnabled, refetch, settings, token]);
 }

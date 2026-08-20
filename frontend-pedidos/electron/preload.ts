@@ -7,7 +7,7 @@ const desktopApi: FatboyDesktopApi = Object.freeze({
   getPrinters: () => ipcRenderer.invoke(DESKTOP_CHANNELS.getPrinters),
   getPrinterSettings: (branchId) => ipcRenderer.invoke(DESKTOP_CHANNELS.getPrinterSettings, branchId),
   savePrinterSettings: (settings) => ipcRenderer.invoke(DESKTOP_CHANNELS.savePrinterSettings, settings),
-  printOrder: (order) => ipcRenderer.invoke(DESKTOP_CHANNELS.printOrder, order),
+  printOrder: (order, documentType) => ipcRenderer.invoke(DESKTOP_CHANNELS.printOrder, order, documentType),
   printTest: (branchId) => ipcRenderer.invoke(DESKTOP_CHANNELS.printTest, branchId),
 });
 

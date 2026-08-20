@@ -147,4 +147,8 @@ export class OrdersGateway implements OnGatewayInit, OnGatewayConnection {
     }
     return '';
   }
+
+  notifyOrdersPurged(deletedOrders: number) {
+    this.server.emit('orders.purged', { deletedOrders });
+  }
 }

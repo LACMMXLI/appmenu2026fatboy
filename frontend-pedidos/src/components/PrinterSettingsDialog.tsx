@@ -15,6 +15,11 @@ const PRINT_JOB_LABELS: Record<PrintJobStatus, string> = {
   UNCERTAIN: 'Resultado incierto',
 };
 
+const PRINT_DOCUMENT_LABELS: Record<PrintJob['documentType'], string> = {
+  PRODUCTION: 'Comanda cocina',
+  CUSTOMER: 'Ticket cliente',
+};
+
 interface PrinterSettingsDialogProps {
   token: string;
   branchId: string;
@@ -214,7 +219,7 @@ export function PrinterSettingsDialog({
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <label htmlFor="printer-device" className="text-xs font-black uppercase tracking-wider text-gray-300">Impresora de producción</label>
+                  <label htmlFor="printer-device" className="text-xs font-black uppercase tracking-wider text-gray-300">Impresora de tickets</label>
                   <Button type="button" size="sm" variant="ghost" onClick={() => void refresh()} isLoading={loading}>
                     <RefreshCw size={14} className="mr-1" /> Actualizar
                   </Button>
@@ -254,9 +259,9 @@ export function PrinterSettingsDialog({
               <div className={`rounded-xl border p-4 ${autoAcceptEnabled ? 'border-emerald-400/30 bg-emerald-400/10' : 'border-white/10 bg-[#101010]'}`}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-black text-white">Aceptar e imprimir automáticamente</p>
+                    <p className="text-sm font-black text-white">Aceptar pedidos automáticamente</p>
                     <p className="mt-1 text-xs font-semibold leading-relaxed text-gray-400">
-                      Los pedidos nuevos de {branchName} se aceptarán y enviarán a esta impresora.
+                      Los pedidos nuevos de {branchName} se aceptarán sin intervención. La impresión por estado funciona siempre que esta impresora esté configurada.
                     </p>
                   </div>
                   <button
@@ -273,7 +278,7 @@ export function PrinterSettingsDialog({
                 </div>
                 {autoAcceptEnabled && (
                   <p className="mt-3 rounded-lg bg-black/20 p-2 text-[11px] font-bold text-amber-200">
-                    La cola asigna cada ticket a una sola estación, incluso si hay más de un receptor conectado.
+                    La cola asigna cada documento a una sola estación, incluso si hay más de un receptor conectado.
                   </p>
                 )}
               </div>
@@ -305,7 +310,7 @@ export function PrinterSettingsDialog({
                       <div key={job.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/[0.025] p-3">
                         <div className="min-w-0">
                           <p className="truncate text-xs font-black text-white">
-                            Pedido {job.order?.folio ?? job.orderId}
+                            {PRINT_DOCUMENT_LABELS[job.documentType]} · pedido {job.order?.folio ?? job.orderId}
                           </p>
                           <p className={`mt-1 text-[10px] font-black uppercase tracking-wide ${job.status === 'PRINTED' ? 'text-emerald-400' : job.status === 'FAILED' || job.status === 'UNCERTAIN' ? 'text-amber-300' : 'text-sky-300'}`}>
                             {PRINT_JOB_LABELS[job.status]} · intento {job.attempts}

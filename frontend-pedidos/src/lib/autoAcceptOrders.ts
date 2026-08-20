@@ -19,7 +19,7 @@ interface AutoOrderProcessorOptions {
   accept: (order: Order) => Promise<Order>;
   claim: () => Promise<ClaimedPrintJobResponse>;
   start: (job: PrintJob) => Promise<PrintJob>;
-  print: (order: Order) => Promise<PrintResult>;
+  print: (order: Order, job: PrintJob) => Promise<PrintResult>;
   complete: (job: PrintJob, result: PrintResult) => Promise<PrintJob>;
   fail: (job: PrintJob, error: string) => Promise<PrintJob>;
   onUpdated: (order: Order) => void;
@@ -61,7 +61,7 @@ export async function processAutomaticOrdersOnce({
         throw new Error('El backend no confirmó la aceptación del pedido.');
       }
       onUpdated(updated);
-      events.push({ type: 'accepted', order: updated, message: 'Pedido aceptado y agregado a impresión.' });
+      events.push({ type: 'accepted', order: updated, message: 'Pedido aceptado automáticamente.' });
     } catch (error) {
       events.push({
         type: 'accept-failed',
@@ -107,7 +107,7 @@ export async function processAutomaticOrdersOnce({
 
       let result: PrintResult;
       try {
-        result = await print(order);
+        result = await print(order, job);
       } catch (error) {
         result = { ok: false, message: errorMessage(error, 'No se pudo imprimir el ticket.') };
       }

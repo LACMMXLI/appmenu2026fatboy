@@ -5,6 +5,7 @@ import { EmptyColumn, OrderSummaryCard } from '@/components/OrderSummaryCard';
 import { OrderDetailModal } from '@/components/OrderDetailModal';
 import { useOrderHistory } from '@/lib/useOrderHistory';
 import { printOrder } from '@/lib/printOrder';
+import type { PrintDocumentType } from '@/desktop/desktop-types';
 import type { Order } from '@/lib/api';
 
 // Sección Veinte/Veintiuno del plan: pedidos terminales (completados,
@@ -17,10 +18,10 @@ export function HistoryPanel({ token, branchId }: { token: string; branchId: str
   const [printError, setPrintError] = useState('');
   const [printMessage, setPrintMessage] = useState('');
 
-  async function handlePrint(order: Order) {
+  async function handlePrint(order: Order, documentType: PrintDocumentType) {
     setPrintError('');
     setPrintMessage('');
-    const result = await printOrder(order);
+    const result = await printOrder(order, documentType);
     if (!result.ok) {
       setPrintError(result.message);
       return;
@@ -82,7 +83,7 @@ export function HistoryPanel({ token, branchId }: { token: string; branchId: str
           order={selectedOrder}
           canCancel={false}
           onClose={() => setSelectedOrder(null)}
-          onPrint={() => handlePrint(selectedOrder)}
+          onPrint={(documentType) => handlePrint(selectedOrder, documentType)}
         />
       )}
     </section>

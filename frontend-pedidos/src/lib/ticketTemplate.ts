@@ -1,4 +1,4 @@
-import type { PrintableOrder, PaperWidthMm } from '../desktop/desktop-types';
+import type { PrintableOrder, PaperWidthMm, PrintDocumentType } from '../desktop/desktop-types';
 import type { Order } from './api';
 import { currency, parseJsonList } from './orderHelpers';
 
@@ -36,11 +36,16 @@ export function toPrintableOrder(order: Order): PrintableOrder {
   };
 }
 
-export function buildTicketHtml(order: PrintableOrder, paperWidthMm: PaperWidthMm): string {
+export function buildTicketHtml(
+  order: PrintableOrder,
+  paperWidthMm: PaperWidthMm,
+  documentType: PrintDocumentType,
+): string {
+  const production = documentType === 'PRODUCTION';
   const compact = paperWidthMm === 58;
   const bodyWidthMm = paperWidthMm - (compact ? 5 : 7);
-  const fontSizePx = compact ? 11 : 12;
-  const titleSizePx = compact ? 21 : 24;
+  const fontSizePx = production ? (compact ? 13 : 15) : (compact ? 11 : 12);
+  const titleSizePx = production ? (compact ? 25 : 30) : (compact ? 21 : 24);
   const createdAt = new Date(order.createdAt);
   const createdLabel = Number.isNaN(createdAt.getTime())
     ? order.createdAt
@@ -60,7 +65,7 @@ export function buildTicketHtml(order: PrintableOrder, paperWidthMm: PaperWidthM
         <section class="item">
           <div class="item-main">
             <strong>${escapeHtml(item.quantity)} × ${escapeHtml(item.productName)}</strong>
-            <span>${escapeHtml(currency(item.price * item.quantity))}</span>
+            ${production ? '' : `<span>${escapeHtml(currency(item.price * item.quantity))}</span>`}
           </div>
           ${modifiers.length ? `<div class="modifiers">${modifiers.join('<br>')}</div>` : ''}
         </section>
@@ -69,11 +74,11 @@ export function buildTicketHtml(order: PrintableOrder, paperWidthMm: PaperWidthM
     .join('');
 
   return `<!doctype html>
-<html lang="es-MX" data-paper-width="${paperWidthMm}">
+<html lang="es-MX" data-paper-width="${paperWidthMm}" data-document-type="${documentType}">
   <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
-    <title>Pedido ${escapeHtml(order.folio)}</title>
+    <title>${production ? 'Comanda' : 'Ticket'} ${escapeHtml(order.folio)}</title>
     <style>
       @page { margin: 0; }
       * { box-sizing: border-box; }
@@ -85,9 +90,11 @@ export function buildTicketHtml(order: PrintableOrder, paperWidthMm: PaperWidthM
       .divider { border-top: 1px dashed #000; margin: 2mm 0; }
       .row, .item-main { display: flex; justify-content: space-between; gap: 2mm; margin: 1mm 0; }
       .row span:last-child, .item-main span:last-child { text-align: right; }
-      .item { border-top: 1px dashed #000; padding: 2mm 0; break-inside: avoid; }
+      .document-label { margin-top: 1.5mm; text-align: center; font-size: ${compact ? 13 : 15}px; font-weight: 900; letter-spacing: .08em; }
+      .folio { margin-top: 1.5mm; text-align: center; font-size: ${production ? (compact ? 28 : 34) : (compact ? 18 : 21)}px; font-weight: 900; }
+      .item { border-top: ${production ? '2px solid' : '1px dashed'} #000; padding: ${production ? '3mm' : '2mm'} 0; break-inside: avoid; }
       .item-main strong { flex: 1; }
-      .modifiers { margin-top: 1mm; padding-left: 2mm; font-weight: 700; }
+      .modifiers { margin-top: 1mm; padding-left: 2mm; font-size: ${production ? (compact ? 12 : 14) : fontSizePx}px; font-weight: 800; }
       .note { margin-top: 2mm; border: 1.5px solid #000; padding: 2mm; font-weight: 700; white-space: pre-wrap; }
       .total { margin-top: 2mm; padding-top: 2mm; border-top: 2px solid #000; font-size: ${compact ? 16 : 18}px; font-weight: 900; }
       .footer { margin-top: 3mm; text-align: center; font-size: 9px; }
@@ -95,19 +102,20 @@ export function buildTicketHtml(order: PrintableOrder, paperWidthMm: PaperWidthM
   </head>
   <body>
     <h1>FATBOY</h1>
-    <div class="center"><strong>${escapeHtml(order.folio)}</strong></div>
+    <div class="document-label">${production ? 'COMANDA DE COCINA' : 'TICKET DEL CLIENTE'}</div>
+    <div class="folio">${escapeHtml(order.folio)}</div>
     <div class="center muted">${escapeHtml(order.branchName)} · ${escapeHtml(createdLabel)}</div>
     <div class="divider"></div>
     <div class="row"><strong>Cliente</strong><span>${escapeHtml(order.customerName)}</span></div>
-    <div class="row"><strong>Teléfono</strong><span>${escapeHtml(order.customerPhone)}</span></div>
+    ${production ? '' : `<div class="row"><strong>Teléfono</strong><span>${escapeHtml(order.customerPhone)}</span></div>`}
     <div class="row"><strong>Tipo</strong><span>${order.deliveryType === 'delivery' ? 'Entrega' : 'Recoger'}</span></div>
-    <div class="row"><strong>Pago</strong><span>${order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span></div>
+    ${production ? '' : `<div class="row"><strong>Pago</strong><span>${order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span></div>`}
     <div class="divider"></div>
     ${itemLines}
     ${order.notes ? `<div class="note">NOTA: ${escapeHtml(order.notes)}</div>` : ''}
-    ${order.pointsRedeemed > 0 ? `<div class="row"><strong>Puntos usados</strong><span>${escapeHtml(order.pointsRedeemed)}</span></div>` : ''}
-    <div class="row total"><strong>Total</strong><span>${escapeHtml(currency(order.total))}</span></div>
-    <div class="footer">Enviado desde Fatboy Pedidos</div>
+    ${!production && order.pointsRedeemed > 0 ? `<div class="row"><strong>Puntos usados</strong><span>${escapeHtml(order.pointsRedeemed)}</span></div>` : ''}
+    ${production ? '' : `<div class="row total"><strong>Total</strong><span>${escapeHtml(currency(order.total))}</span></div>`}
+    <div class="footer">${production ? 'PRODUCCIÓN · NO ENTREGAR AL CLIENTE' : 'Gracias por tu compra'}</div>
   </body>
 </html>`;
 }

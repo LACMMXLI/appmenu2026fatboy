@@ -1,6 +1,7 @@
 import type {
   PrintableOrder,
   PrintableOrderItem,
+  PrintDocumentType,
   PrinterSettingsInput,
 } from '../../src/desktop/desktop-types';
 
@@ -52,6 +53,13 @@ export function parsePrinterBranchId(value: unknown): string {
   const branchId = requiredText(value, 'Id de sucursal', 100);
   if (!/^[A-Za-z0-9_-]+$/.test(branchId)) throw new Error('Id de sucursal inválido.');
   return branchId;
+}
+
+export function parsePrintDocumentType(value: unknown): PrintDocumentType {
+  if (value !== 'PRODUCTION' && value !== 'CUSTOMER') {
+    throw new Error('Tipo de documento de impresión inválido.');
+  }
+  return value;
 }
 
 function parseOrderItem(value: unknown): PrintableOrderItem {

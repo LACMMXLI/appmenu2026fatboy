@@ -1,4 +1,5 @@
 export type PaperWidthMm = 58 | 80;
+export type PrintDocumentType = 'PRODUCTION' | 'CUSTOMER';
 
 export interface PrintableOrderItem {
   productName: string;
@@ -61,7 +62,7 @@ export interface FatboyDesktopApi {
   getPrinters: () => Promise<DesktopResponse<DesktopPrinter[]>>;
   getPrinterSettings: (branchId: string) => Promise<DesktopResponse<PrinterSettings | null>>;
   savePrinterSettings: (settings: PrinterSettingsInput) => Promise<DesktopResponse<PrinterSettings>>;
-  printOrder: (order: PrintableOrder) => Promise<PrintResult>;
+  printOrder: (order: PrintableOrder, documentType: PrintDocumentType) => Promise<PrintResult>;
   printTest: (branchId: string) => Promise<PrintResult>;
 }
 
