@@ -89,6 +89,8 @@ export function parsePrintableOrder(value: unknown): PrintableOrder {
   const pointsRedeemed = finiteNumber(value.pointsRedeemed, 'Puntos usados');
   if (!Number.isInteger(pointsRedeemed)) throw new Error('Puntos usados inválidos.');
 
+  const deliveryFee = typeof value.deliveryFee === 'number' ? finiteNumber(value.deliveryFee, 'Costo de envío') : 0;
+
   return {
     id: requiredText(value.id, 'Id de pedido', 100),
     folio: requiredText(value.folio, 'Folio', 100),
@@ -99,6 +101,9 @@ export function parsePrintableOrder(value: unknown): PrintableOrder {
     total: finiteNumber(value.total, 'Total'),
     pointsRedeemed,
     deliveryType: requiredText(value.deliveryType, 'Tipo de entrega', 50),
+    deliveryAddress: nullableText(value.deliveryAddress, 'Dirección de entrega', 500),
+    deliveryReference: nullableText(value.deliveryReference, 'Referencia de entrega', 500),
+    deliveryFee,
     paymentMethod: requiredText(value.paymentMethod, 'Método de pago', 50),
     notes: nullableText(value.notes, 'Notas', 1_500),
     createdAt,

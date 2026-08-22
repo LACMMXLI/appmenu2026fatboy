@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, History, LogIn, MessageCircle, Minus, Plus, ShoppingBag, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Bike, History, Info, LogIn, MapPin, MessageCircle, Minus, Plus, ShoppingBag, Store, Trash2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { useUser } from '@/context/UserContext';
-import { getBranches, createOrder, type Branch } from '@/lib/api';
+import { getBranches, createOrder, getSystemSettings, type Branch } from '@/lib/api';
 
 interface CartViewProps {
   onNavigate: (view: any, extra?: any) => void;
+}
+
+function isAmericas(branchName?: string): boolean {
+  if (!branchName) return false;
+  return branchName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes('americas');
 }
 
 export function CartView({ onNavigate }: CartViewProps) {
@@ -17,10 +22,24 @@ export function CartView({ onNavigate }: CartViewProps) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState('');
   
+  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryReference, setDeliveryReference] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState(1.50);
+  
   const [notes, setNotes] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (customer) {
+      setCustomerName((prev) => prev || customer.name || '');
+      setCustomerPhone((prev) => prev || customer.phone || '');
+    }
+  }, [customer]);
   
   useEffect(() => {
     let isMounted = true;
@@ -36,11 +55,40 @@ export function CartView({ onNavigate }: CartViewProps) {
       }
     }
 
+    async function loadSettings() {
+      try {
+        const data = await getSystemSettings();
+        if (!isMounted) return;
+        const costStr = data.delivery_cost_americas || data.delivery_cost;
+        if (costStr) {
+          const parsed = parseFloat(costStr);
+          if (Number.isFinite(parsed) && parsed >= 0) {
+            setDeliveryFee(parsed);
+          }
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+
     loadBranches();
+    loadSettings();
     return () => {
       isMounted = false;
     };
   }, []);
+
+  const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
+  const allowsDelivery = isAmericas(selectedBranch?.name);
+
+  // Si cambia a una sucursal que no tiene servicio a domicilio, resetear a pickup
+  const handleBranchSelect = (branchId: string) => {
+    setSelectedBranchId(branchId);
+    const targetBranch = branches.find((b) => b.id === branchId);
+    if (!isAmericas(targetBranch?.name)) {
+      setDeliveryType('pickup');
+    }
+  };
   
   const subtotal = items.reduce((acc, item) => {
     let itemTotal = item.price;
@@ -48,9 +96,8 @@ export function CartView({ onNavigate }: CartViewProps) {
     return acc + (itemTotal * item.qty);
   }, 0);
 
-  // Los puntos solo se canjean por productos configurados (RewardsView) —
-  // nunca como descuento en efectivo aquí.
-  const total = subtotal;
+  const activeDeliveryFee = allowsDelivery && deliveryType === 'delivery' ? deliveryFee : 0;
+  const total = subtotal + activeDeliveryFee;
 
   const handleGenerateOrder = async () => {
     if (!selectedBranchId) {
@@ -58,20 +105,41 @@ export function CartView({ onNavigate }: CartViewProps) {
       return;
     }
 
-    setError('');
-    const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
-
     if (!isAuthenticated || !customer || !token) {
       onNavigate('auth', 'cart');
       return;
     }
 
+    if (deliveryType === 'delivery') {
+      if (!allowsDelivery) {
+        setError('El servicio a domicilio solo está disponible en la sucursal Américas.');
+        return;
+      }
+      if (!customerName.trim()) {
+        setError('Por favor ingresa tu nombre para la entrega.');
+        return;
+      }
+      if (!customerPhone.trim()) {
+        setError('Por favor ingresa tu teléfono para que el repartidor pueda contactarte.');
+        return;
+      }
+      if (!deliveryAddress.trim() || deliveryAddress.trim().length < 5) {
+        setError('Por favor ingresa tu dirección completa de entrega (calle, número y colonia).');
+        return;
+      }
+    }
+
+    setError('');
     setIsLoading(true);
 
     try {
       const payload = {
         branchId: selectedBranchId,
-        deliveryType: 'pickup' as const, // Default pickup
+        deliveryType: deliveryType,
+        deliveryAddress: deliveryType === 'delivery' ? deliveryAddress.trim() : undefined,
+        deliveryReference: deliveryType === 'delivery' && deliveryReference.trim() ? deliveryReference.trim() : undefined,
+        customerName: customerName.trim() || customer.name,
+        customerPhone: customerPhone.trim() || customer.phone,
         paymentMethod: 'cash' as const,  // Default cash
         notes: notes || undefined,
         items: items.map(item => ({
@@ -91,7 +159,19 @@ export function CartView({ onNavigate }: CartViewProps) {
       
       // WhatsApp message formatting
       let text = `*NUEVO PEDIDO ${order.folio} - Fatboy ${order.branchName}*\n\n`;
-      text += `*Cliente:* ${order.customerName}\n*Teléfono:* ${order.customerPhone}\n\n*Detalles del pedido:*\n`;
+      text += `*Cliente:* ${order.customerName}\n*Teléfono:* ${order.customerPhone}\n`;
+      
+      if (order.deliveryType === 'delivery') {
+        text += `*Modalidad:* 🛵 SERVICIO A DOMICILIO\n`;
+        text += `*Dirección:* ${order.deliveryAddress || deliveryAddress.trim()}\n`;
+        if (order.deliveryReference || deliveryReference.trim()) {
+          text += `*Referencia:* ${order.deliveryReference || deliveryReference.trim()}\n`;
+        }
+      } else {
+        text += `*Modalidad:* 🏪 Para recoger en sucursal\n`;
+      }
+
+      text += `\n*Detalles del pedido:*\n`;
       
       items.forEach(item => {
         text += `- ${item.qty}x ${item.title}\n`;
@@ -100,8 +180,13 @@ export function CartView({ onNavigate }: CartViewProps) {
         if (item.extras?.length) text += `  Extras: ${item.extras.map(e => e.name).join(', ')}\n`;
         if (item.notes) text += `  Notas: ${item.notes}\n`;
       });
+
+      if (order.deliveryFee > 0) {
+        text += `\n*Subtotal:* $${subtotal.toFixed(2)}`;
+        text += `\n*Envío a domicilio:* $${order.deliveryFee.toFixed(2)}`;
+      }
       
-      text += `\n*TOTAL: $${order.total}*\n`;
+      text += `\n*TOTAL: $${order.total.toFixed(2)}*\n`;
       text += `\n_Pedido ${order.folio} registrado. Pendiente de aceptación por la sucursal._`;
       
       const destinationPhone = selectedBranch?.phone || '526860000000';
@@ -253,33 +338,151 @@ export function CartView({ onNavigate }: CartViewProps) {
               <button
                 key={branch.id}
                 type="button"
-                onClick={() => setSelectedBranchId(branch.id)}
+                onClick={() => handleBranchSelect(branch.id)}
                 className={cn(
-                  "p-3 rounded-xl border transition-all duration-300",
+                  "p-3 rounded-xl border transition-all duration-300 relative text-left",
                   selectedBranchId === branch.id
                     ? "border-primary bg-primary shadow-[0_0_15px_rgba(229,9,20,0.3)] text-white"
                     : "border-outline bg-surface hover:bg-surface-hover text-gray-300 hover:border-gray-500"
                 )}
               >
-                <span className="font-bold text-center text-xs leading-tight block">Fatboy<br/>{branch.name}</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs leading-tight block">Fatboy<br/>{branch.name}</span>
+                  {isAmericas(branch.name) && (
+                    <span className={cn(
+                      "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full",
+                      selectedBranchId === branch.id
+                        ? "bg-white/20 text-white"
+                        : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    )}>
+                      Domicilio Disp.
+                    </span>
+                  )}
+                </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Customer Info Form */}
+        {/* Delivery Type Selector (Américas vs Others) */}
+        <div className="w-full mb-6 animate-fade-in-up" style={{ animationDelay: '0.75s' }}>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">MODALIDAD DE ENTREGA</h3>
+          {allowsDelivery ? (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setDeliveryType('pickup')}
+                className={cn(
+                  "p-3 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center gap-1.5 text-center",
+                  deliveryType === 'pickup'
+                    ? "border-primary bg-primary/20 border-2 text-white shadow-md"
+                    : "border-outline bg-surface hover:bg-surface-hover text-gray-300"
+                )}
+              >
+                <Store size={20} className={deliveryType === 'pickup' ? "text-primary" : "text-gray-400"} />
+                <div>
+                  <span className="font-bold text-xs block leading-tight">Para recoger</span>
+                  <span className="text-[10px] text-gray-400">En sucursal</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDeliveryType('delivery')}
+                className={cn(
+                  "p-3 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center gap-1.5 text-center relative overflow-hidden",
+                  deliveryType === 'delivery'
+                    ? "border-emerald-500 bg-emerald-500/20 border-2 text-white shadow-md"
+                    : "border-outline bg-surface hover:bg-surface-hover text-gray-300"
+                )}
+              >
+                <div className="absolute top-1 right-1.5 text-[8.5px] font-black uppercase text-emerald-300 bg-emerald-950/80 px-1.5 py-0.2 rounded-full border border-emerald-500/30">
+                  +${deliveryFee.toFixed(2)}
+                </div>
+                <Bike size={20} className={deliveryType === 'delivery' ? "text-emerald-400" : "text-gray-400"} />
+                <div>
+                  <span className="font-bold text-xs block leading-tight">A domicilio</span>
+                  <span className="text-[10px] text-emerald-300 font-semibold">Costo ${deliveryFee.toFixed(2)}</span>
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-outline/40 bg-surface/60 p-3 flex items-start gap-2.5">
+              <Info size={16} className="text-gray-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-gray-400 leading-relaxed">
+                <span className="font-bold text-gray-300 block mb-0.5">Solo para recoger en sucursal</span>
+                El servicio a domicilio actualmente se encuentra disponible de forma exclusiva en la sucursal <strong className="text-white">Américas</strong>.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Customer & Delivery Info Form */}
         <div className="w-full mb-4 animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">TUS DATOS</h3>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+            {deliveryType === 'delivery' ? 'DATOS DE ENTREGA A DOMICILIO' : 'TUS DATOS'}
+          </h3>
           {isAuthenticated && customer ? (
-            <div className="bg-surface border border-outline/30 rounded-xl p-3 min-w-0">
-              <div className="flex min-w-0 justify-between gap-3 items-center py-1.5 border-b border-outline/10">
+            <div className="bg-surface border border-outline/30 rounded-xl p-3 min-w-0 flex flex-col gap-2.5">
+              <div className="flex min-w-0 justify-between gap-3 items-center py-1 border-b border-outline/10">
                 <span className="text-gray-400 text-xs shrink-0">Nombre</span>
-                <span className="min-w-0 text-right text-xs font-semibold text-white break-words">{customer.name}</span>
+                {deliveryType === 'delivery' ? (
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Tu nombre completo"
+                    className="w-full max-w-[220px] text-right text-xs font-semibold text-white bg-transparent border-b border-outline/30 focus:border-primary focus:outline-none py-0.5"
+                  />
+                ) : (
+                  <span className="min-w-0 text-right text-xs font-semibold text-white break-words">{customer.name}</span>
+                )}
               </div>
-              <div className="flex min-w-0 justify-between gap-3 items-center py-1.5">
+              <div className="flex min-w-0 justify-between gap-3 items-center py-1 border-b border-outline/10">
                 <span className="text-gray-400 text-xs shrink-0">Teléfono</span>
-                <span className="min-w-0 text-right text-xs font-semibold text-white break-words">{customer.phone}</span>
+                {deliveryType === 'delivery' ? (
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="6861234567"
+                    className="w-full max-w-[220px] text-right text-xs font-semibold text-white bg-transparent border-b border-outline/30 focus:border-primary focus:outline-none py-0.5"
+                  />
+                ) : (
+                  <span className="min-w-0 text-right text-xs font-semibold text-white break-words">{customer.phone}</span>
+                )}
               </div>
+
+              {/* Delivery specific address fields */}
+              {deliveryType === 'delivery' && (
+                <>
+                  <div className="flex flex-col gap-1 py-1 border-b border-outline/10">
+                    <label className="text-gray-400 text-xs flex items-center gap-1 font-semibold">
+                      <MapPin size={12} className="text-emerald-400" /> Dirección de entrega <span className="text-primary">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Calle, número ext/int, colonia o fraccionamiento"
+                      className="w-full text-xs text-white bg-background/50 border border-outline/50 rounded-lg p-2.5 focus:border-emerald-500 focus:outline-none placeholder-gray-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1 py-1">
+                    <label className="text-gray-400 text-xs font-semibold">
+                      Referencias de entrega (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryReference}
+                      onChange={(e) => setDeliveryReference(e.target.value)}
+                      placeholder="Ej. Casa blanca, portón café, entre qué calles, etc."
+                      className="w-full text-xs text-white bg-background/50 border border-outline/50 rounded-lg p-2.5 focus:border-emerald-500 focus:outline-none placeholder-gray-500"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-lg">
@@ -312,9 +515,22 @@ export function CartView({ onNavigate }: CartViewProps) {
       <div className="absolute bottom-0 left-0 w-full px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] bg-[#1a1a1a]/95 backdrop-blur-md border-t border-white/5 z-50 rounded-t-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.6)] animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
         {error && <p className="text-xs text-primary mb-2 text-center font-bold">{error}</p>}
         
+        {activeDeliveryFee > 0 && (
+          <div className="flex justify-between items-center text-xs text-gray-400 mb-1 px-1">
+            <span>Subtotal de productos</span>
+            <span className="font-semibold text-gray-300">${subtotal.toFixed(2)}</span>
+          </div>
+        )}
+        {activeDeliveryFee > 0 && (
+          <div className="flex justify-between items-center text-xs text-emerald-400 mb-2 px-1 font-semibold">
+            <span className="flex items-center gap-1"><Bike size={13} /> Envío a domicilio (Américas)</span>
+            <span>+${activeDeliveryFee.toFixed(2)}</span>
+          </div>
+        )}
+
         <div className="flex justify-between items-end mb-2.5 px-1">
           <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">TOTAL A PAGAR</span>
-          <span className="font-display text-3xl tracking-wide text-accent">${total}</span>
+          <span className="font-display text-3xl tracking-wide text-accent">${total.toFixed(2)}</span>
         </div>
         
         <Button 

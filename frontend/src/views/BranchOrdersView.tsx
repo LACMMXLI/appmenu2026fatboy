@@ -730,9 +730,35 @@ function OrderCard({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-gray-300">
-        <span className="rounded-md bg-black/20 px-2 py-1">{order.deliveryType === 'delivery' ? 'Entrega' : 'Recoger'}</span>
-        <span className="rounded-md bg-black/20 px-2 py-1">{order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span>
+        <span className={cn(
+          "rounded-md px-2 py-1 flex items-center justify-center gap-1",
+          order.deliveryType === 'delivery'
+            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+            : "bg-black/20 text-gray-300"
+        )}>
+          {order.deliveryType === 'delivery' ? '🛵 A Domicilio' : '🏪 Recoger'}
+        </span>
+        <span className="rounded-md bg-black/20 px-2 py-1 text-center">{order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span>
       </div>
+
+      {order.deliveryType === 'delivery' && order.deliveryAddress && (
+        <div className="mt-2.5 rounded-md border border-emerald-500/20 bg-emerald-950/20 p-2 text-xs text-gray-300">
+          <p className="flex items-start gap-1 font-bold text-emerald-300">
+            <MapPin size={13} className="shrink-0 mt-0.5" />
+            <span>{order.deliveryAddress}</span>
+          </p>
+          {order.deliveryReference && (
+            <p className="mt-1 text-[11px] text-gray-400 italic pl-4">
+              Ref: {order.deliveryReference}
+            </p>
+          )}
+          {order.deliveryFee > 0 && (
+            <p className="mt-1 text-[10px] text-emerald-400/80 font-bold pl-4">
+              Envío incluido: {currency(order.deliveryFee)}
+            </p>
+          )}
+        </div>
+      )}
 
       {!compact && (
         <div className="mt-3 border-t border-white/10 pt-3">

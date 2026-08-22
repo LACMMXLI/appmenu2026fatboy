@@ -396,6 +396,10 @@ export interface OrderItemPayload {
 export interface OrderPayload {
   branchId: string;
   deliveryType: 'delivery' | 'pickup';
+  deliveryAddress?: string;
+  deliveryReference?: string;
+  customerName?: string;
+  customerPhone?: string;
   paymentMethod: 'cash' | 'card';
   notes?: string;
   items: OrderItemPayload[];
@@ -437,6 +441,9 @@ export interface Order {
   pointsEarned: number;
   pointsRedeemed: number;
   deliveryType: string;
+  deliveryAddress: string | null;
+  deliveryReference: string | null;
+  deliveryFee: number;
   paymentMethod: string;
   notes: string | null;
   createdAt: string;
@@ -462,6 +469,9 @@ export interface PublicOrderTracking {
   cancellationRequestReason: string | null;
   total: number;
   deliveryType: string;
+  deliveryAddress: string | null;
+  deliveryReference: string | null;
+  deliveryFee: number;
   paymentMethod: string;
   createdAt: string;
   items: {

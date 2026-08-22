@@ -20,6 +20,9 @@ export interface PrintableOrder {
   total: number;
   pointsRedeemed: number;
   deliveryType: string;
+  deliveryAddress: string | null;
+  deliveryReference: string | null;
+  deliveryFee: number;
   paymentMethod: string;
   notes: string | null;
   createdAt: string;

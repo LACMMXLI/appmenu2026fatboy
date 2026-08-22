@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Check, X, Store, AlertCircle, LogIn, Ban, Clock3 } from 'lucide-react';
+import { ArrowLeft, Check, X, Store, AlertCircle, LogIn, Ban, Clock3, Bike, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { connectOrdersSocket } from '@/lib/socket';
@@ -222,16 +222,40 @@ export function OrderTrackingView({ onNavigate }: OrderTrackingProps) {
 
       {order && (
         <div className="px-6 pb-12 w-full animate-fade-in-up relative z-20">
-          <div className="bg-surface border border-outline rounded-2xl p-6 flex justify-between shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
-            <div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">SUCURSAL</span>
-              <span className="font-bold text-white text-[15px] flex items-center gap-2"><Store size={16} /> Fatboy {order.branchName}</span>
+          <div className="bg-surface border border-outline rounded-2xl p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex flex-col gap-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">SUCURSAL</span>
+                <span className="font-bold text-white text-sm flex items-center gap-1.5"><Store size={15} /> Fatboy {order.branchName}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">TOTAL</span>
+                <span className="font-bold text-accent text-base">${order.total.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="w-[1px] bg-outline h-full self-stretch"></div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">TOTAL</span>
-              <span className="font-bold text-accent text-[15px]">${order.total}</span>
-            </div>
+
+            {order.deliveryType === 'delivery' ? (
+              <div className="pt-2.5 border-t border-outline/20 flex flex-col gap-1 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-400">
+                  <Bike size={14} /> Servicio a Domicilio {order.deliveryFee > 0 && <span className="text-[10px] text-emerald-300/80 font-normal">(${order.deliveryFee.toFixed(2)} de envío)</span>}
+                </div>
+                {order.deliveryAddress && (
+                  <p className="text-gray-300 text-[11px] flex items-start gap-1 mt-0.5">
+                    <MapPin size={13} className="text-gray-400 shrink-0 mt-0.5" />
+                    <span>{order.deliveryAddress}</span>
+                  </p>
+                )}
+                {order.deliveryReference && (
+                  <p className="text-gray-400 text-[10.5px] italic pl-4">
+                    Ref: {order.deliveryReference}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="pt-2.5 border-t border-outline/20 text-xs text-gray-400 flex items-center gap-1.5">
+                <Store size={13} /> Para recoger en sucursal
+              </div>
+            )}
           </div>
 
           {order.cancellationRequestedAt ? (

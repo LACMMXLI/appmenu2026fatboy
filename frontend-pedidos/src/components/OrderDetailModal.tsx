@@ -1,4 +1,4 @@
-import { Check, Clock3, Phone, Printer, X } from 'lucide-react';
+import { Bike, Check, Clock3, MapPin, Phone, Printer, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { currency, orderAge, orderClockTime, parseJsonList } from '@/lib/orderHelpers';
@@ -50,6 +50,9 @@ export function OrderDetailModal({
     || order.status === 'CANCELLED';
   const canPrintCustomer = order.status === 'READY' || order.status === 'COMPLETED';
 
+  const isDelivery = order.deliveryType === 'delivery';
+  const itemsSubtotal = order.deliveryFee > 0 ? order.total - order.deliveryFee : order.total;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
@@ -80,9 +83,28 @@ export function OrderDetailModal({
               <Phone size={13} /> {order.customerPhone}
             </p>
             <div className="mt-2 flex gap-2 text-xs font-bold text-gray-300">
-              <span className="rounded-md bg-black/20 px-2 py-1">{order.deliveryType === 'delivery' ? 'Entrega' : 'Recoger'}</span>
+              <span className={cn(
+                "rounded-md px-2 py-1 flex items-center gap-1",
+                isDelivery ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-black/20"
+              )}>
+                {isDelivery ? '🛵 A Domicilio' : '🏪 Recoger'}
+              </span>
               <span className="rounded-md bg-black/20 px-2 py-1">{order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span>
             </div>
+
+            {isDelivery && order.deliveryAddress && (
+              <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-950/25 p-3 text-xs text-gray-200">
+                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1 mb-1">
+                  <MapPin size={13} /> Dirección de entrega
+                </p>
+                <p className="font-bold text-white leading-relaxed">{order.deliveryAddress}</p>
+                {order.deliveryReference && (
+                  <p className="mt-1.5 text-gray-400 italic text-[11px]">
+                    <strong>Referencia:</strong> {order.deliveryReference}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-5 space-y-4 border-t border-white/10 pt-4">
@@ -144,14 +166,26 @@ export function OrderDetailModal({
             </div>
           )}
 
-          <div className="mt-5 border-t border-white/10 pt-4">
+          <div className="mt-5 border-t border-white/10 pt-4 space-y-1">
+            {order.deliveryFee > 0 && (
+              <div className="flex justify-between text-xs font-semibold text-gray-400">
+                <span>Subtotal productos</span>
+                <span>{currency(itemsSubtotal)}</span>
+              </div>
+            )}
+            {order.deliveryFee > 0 && (
+              <div className="flex justify-between text-xs font-semibold text-emerald-400">
+                <span className="flex items-center gap-1"><Bike size={12} /> Envío a domicilio</span>
+                <span>{currency(order.deliveryFee)}</span>
+              </div>
+            )}
             {order.pointsRedeemed > 0 && (
               <div className="flex justify-between text-sm font-semibold text-gray-400">
                 <span>Puntos usados</span>
                 <span>{order.pointsRedeemed}</span>
               </div>
             )}
-            <div className="mt-1 flex justify-between text-2xl font-black text-white">
+            <div className="pt-1 flex justify-between text-2xl font-black text-white">
               <span>Total</span>
               <span>{currency(order.total)}</span>
             </div>

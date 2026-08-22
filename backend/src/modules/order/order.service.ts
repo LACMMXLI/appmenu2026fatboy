@@ -8,6 +8,7 @@ import { OrdersGateway } from './orders.gateway.js';
 
 const DELIVERY_TYPES = new Set(['pickup', 'delivery']);
 const PAYMENT_METHODS = new Set(['cash', 'card']);
+const DELIVERY_FEE = 1.50;
 const MAX_ITEM_QTY = 20;
 const MAX_ITEMS_PER_ORDER = 40;
 const MAX_NOTES_LENGTH = 500;
@@ -21,6 +22,11 @@ const MAX_PAGE_LIMIT = 100;
 // per branch — it can afford a larger default than paginated history views
 // (VEINTINUEVE) without needing a cursor for day-to-day use.
 const DEFAULT_BOARD_LIMIT = 200;
+
+export function isAmericasBranch(branchName: string): boolean {
+  const normalized = branchName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return normalized.includes('americas');
+}
 
 function clampLimit(limit: number | undefined, fallback: number, max = MAX_PAGE_LIMIT): number {
   if (!Number.isFinite(limit) || !limit || limit <= 0) return fallback;
@@ -38,6 +44,9 @@ const TRACKING_ORDER_SELECT = {
   cancellationRequestReason: true,
   total: true,
   deliveryType: true,
+  deliveryAddress: true,
+  deliveryReference: true,
+  deliveryFee: true,
   paymentMethod: true,
   createdAt: true,
   items: {
@@ -81,6 +90,19 @@ export class OrderService {
     return result;
   }
 
+  async resolveDeliveryFee(): Promise<number> {
+    const setting = await this.prisma.systemSetting.findFirst({
+      where: { key: { in: ['delivery_cost_americas', 'delivery_cost'] } },
+    });
+    if (setting?.value) {
+      const parsed = parseFloat(setting.value);
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        return parsed;
+      }
+    }
+    return DELIVERY_FEE;
+  }
+
   async createOrder(customerId: string, body: any) {
     const { branchId, notes, items } = body;
 
@@ -106,6 +128,43 @@ export class OrderService {
     const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) {
       throw new NotFoundException('Cliente no encontrado.');
+    }
+
+    let deliveryAddress: string | null = null;
+    let deliveryReference: string | null = null;
+    let deliveryFee = 0;
+
+    if (deliveryType === 'delivery') {
+      if (!isAmericasBranch(branch.name)) {
+        throw new BadRequestException('El servicio a domicilio solo está disponible en la sucursal Américas.');
+      }
+
+      if (typeof body.deliveryAddress !== 'string' || !body.deliveryAddress.trim() || body.deliveryAddress.trim().length < 5) {
+        throw new BadRequestException('Por favor ingresa una dirección de entrega válida.');
+      }
+      deliveryAddress = body.deliveryAddress.trim().slice(0, 250);
+
+      if (typeof body.deliveryReference === 'string' && body.deliveryReference.trim()) {
+        deliveryReference = body.deliveryReference.trim().slice(0, 250);
+      }
+
+      deliveryFee = await this.resolveDeliveryFee();
+    }
+
+    const customerName =
+      typeof body.customerName === 'string' && body.customerName.trim()
+        ? body.customerName.trim().slice(0, 120)
+        : customer.name;
+    const customerPhone =
+      typeof body.customerPhone === 'string' && body.customerPhone.trim()
+        ? body.customerPhone.trim().slice(0, 30)
+        : customer.phone;
+
+    if (!customerName) {
+      throw new BadRequestException('El nombre del cliente es obligatorio.');
+    }
+    if (!customerPhone) {
+      throw new BadRequestException('El teléfono del cliente es obligatorio.');
     }
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -201,6 +260,11 @@ export class OrderService {
       });
     }
 
+    // Costo de servicio a domicilio ($1.50 para Américas)
+    if (deliveryFee > 0) {
+      calculatedTotal += deliveryFee;
+    }
+
     if (!Number.isFinite(calculatedTotal) || calculatedTotal < 0) {
       throw new BadRequestException('Total de pedido inválido.');
     }
@@ -224,8 +288,8 @@ export class OrderService {
           id: randomUUID(),
           folio,
           customerId: customer.id,
-          customerName: customer.name,
-          customerPhone: customer.phone,
+          customerName,
+          customerPhone,
           branchId: branch.id,
           branchName: branch.name,
           status: OrderStatus.PENDING_APPROVAL,
@@ -233,6 +297,9 @@ export class OrderService {
           pointsEarned,
           pointsRedeemed,
           deliveryType,
+          deliveryAddress,
+          deliveryReference,
+          deliveryFee,
           paymentMethod,
           notes: notesValue,
           items: {
@@ -287,10 +354,11 @@ export class OrderService {
 
   // Decimal -> number for the wire, shared by every path that returns a full
   // order with its items (create, transition, cancel, list).
-  private serializeOrder<T extends { total: Prisma.Decimal; items: readonly { price: Prisma.Decimal }[] }>(order: T) {
+  private serializeOrder<T extends { total: Prisma.Decimal; deliveryFee?: Prisma.Decimal | null; items: readonly { price: Prisma.Decimal }[] }>(order: T) {
     return {
       ...order,
       total: Number(order.total),
+      deliveryFee: order.deliveryFee != null ? Number(order.deliveryFee) : 0,
       items: order.items.map((i) => ({ ...i, price: Number(i.price) })),
     };
   }
@@ -308,6 +376,7 @@ export class OrderService {
     return {
       ...order,
       total: Number(order.total),
+      deliveryFee: order.deliveryFee != null ? Number(order.deliveryFee) : 0,
     };
   }
 
@@ -338,7 +407,11 @@ export class OrderService {
     const page = hasMore ? rows.slice(0, limit) : rows;
 
     return {
-      items: page.map((order) => ({ ...order, total: Number(order.total) })),
+      items: page.map((order) => ({
+        ...order,
+        total: Number(order.total),
+        deliveryFee: order.deliveryFee != null ? Number(order.deliveryFee) : 0,
+      })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
   }

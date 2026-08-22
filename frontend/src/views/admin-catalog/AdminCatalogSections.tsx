@@ -27,6 +27,7 @@ import {
   Download,
   ClipboardList,
   MessageSquareText,
+  Bike,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -1873,6 +1874,7 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
   const [googleReviewsUrl, setGoogleReviewsUrl] = useState('');
   const [googleReviewsSanMarcosUrl, setGoogleReviewsSanMarcosUrl] = useState('');
   const [googleReviewsAmericasUrl, setGoogleReviewsAmericasUrl] = useState('');
+  const [deliveryCostAmericas, setDeliveryCostAmericas] = useState('1.50');
   const [promotionsStartHour, setPromotionsStartHour] = useState('10');
   const [promotionsEndHour, setPromotionsEndHour] = useState('21');
   const [isSaving, setIsSaving] = useState(false);
@@ -1888,6 +1890,11 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         if (data.google_reviews_url) setGoogleReviewsUrl(data.google_reviews_url);
         if (data.google_reviews_san_marcos_url) setGoogleReviewsSanMarcosUrl(data.google_reviews_san_marcos_url);
         if (data.google_reviews_americas_url) setGoogleReviewsAmericasUrl(data.google_reviews_americas_url);
+        if (data.delivery_cost_americas !== undefined) {
+          setDeliveryCostAmericas(data.delivery_cost_americas);
+        } else if (data.delivery_cost !== undefined) {
+          setDeliveryCostAmericas(data.delivery_cost);
+        }
         if (data.promotions_start_hour) setPromotionsStartHour(data.promotions_start_hour);
         if (data.promotions_end_hour) setPromotionsEndHour(data.promotions_end_hour);
       })
@@ -1910,6 +1917,12 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
       return;
     }
 
+    const deliveryCostNum = Number(deliveryCostAmericas);
+    if (Number.isNaN(deliveryCostNum) || deliveryCostNum < 0) {
+      onSaveError('El costo del servicio a domicilio debe ser un número válido mayor o igual a 0.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateAdminSystemSettings(adminKey, {
@@ -1918,6 +1931,7 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         google_reviews_url: googleReviewsUrl,
         google_reviews_san_marcos_url: googleReviewsSanMarcosUrl,
         google_reviews_americas_url: googleReviewsAmericasUrl,
+        delivery_cost_americas: deliveryCostAmericas,
         promotions_start_hour: promotionsStartHour,
         promotions_end_hour: promotionsEndHour,
       });
@@ -1944,6 +1958,27 @@ export function SettingsAdmin({ adminKey, onSaveSuccess, onSaveError }: Settings
         Configuraciones Generales
       </h2>
       <form onSubmit={handleSave} className="space-y-4">
+        {/* Costo servicio a domicilio */}
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-4">
+          <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
+            <Bike size={15} /> Costo de Servicio a Domicilio (Sucursal Américas)
+          </h3>
+          <p className="text-xs text-gray-300 mb-3 leading-relaxed">
+            Configura el precio del envío a domicilio para los pedidos de la sucursal Américas. Este importe se cobrará automáticamente al cliente al seleccionar entrega a domicilio.
+          </p>
+          <div className="max-w-xs">
+            <Input
+              label="Costo de envío ($ USD)"
+              type="number"
+              step="0.25"
+              min="0"
+              value={deliveryCostAmericas}
+              onChange={(e) => setDeliveryCostAmericas(e.target.value)}
+              placeholder="1.50"
+            />
+          </div>
+        </div>
+
         <Input
           label="Enlace de Facebook"
           placeholder="https://facebook.com/tupagina"

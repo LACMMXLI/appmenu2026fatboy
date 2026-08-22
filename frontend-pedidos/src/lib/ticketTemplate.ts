@@ -22,6 +22,9 @@ export function toPrintableOrder(order: Order): PrintableOrder {
     total: order.total,
     pointsRedeemed: order.pointsRedeemed,
     deliveryType: order.deliveryType,
+    deliveryAddress: order.deliveryAddress,
+    deliveryReference: order.deliveryReference,
+    deliveryFee: order.deliveryFee,
     paymentMethod: order.paymentMethod,
     notes: order.notes,
     createdAt: order.createdAt,
@@ -42,6 +45,7 @@ export function buildTicketHtml(
   documentType: PrintDocumentType,
 ): string {
   const production = documentType === 'PRODUCTION';
+  const isDelivery = order.deliveryType === 'delivery';
   const compact = paperWidthMm === 58;
   const bodyWidthMm = paperWidthMm - (compact ? 5 : 7);
   const fontSizePx = production ? (compact ? 13 : 15) : (compact ? 11 : 12);
@@ -92,6 +96,8 @@ export function buildTicketHtml(
       .row span:last-child, .item-main span:last-child { text-align: right; }
       .document-label { margin-top: 1.5mm; text-align: center; font-size: ${compact ? 13 : 15}px; font-weight: 900; letter-spacing: .08em; }
       .folio { margin-top: 1.5mm; text-align: center; font-size: ${production ? (compact ? 28 : 34) : (compact ? 18 : 21)}px; font-weight: 900; }
+      .delivery-box { margin-top: 2mm; border: 1.5px solid #000; padding: 1.5mm 2mm; font-size: ${compact ? 11 : 13}px; }
+      .delivery-box strong { display: block; font-size: ${compact ? 12 : 14}px; margin-bottom: 1mm; }
       .item { border-top: ${production ? '2px solid' : '1px dashed'} #000; padding: ${production ? '3mm' : '2mm'} 0; break-inside: avoid; }
       .item-main strong { flex: 1; }
       .modifiers { margin-top: 1mm; padding-left: 2mm; font-size: ${production ? (compact ? 12 : 14) : fontSizePx}px; font-weight: 800; }
@@ -107,12 +113,20 @@ export function buildTicketHtml(
     <div class="center muted">${escapeHtml(order.branchName)} · ${escapeHtml(createdLabel)}</div>
     <div class="divider"></div>
     <div class="row"><strong>Cliente</strong><span>${escapeHtml(order.customerName)}</span></div>
-    ${production ? '' : `<div class="row"><strong>Teléfono</strong><span>${escapeHtml(order.customerPhone)}</span></div>`}
-    <div class="row"><strong>Tipo</strong><span>${order.deliveryType === 'delivery' ? 'Entrega' : 'Recoger'}</span></div>
+    ${production && !isDelivery ? '' : `<div class="row"><strong>Teléfono</strong><span>${escapeHtml(order.customerPhone)}</span></div>`}
+    <div class="row"><strong>Tipo</strong><span>${isDelivery ? 'A DOMICILIO' : 'Para recoger'}</span></div>
     ${production ? '' : `<div class="row"><strong>Pago</strong><span>${order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span></div>`}
+    ${isDelivery && order.deliveryAddress ? `
+      <div class="delivery-box">
+        <strong>ENTREGA A DOMICILIO:</strong>
+        <div>${escapeHtml(order.deliveryAddress)}</div>
+        ${order.deliveryReference ? `<div style="margin-top: 1mm; font-size: ${compact ? 10 : 11}px;"><em>Ref: ${escapeHtml(order.deliveryReference)}</em></div>` : ''}
+      </div>
+    ` : ''}
     <div class="divider"></div>
     ${itemLines}
     ${order.notes ? `<div class="note">NOTA: ${escapeHtml(order.notes)}</div>` : ''}
+    ${!production && order.deliveryFee > 0 ? `<div class="row"><strong>Envío a domicilio</strong><span>${escapeHtml(currency(order.deliveryFee))}</span></div>` : ''}
     ${!production && order.pointsRedeemed > 0 ? `<div class="row"><strong>Puntos usados</strong><span>${escapeHtml(order.pointsRedeemed)}</span></div>` : ''}
     ${production ? '' : `<div class="row total"><strong>Total</strong><span>${escapeHtml(currency(order.total))}</span></div>`}
     <div class="footer">${production ? 'PRODUCCIÓN · NO ENTREGAR AL CLIENTE' : 'Gracias por tu compra'}</div>

@@ -176,6 +176,9 @@ model Order {
   pointsCredited   Boolean             @default(false) @map("points_credited")
   pointsRedeemed   Int                 @default(0) @map("points_redeemed")
   deliveryType     String              @map("delivery_type") // delivery, pickup
+  deliveryAddress  String?             @map("delivery_address")
+  deliveryReference String?            @map("delivery_reference")
+  deliveryFee      Decimal             @default(0) @db.Decimal(10, 2) @map("delivery_fee")
   paymentMethod    String              @map("payment_method") // cash, card
   notes            String?
   createdAt        DateTime            @default(now()) @map("created_at")
