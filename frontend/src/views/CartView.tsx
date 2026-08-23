@@ -20,19 +20,60 @@ export function CartView({ onNavigate }: CartViewProps) {
   const { isAuthenticated, customer, token } = useUser();
   
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
+    return (typeof window !== 'undefined' ? localStorage.getItem('fatboy-cart-branch-id') : '') || '';
+  });
   
-  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
+  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('fatboy-cart-delivery-type') : null;
+    return saved === 'delivery' ? 'delivery' : 'pickup';
+  });
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [deliveryReference, setDeliveryReference] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState<string>(() => {
+    return (typeof window !== 'undefined' ? localStorage.getItem('fatboy-delivery-address') : '') || '';
+  });
+  const [deliveryReference, setDeliveryReference] = useState<string>(() => {
+    return (typeof window !== 'undefined' ? localStorage.getItem('fatboy-delivery-reference') : '') || '';
+  });
   const [deliveryFee, setDeliveryFee] = useState(1.50);
   
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState<string>(() => {
+    return (typeof window !== 'undefined' ? localStorage.getItem('fatboy-cart-notes') : '') || '';
+  });
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    try {
+      if (deliveryAddress) localStorage.setItem('fatboy-delivery-address', deliveryAddress);
+    } catch {}
+  }, [deliveryAddress]);
+
+  useEffect(() => {
+    try {
+      if (deliveryReference) localStorage.setItem('fatboy-delivery-reference', deliveryReference);
+    } catch {}
+  }, [deliveryReference]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('fatboy-cart-notes', notes);
+    } catch {}
+  }, [notes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('fatboy-cart-delivery-type', deliveryType);
+    } catch {}
+  }, [deliveryType]);
+
+  useEffect(() => {
+    try {
+      if (selectedBranchId) localStorage.setItem('fatboy-cart-branch-id', selectedBranchId);
+    } catch {}
+  }, [selectedBranchId]);
 
   useEffect(() => {
     if (customer) {
@@ -194,6 +235,10 @@ export function CartView({ onNavigate }: CartViewProps) {
       
       sessionStorage.setItem('fatboy-last-order-id', order.id);
       clearCart();
+      setNotes('');
+      try {
+        localStorage.removeItem('fatboy-cart-notes');
+      } catch {}
       onNavigate('order-tracking');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrar el pedido.');
@@ -248,7 +293,7 @@ export function CartView({ onNavigate }: CartViewProps) {
   return (
     <div className="h-full flex flex-col bg-background w-full max-w-md mx-auto relative overflow-hidden">
       {/* Scrollable Container */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-[42px] pb-[135px] px-3 no-scrollbar">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-[50px] pb-[280px] px-3 no-scrollbar">
         <header className="flex items-center justify-between mb-4 pb-1 border-b border-white/5 animate-fade-in-up stagger-1">
           <button onClick={() => onNavigate('home')} className="p-1.5 -ml-1 text-white hover:bg-surface rounded-full transition-colors">
             <ArrowLeft size={18} />
@@ -469,7 +514,7 @@ export function CartView({ onNavigate }: CartViewProps) {
                     />
                   </div>
 
-                  <div className="flex flex-col gap-1 py-1">
+                  <div className="flex flex-col gap-1 py-1 border-b border-outline/10">
                     <label className="text-gray-400 text-xs font-semibold">
                       Referencias de entrega (opcional)
                     </label>
@@ -483,6 +528,20 @@ export function CartView({ onNavigate }: CartViewProps) {
                   </div>
                 </>
               )}
+
+              {/* Optional notes for both delivery & pickup */}
+              <div className="flex flex-col gap-1 py-1">
+                <label className="text-gray-400 text-xs font-semibold">
+                  Notas o instrucciones adicionales (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={deliveryType === 'delivery' ? "Ej. Tocar timbre, salsa extra, etc." : "Ej. Sin cubiertos, salsa extra, etc."}
+                  className="w-full text-xs text-white bg-background/50 border border-outline/50 rounded-lg p-2.5 focus:border-primary focus:outline-none placeholder-gray-500"
+                />
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-lg">

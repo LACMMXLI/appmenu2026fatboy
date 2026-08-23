@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export interface CartItem {
   cartId: string;
@@ -22,10 +22,32 @@ interface CartContextData {
   clearCart: () => void;
 }
 
+const CART_STORAGE_KEY = 'fatboy-cart-items';
+
+function getInitialCart(): CartItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 const CartContext = createContext<CartContextData>({} as CartContextData);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(getInitialCart);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+    } catch (err) {
+      console.error('Failed to save cart to localStorage', err);
+    }
+  }, [items]);
 
   const addItem = (item: Omit<CartItem, 'cartId'>) => {
     const cartId = Math.random().toString(36).substring(7);
@@ -44,7 +66,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const clearCart = () => setItems([]);
+  const clearCart = () => {
+    setItems([]);
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    } catch {}
+  };
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart }}>
@@ -54,3 +81,4 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useCart = () => useContext(CartContext);
+

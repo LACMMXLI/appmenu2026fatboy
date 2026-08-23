@@ -76,91 +76,92 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
   const progressPercent = Math.min(100, (points / targetPoints) * 100);
   const missingPoints = Math.max(0, targetPoints - points);
 
-  return (
-    <div className={cn('flex flex-col gap-1.5 px-3 h-full overflow-hidden py-1.5 justify-start')}>
+  return (    <div className="flex-1 overflow-y-auto no-scrollbar px-3 h-full flex flex-col gap-2.5 pt-[52px] pb-[84px]">
       {/* User Info Card */}
       {isAuthenticated ? (
-        <div className="flex flex-col gap-1.5 h-full justify-start overflow-y-auto no-scrollbar pb-2">
+        <div className="flex flex-col gap-2.5 w-full">
           {/* User Info Card */}
-          <div className="bg-surface border border-outline/50 p-2 rounded-lg flex items-center gap-2.5 relative overflow-hidden shrink-0">
-            <div className="absolute -right-4 -top-4 w-16 h-16 bg-primary/10 rounded-full blur-xl"></div>
-            <div className="w-9 h-9 rounded-full border border-primary overflow-hidden shrink-0 relative z-10 p-[1px]">
-              <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center font-display text-sm font-bold text-primary">
+          <div className="bg-surface border border-outline/60 p-3 rounded-xl flex items-center gap-3 relative overflow-hidden shrink-0 shadow-sm">
+            <div className="absolute -right-4 -top-4 w-20 h-20 bg-primary/10 rounded-full blur-xl pointer-events-none"></div>
+            <div className="w-11 h-11 rounded-full border border-primary/60 overflow-hidden shrink-0 relative z-10 p-[1.5px] shadow-sm">
+              <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center font-display text-base font-bold text-primary">
                 {customer?.name ? customer.name.charAt(0).toUpperCase() : 'U'}
               </div>
             </div>
-            <div className="relative z-10">
-              <h2 className="font-display text-sm font-black tracking-wide leading-none mb-0.5 text-white uppercase">{customer?.name || 'Cliente Fatboy'}</h2>
-              <div className="inline-flex items-center gap-0.5 bg-surface-light border border-accent/30 px-1 py-0.2 rounded-full">
-                <Star size={6} className="text-accent" fill="currentColor" />
-                <span className="text-[7.5px] font-bold text-accent uppercase">Miembro Fatboy</span>
+            <div className="relative z-10 min-w-0 flex-1">
+              <h2 className="font-display text-base font-black tracking-wide leading-tight mb-1 text-white uppercase truncate">
+                {customer?.name || 'Cliente Fatboy'}
+              </h2>
+              <div className="inline-flex items-center gap-1 bg-surface-light border border-accent/40 px-2 py-0.5 rounded-full">
+                <Star size={8} className="text-accent" fill="currentColor" />
+                <span className="text-[8.5px] font-black text-accent uppercase tracking-wider">Miembro Fatboy</span>
               </div>
             </div>
           </div>
 
           {/* Points Card */}
-          <div className="bg-surface border border-outline/50 p-2 rounded-lg shrink-0">
-            <div className="flex justify-between items-start mb-1">
+          <div className="bg-surface border border-outline/60 p-3 rounded-xl shrink-0 shadow-sm">
+            <div className="flex justify-between items-start mb-1.5">
               <div>
                 <h3 className="font-bold text-accent text-xs mb-0.5 leading-none">Puntos Fatboy</h3>
-                <div className="flex items-baseline gap-0.5">
-                  <span className="font-display text-xl leading-none">{points}</span>
-                  <span className="text-gray-400 font-bold text-[10px]">pts</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-display text-2xl leading-none text-white">{points}</span>
+                  <span className="text-gray-400 font-bold text-xs">pts</span>
                 </div>
               </div>
-              <div className="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                <Flame size={12} className="text-accent" />
+              <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
+                <Flame size={15} className="text-accent" />
               </div>
             </div>
             
-            <div className="mb-1 w-full">
-              <div className="flex justify-between text-[8.5px] font-bold text-gray-400 mb-0.5">
+            <div className="mb-2 w-full">
+              <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-1">
                 <span>Progreso</span>
                 <span>{missingPoints > 0 ? `${missingPoints} pts faltantes` : '¡Meta alcanzada!'}</span>
               </div>
-              <div className="w-full h-1 bg-surface-light rounded-full overflow-hidden border border-white/5">
+              <div className="w-full h-1.5 bg-surface-light rounded-full overflow-hidden border border-white/5">
                 <div className="h-full bg-primary relative animate-pulse" style={{ width: `${progressPercent}%` }}>
                   <div className="absolute inset-0 bg-white/20" style={{ backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent)', backgroundSize: '1rem 1rem' }}></div>
                 </div>
               </div>
             </div>
-            <p className="text-[9.5px] text-gray-400 flex items-center gap-0.5 font-semibold mb-1">
-              <span className="text-primary tracking-widest text-[11px] leading-none">🎉</span> Bacon Burger gratis a los {targetPoints} pts
+            <p className="text-[10px] text-gray-300 flex items-center gap-1 font-semibold mb-2">
+              <span className="text-primary tracking-widest text-xs leading-none">🎉</span> Bacon Burger gratis a los {targetPoints} pts
             </p>
-            <Button onClick={() => onNavigate('rewards')} size="sm" className="w-full bg-accent text-black hover:bg-accent/90 shadow-[0_0_10px_rgba(250,189,0,0.3)] animate-pulse-glow flex gap-1 items-center justify-center py-1 text-[10px] h-7 shrink-0">
-              <Gift size={13} />
+            <Button onClick={() => onNavigate('rewards')} size="sm" className="w-full bg-accent text-black hover:bg-accent/90 shadow-[0_0_12px_rgba(250,189,0,0.3)] animate-pulse-glow flex gap-1.5 items-center justify-center py-1.5 text-xs font-black h-8 shrink-0">
+              <Gift size={14} />
               <span>CANJEAR PUNTOS</span>
             </Button>
           </div>
 
           {/* Quick Info */}
-          <div className="grid grid-cols-2 gap-1.5 shrink-0">
-            <div className="bg-surface border border-outline/50 p-2 rounded-lg flex flex-col gap-0.5">
-              <Phone size={12} className="text-gray-400" />
+          <div className="grid grid-cols-2 gap-2 shrink-0">
+            <div className="bg-surface border border-outline/60 p-2.5 rounded-xl flex flex-col gap-1">
+              <Phone size={14} className="text-gray-400" />
               <div>
-                <span className="text-[7.5px] font-bold text-gray-400 uppercase tracking-widest block mb-0.5">Teléfono</span>
-                <span className="font-bold text-[10px] text-white leading-none">{customer?.phone || 'Sin registrar'}</span>
+                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block mb-0.5">Teléfono</span>
+                <span className="font-bold text-xs text-white leading-none truncate block">{customer?.phone || 'Sin registrar'}</span>
               </div>
             </div>
-            <div className="bg-surface border border-outline/50 p-2 rounded-lg flex flex-col gap-0.5">
-              <Store size={12} className="text-gray-400" />
+            <div className="bg-surface border border-outline/60 p-2.5 rounded-xl flex flex-col gap-1">
+              <Store size={14} className="text-gray-400" />
               <div>
-                <span className="text-[7.5px] font-bold text-gray-400 uppercase tracking-widest block mb-0.5">Sucursal Favorita</span>
-                <span className="font-bold text-[10px] leading-none block text-white">Fatboy {branchName}</span>
+                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block mb-0.5">Sucursal Favorita</span>
+                <span className="font-bold text-xs leading-none block text-white truncate">Fatboy {branchName}</span>
               </div>
             </div>
           </div>
 
           {/* Active orders */}
           <div className="w-full shrink-0">
-            <h3 className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400">
-              <ShoppingBag size={11} /> Pedidos activos
+            <h3 className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <ShoppingBag size={12} /> Pedidos activos
             </h3>
-            <div className="overflow-hidden rounded-lg border border-outline/50 bg-surface">
+            <div className="overflow-hidden rounded-xl border border-outline/60 bg-surface">
               {ordersLoading ? (
-                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Cargando tus pedidos...</p>
+                <p className="px-3 py-3 text-center text-xs font-semibold text-gray-500">Cargando tus pedidos...</p>
               ) : activeOrders.length === 0 ? (
-                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">No tienes pedidos activos en este momento.</p>
+                <p className="px-3 py-3 text-center text-xs font-semibold text-gray-500">No tienes pedidos activos en este momento.</p>
               ) : (
                 <OrderList orders={activeOrders} onNavigate={onNavigate} />
               )}
@@ -169,14 +170,14 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
 
           {/* Previous orders */}
           <div className="w-full shrink-0">
-            <h3 className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400">
-              <History size={11} /> Pedidos anteriores
+            <h3 className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <History size={12} /> Pedidos anteriores
             </h3>
-            <div className="overflow-hidden rounded-lg border border-outline/50 bg-surface">
+            <div className="overflow-hidden rounded-xl border border-outline/60 bg-surface">
               {ordersLoading ? (
-                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Cargando tus pedidos...</p>
+                <p className="px-3 py-3 text-center text-xs font-semibold text-gray-500">Cargando tus pedidos...</p>
               ) : previousOrders.length === 0 ? (
-                <p className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500">Todavía no tienes pedidos anteriores.</p>
+                <p className="px-3 py-3 text-center text-xs font-semibold text-gray-500">Todavía no tienes pedidos anteriores.</p>
               ) : (
                 <OrderList orders={previousOrders} onNavigate={onNavigate} />
               )}
@@ -185,54 +186,54 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
 
           {/* Contacto & Ayuda */}
           <div className="w-full shrink-0">
-            <h3 className="text-[9px] font-bold text-gray-400 tracking-wider mb-0.5 uppercase">Contacto & Ayuda</h3>
-            <div className="bg-surface border border-outline/50 rounded-lg overflow-hidden divide-y divide-outline/50">
+            <h3 className="text-[10px] font-bold text-gray-400 tracking-wider mb-1 uppercase">Contacto & Ayuda</h3>
+            <div className="bg-surface border border-outline/60 rounded-xl overflow-hidden divide-y divide-outline/50">
               {contactBranches.map((branch) => (
-                <a key={branch.id} href={formatWhatsAppLink(branch.phone ?? '')} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors">
+                <a key={branch.id} href={formatWhatsAppLink(branch.phone ?? '')} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface-hover transition-colors">
                   <div className="flex items-center gap-2">
-                    <Phone size={12} className="text-[#25D366]" />
-                    <span className="text-[10px] font-semibold text-white">WhatsApp Fatboy {branch.name}</span>
+                    <Phone size={13} className="text-[#25D366]" />
+                    <span className="text-xs font-semibold text-white">WhatsApp Fatboy {branch.name}</span>
                   </div>
-                  <ChevronRight size={12} className="text-gray-500" />
+                  <ChevronRight size={13} className="text-gray-500" />
                 </a>
               ))}
-              <button onClick={() => onNavigate('google-review')} className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors">
+              <button onClick={() => onNavigate('google-review')} className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface-hover transition-colors">
                 <div className="flex items-center gap-2">
-                  <Star size={12} className="text-accent" />
-                  <span className="text-[10px] font-semibold text-white">Calificarnos en Google</span>
+                  <Star size={13} className="text-accent" />
+                  <span className="text-xs font-semibold text-white">Calificarnos en Google</span>
                 </div>
-                <ChevronRight size={12} className="text-gray-500" />
+                <ChevronRight size={13} className="text-gray-500" />
               </button>
             </div>
           </div>
 
           {/* Configuration */}
           <div className="w-full shrink-0">
-            <h3 className="text-[9px] font-bold text-gray-400 tracking-wider mb-0.5 uppercase">Configuración</h3>
-            <div className="bg-surface border border-outline/50 rounded-lg overflow-hidden divide-y divide-outline/50">
+            <h3 className="text-[10px] font-bold text-gray-400 tracking-wider mb-1 uppercase">Configuración</h3>
+            <div className="bg-surface border border-outline/60 rounded-xl overflow-hidden divide-y divide-outline/50">
               {[
                 { icon: Lock, label: 'Cambiar Contraseña', action: () => onNavigate('change-password') },
                 { icon: CreditCard, label: 'Métodos de Pago', action: () => onNavigate('payment-methods') },
               ].map((item, i) => (
-                <button key={i} onClick={item.action} className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors">
+                <button key={i} onClick={item.action} className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface-hover transition-colors">
                   <div className="flex items-center gap-2">
-                    <item.icon size={12} className="text-gray-400" />
-                    <span className="text-[10px] font-semibold text-white">{item.label}</span>
+                    <item.icon size={13} className="text-gray-400" />
+                    <span className="text-xs font-semibold text-white">{item.label}</span>
                   </div>
-                  <ChevronRight size={12} className="text-gray-500" />
+                  <ChevronRight size={13} className="text-gray-500" />
                 </button>
               ))}
-              <button className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-surface-hover transition-colors" onClick={handleLogout}>
+              <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface-hover transition-colors" onClick={handleLogout}>
                 <div className="flex items-center gap-2 text-primary">
-                  <LogOut size={12} />
-                  <span className="text-[10px] font-semibold">Cerrar Sesión</span>
+                  <LogOut size={13} />
+                  <span className="text-xs font-semibold">Cerrar Sesión</span>
                 </div>
               </button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col h-full min-h-0 gap-2 px-1">
+        <div className="flex flex-col gap-3 w-full">
           {/* Main CTA Section */}
           <section className="relative shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_12%,rgba(232,0,10,0.22),transparent_35%),linear-gradient(135deg,rgba(232,0,10,0.12),rgba(255,255,255,0.03))] px-4 py-5 text-center shadow-[0_8px_24px_rgba(0,0,0,0.45)] flex flex-col justify-center">
             {/* Ambient decorative elements */}
@@ -240,9 +241,9 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
             <div className="pointer-events-none absolute right-9 top-8 h-3.5 w-3.5 rounded-full border border-primary/25 bg-primary/15 shadow-[0_0_9px_rgba(232,0,10,0.2)] rotate-[18deg]" />
             <div className="pointer-events-none absolute right-16 bottom-8 h-3 w-3 rounded-full border border-primary/20 bg-primary/10 shadow-[0_0_8px_rgba(232,0,10,0.15)]" />
 
-            <div className="relative mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-primary/50 bg-primary/10 shadow-[0_0_12px_rgba(232,0,10,0.25)] shrink-0">
+            <div className="relative mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full border border-primary/50 bg-primary/10 shadow-[0_0_12px_rgba(232,0,10,0.25)] shrink-0">
               <div className="absolute inset-1 rounded-full border border-primary/35" />
-              <Star size={16} className="relative text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" strokeWidth={2.2} />
+              <Star size={18} className="relative text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" strokeWidth={2.2} />
             </div>
 
             <h2 className="mx-auto max-w-[265px] text-lg font-black leading-tight tracking-wide text-white drop-shadow-md uppercase">
@@ -260,7 +261,7 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
           </section>
 
           {/* Benefits Grid */}
-          <div className="grid gap-1.5 min-h-0 overflow-y-auto no-scrollbar">
+          <div className="grid gap-2">
             {[
               { icon: Star, title: 'Acumula puntos', description: 'Obtén puntos en cada compra que realices.', tone: 'text-primary' },
               { icon: Gift, title: 'Canjea beneficios', description: 'Usa tus puntos en futuras compras.', tone: 'text-primary' },
@@ -285,7 +286,6 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
             ))}
           </div>
         </div>
-
       )}
     </div>
   );
