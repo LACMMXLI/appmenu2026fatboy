@@ -477,7 +477,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
               href={formatWhatsAppLink(branch.phone ?? '')}
               target="_blank"
               rel="noopener noreferrer"
-              className="h-10 bg-[#25D366]/10 border border-[#25D366]/30 hover:border-[#25D366] rounded-lg flex items-center justify-center gap-2 text-white/90 hover:text-white font-sans text-[10px] font-bold uppercase transition-all"
+              className="h-10 bg-[#25D366]/10 border border-[#25D366]/30 hover:border-[#25D366] rounded-lg flex items-center justify-center gap-2 text-white/90 hover:text-white font-sans text-[10px] font-bold uppercase transition-all shadow-sm active:scale-[0.98]"
             >
               <svg className="w-4 h-4 fill-current text-[#25D366]" viewBox="0 0 24 24">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-3.535l.409.243c1.517.901 3.23 1.378 4.978 1.379 5.485 0 9.95-4.462 9.954-9.944.002-2.656-1.03-5.153-2.905-7.03C16.208 3.238 13.716 2.2 11.063 2.2c-5.491 0-9.957 4.463-9.96 9.946-.001 1.839.48 3.633 1.393 5.179l.265.447-.925 3.385 3.463-.908c1.5.819 3.197 1.25 4.92 1.251zM18.06 14.88c-.33-.165-1.956-.967-2.257-1.077-.302-.11-.522-.165-.742.165-.22.33-.852 1.077-1.044 1.298-.193.22-.385.242-.715.077-.33-.165-1.393-.513-2.653-1.637-.98-.874-1.64-1.954-1.832-2.284-.193-.33-.02-.508.145-.672.148-.148.33-.385.495-.578.165-.192.22-.33.33-.55.11-.22.055-.412-.028-.577-.082-.165-.742-1.79-.88-2.12-.276-.665-.558-.574-.766-.585-.198-.01-.424-.01-.65-.01s-.592.085-.902.424c-.31.339-1.187 1.161-1.187 2.83 0 1.669 1.213 3.28 1.378 3.5.165.22 2.387 3.646 5.783 5.111.808.349 1.439.557 1.93.713.812.258 1.552.221 2.138.134.652-.097 1.956-.8 2.23-1.57.275-.77.275-1.43.193-1.57-.083-.14-.303-.225-.633-.39z" />
@@ -485,6 +485,18 @@ export function HomeView({ onNavigate }: HomeViewProps) {
               WA {branch.name}
             </a>
           ))}
+          {/* Botón de Facebook */}
+          <a
+            href="https://www.facebook.com/AhhPlebeesFatBoyRestaurant/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-10 bg-[#1877F2]/10 border border-[#1877F2]/30 hover:border-[#1877F2] rounded-lg flex items-center justify-center gap-2 text-white/90 hover:text-white font-sans text-[10px] font-bold uppercase transition-all shadow-sm active:scale-[0.98]"
+          >
+            <svg className="w-4 h-4 fill-current text-[#1877F2]" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            Facebook
+          </a>
         </div>
       </div>
 
