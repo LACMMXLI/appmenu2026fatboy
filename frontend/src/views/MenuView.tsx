@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Plus, Flame } from 'lucide-react';
+import { Search, Plus, Flame, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
-import { defaultProductImage, getCategories, getProducts, type Category, type Product } from '@/lib/api';
+import { defaultProductImage, getCategories, getProducts, resolveMediaUrl, type Category, type Product } from '@/lib/api';
 
 const CATEGORY_ICONS: Record<string, string> = {
   'hamburguesa': '/images/category_icon_burger_1781279364406.png',
@@ -41,6 +41,8 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts]     = useState<Product[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError]         = useState<string | null>(null);
 
@@ -85,6 +87,18 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
     }
   }, [initialCategoryId]);
 
+  const cleanQuery = searchQuery.trim().toLowerCase();
+
+  const searchResults = useMemo(() => {
+    if (!cleanQuery) return [];
+    return products.filter((p) => {
+      const matchName = p.name.toLowerCase().includes(cleanQuery);
+      const matchDesc = (p.description || p.shortDescription || '').toLowerCase().includes(cleanQuery);
+      const matchSub = (p.subcategory || '').toLowerCase().includes(cleanQuery);
+      return matchName || matchDesc || matchSub;
+    });
+  }, [products, cleanQuery]);
+
   const visible = useMemo(
     () => products.filter(p => p.categoryId === activeCategoryId),
     [products, activeCategoryId],
@@ -113,7 +127,7 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
       title: product.name,
       price: product.price,
       qty: 1,
-      img: product.imageUrl || defaultProductImage,
+      img: resolveMediaUrl(product.imageUrl) || defaultProductImage,
       isPromotion: product.isPromotion,
       extras: [],
       removals: [],
@@ -126,39 +140,77 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
       className="flex-1 overflow-y-auto no-scrollbar"
       style={{ paddingTop: 36, paddingBottom: 72 }}
     >
-      {/* ── HEADER ───────────────────────────────── */}
+      {/* ── HEADER & SEARCH ───────────────────────── */}
       <div
-        className="sticky top-0 z-40 px-3 py-2 flex items-center gap-2"
-        style={{ background: 'var(--color-background)', borderBottom: '1px solid var(--color-outline)' }}
+        className="sticky top-0 z-40 px-3 py-2 flex flex-col gap-2"
+        style={{ background: 'rgba(13, 13, 13, 0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-outline)' }}
       >
-        <h1 className="font-display text-lg tracking-widest flex-1" style={{ letterSpacing: '.06em' }}>MENÚ</h1>
-        <button
-          className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[9.5px] font-bold"
-          style={{ background: 'var(--color-surface)', color: '#666', border: '1px solid var(--color-outline)' }}
-        >
-          <Search size={12} /> Buscar...
-        </button>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="font-display text-lg tracking-widest flex-1" style={{ letterSpacing: '.06em' }}>MENÚ</h1>
+          {!isSearching ? (
+            <button
+              onClick={() => setIsSearching(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold text-white/70 bg-surface border border-outline hover:text-white hover:border-white/20 transition-all active:scale-95"
+            >
+              <Search size={12} className="text-gold" /> Buscar...
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setIsSearching(false);
+                setSearchQuery('');
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-white/60 hover:text-white"
+            >
+              <X size={13} /> Cancelar
+            </button>
+          )}
+        </div>
+
+        {isSearching && (
+          <div className="relative flex items-center">
+            <Search size={14} className="absolute left-3 text-gold pointer-events-none" />
+            <input
+              type="text"
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por nombre o ingrediente..."
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 text-white/40 hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── CATEGORY PILLS ───────────────────────── */}
-      <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-3 pt-2 pb-1">
-        {categories.map(cat => (
-          <div
-            key={cat.id}
-            className={cn('cat-item', activeCategoryId === cat.id && 'active')}
-            onClick={() => setActiveCategoryId(cat.id)}
-          >
-            <div className="cat-img-wrap">
-              <img
-                src={cat.imageUrl || getCategoryIcon(cat.name)}
-                alt={cat.name}
-                className="w-full h-full object-cover"
-              />
+      {/* ── CATEGORY PILLS (only when not actively searching) ──────── */}
+      {!cleanQuery && (
+        <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-3 pt-2 pb-1">
+          {categories.map(cat => (
+            <div
+              key={cat.id}
+              className={cn('cat-item', activeCategoryId === cat.id && 'active')}
+              onClick={() => setActiveCategoryId(cat.id)}
+            >
+              <div className="cat-img-wrap">
+                <img
+                  src={resolveMediaUrl(cat.imageUrl) || getCategoryIcon(cat.name)}
+                  alt={cat.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="cat-label">{cat.name}</span>
             </div>
-            <span className="cat-label">{cat.name}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* ── STATE MESSAGES ──────────────────────── */}
       {isLoading && (
@@ -175,21 +227,96 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
         </div>
       )}
 
-      {!isLoading && !error && visible.length === 0 && (
-        <div className="mx-3 mt-4 p-4 rounded-lg text-xs text-center text-[#555]"
+      {/* ── SEARCH RESULTS ──────────────────────── */}
+      {!isLoading && !error && cleanQuery && (
+        <div className="pt-2">
+          <div className="px-3 py-1 flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">
+              Resultados para "{searchQuery}"
+            </span>
+            <span className="text-[10px] font-bold text-gold">
+              {searchResults.length} {searchResults.length === 1 ? 'producto' : 'productos'}
+            </span>
+          </div>
+
+          {searchResults.length === 0 ? (
+            <div className="mx-3 mt-4 p-6 rounded-2xl text-xs text-center text-white/50 bg-[#161616] border border-white/5">
+              No se encontraron productos que coincidan con tu búsqueda.
+            </div>
+          ) : (
+            searchResults.map(product => (
+              <div
+                key={product.id}
+                className="product-card group"
+                onClick={() => onNavigate('product-detail', product)}
+              >
+                <div className="product-card-body">
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                      <h3 className="product-name">{product.name}</h3>
+                      {product.isPromotion && (
+                        <span className="product-badge bg-primary text-white">
+                          PROMO
+                        </span>
+                      )}
+                      {product.promotionTag && (
+                        <span
+                          className="product-badge"
+                          style={{
+                            backgroundColor: product.promotionTagColor || 'var(--color-gold)',
+                            color: '#111',
+                          }}
+                        >
+                          {product.promotionTag}
+                        </span>
+                      )}
+                    </div>
+                    <p className="product-desc">
+                      {product.description || product.shortDescription || 'Especialidad preparada al momento con ingredientes frescos.'}
+                    </p>
+                  </div>
+                  <div className="product-footer">
+                    <span className="product-price">
+                      ${Number(product.price).toFixed(2)}
+                    </span>
+                    <button
+                      type="button"
+                      className="product-add-btn"
+                      onClick={e => handleAdd(e, product)}
+                      aria-label={`Agregar ${product.name}`}
+                    >
+                      <Plus size={16} strokeWidth={3} />
+                    </button>
+                  </div>
+                </div>
+                <div className="product-image-container">
+                  <img
+                    src={resolveMediaUrl(product.imageUrl) || defaultProductImage}
+                    alt={product.name}
+                    loading="lazy"
+                    className="product-thumb"
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {!isLoading && !error && !cleanQuery && visible.length === 0 && (
+        <div className="mx-3 mt-4 p-4 rounded-xl text-xs text-center text-[#555]"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-outline)' }}>
           No hay productos en esta categoría.
         </div>
       )}
 
-      {/* ── PRODUCT LIST ─────────────────────────── */}
-      {!isLoading && !error && categories
+      {/* ── PRODUCT LIST BY CATEGORY ──────────────── */}
+      {!isLoading && !error && !cleanQuery && categories
         .filter(c => c.id === activeCategoryId)
         .map(category => (
-          <div key={category.id}>
+          <div key={category.id} className="pt-1">
             <h2
-              className="px-3 pt-3 pb-1 text-[11.5px] font-black uppercase tracking-wider"
-              style={{ color: 'var(--color-text-muted)' }}
+              className="px-3 pt-2 pb-1 text-[11px] font-black uppercase tracking-widest text-gold/90"
             >
               {category.name}
             </h2>
@@ -198,12 +325,11 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
               <section key={group.name || `general-${groupIndex}`}>
                 {group.name && (
                   <h3
-                    className="sticky top-[41px] z-30 mx-3 mt-2 rounded-md px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] shadow-lg"
+                    className="sticky top-[49px] z-30 mx-3 mt-2 mb-1 rounded-lg px-3 py-1.5 text-[10.5px] font-black uppercase tracking-[0.14em] shadow-lg border border-white/10"
                     style={{
                       color: 'var(--color-gold)',
-                      background: 'rgba(20, 20, 20, 0.96)',
-                      border: '1px solid var(--color-outline)',
-                      backdropFilter: 'blur(10px)',
+                      background: 'rgba(24, 24, 24, 0.94)',
+                      backdropFilter: 'blur(12px)',
                     }}
                   >
                     {group.name}
@@ -213,26 +339,56 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
                 {group.products.map(product => (
                   <div
                     key={product.id}
-                    className="product-row"
+                    className="product-card group"
                     onClick={() => onNavigate('product-detail', product)}
                   >
-                    <img
-                      src={product.imageUrl || defaultProductImage}
-                      alt={product.name}
-                      className="product-thumb"
-                    />
-                    <div className="product-info">
-                      <h3 className="product-name">{product.name}</h3>
-                      <p className="product-desc">{product.description || product.shortDescription || 'Producto Fatboy'}</p>
-                      <p className="product-price">${product.price}.00</p>
+                    <div className="product-card-body">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          <h3 className="product-name">{product.name}</h3>
+                          {product.isPromotion && (
+                            <span className="product-badge bg-primary text-white">
+                              PROMO
+                            </span>
+                          )}
+                          {product.promotionTag && (
+                            <span
+                              className="product-badge"
+                              style={{
+                                backgroundColor: product.promotionTagColor || 'var(--color-gold)',
+                                color: '#111',
+                              }}
+                            >
+                              {product.promotionTag}
+                            </span>
+                          )}
+                        </div>
+                        <p className="product-desc">
+                          {product.description || product.shortDescription || 'Especialidad preparada al momento con ingredientes frescos.'}
+                        </p>
+                      </div>
+                      <div className="product-footer">
+                        <span className="product-price">
+                          ${Number(product.price).toFixed(2)}
+                        </span>
+                        <button
+                          type="button"
+                          className="product-add-btn"
+                          onClick={e => handleAdd(e, product)}
+                          aria-label={`Agregar ${product.name}`}
+                        >
+                          <Plus size={16} strokeWidth={3} />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      className="add-btn"
-                      onClick={e => handleAdd(e, product)}
-                      aria-label={`Agregar ${product.name}`}
-                    >
-                      <Plus size={13} strokeWidth={2.5} />
-                    </button>
+                    <div className="product-image-container">
+                      <img
+                        src={resolveMediaUrl(product.imageUrl) || defaultProductImage}
+                        alt={product.name}
+                        loading="lazy"
+                        className="product-thumb"
+                      />
+                    </div>
                   </div>
                 ))}
               </section>

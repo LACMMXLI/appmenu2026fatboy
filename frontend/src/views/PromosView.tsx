@@ -139,31 +139,37 @@ export function PromosView({ onNavigate }: PromosViewProps) {
       <div className="flex flex-col gap-3 px-3 pt-3">
         {promotions.length > 0 && (
           <>
-            <p className="px-1 text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>Especiales publicados hoy</p>
+            <p className="px-1 text-[10.5px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>Especiales publicados hoy</p>
             {promotions.map(promo => (
               <div
                 key={promo.id}
-                className="rounded-xl overflow-hidden cursor-pointer bg-black"
-                style={{ border: '1px solid var(--color-outline)' }}
+                className="rounded-2xl overflow-hidden cursor-pointer bg-[#141414] border border-white/10 shadow-lg transition-all active:scale-[0.985] hover:border-primary/40"
                 onClick={() => addPromoToCart(promo)}
               >
-                <img src={resolveMediaUrl(promo.imageUrl)} alt={promo.title} className="w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
+                <div className="relative bg-black" style={{ aspectRatio: '16 / 9' }}>
+                  <img src={resolveMediaUrl(promo.imageUrl)} alt={promo.title} className="w-full h-full object-cover" />
+                  {promo.promoText && (
+                    <span className="absolute top-2.5 left-2.5 bg-primary/95 text-white font-black text-[9.5px] uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">
+                      {promo.promoText}
+                    </span>
+                  )}
+                </div>
                 <div
-                  className="p-2.5 flex items-center justify-between"
-                  style={{ background: 'var(--color-surface)' }}
+                  className="p-3.5 flex items-center justify-between gap-3"
+                  style={{ background: 'linear-gradient(145deg, #1c1c1c 0%, #131313 100%)' }}
                 >
-                  <div>
-                    <p className="mb-0.5 text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: 'var(--color-gold)' }}>{promo.promoText}</p>
-                    <h3 className="font-black text-[12.5px] text-white mb-0.5">{promo.title}</h3>
-                    <p className="text-[9.5px] text-[#777] leading-snug">{promo.description}</p>
-                    <p className="font-bold text-[12px] mt-1" style={{ color: 'var(--color-primary)' }}>${promo.price}.00</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-black text-[14px] text-white uppercase tracking-wide leading-snug mb-1">{promo.title}</h3>
+                    {promo.description && (
+                      <p className="text-[11.5px] text-gray-300 leading-snug line-clamp-2">{promo.description}</p>
+                    )}
+                    <p className="font-black text-[16px] text-gold mt-1.5">${Number(promo.price).toFixed(2)}</p>
                   </div>
                   <button
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[9.5px] uppercase tracking-wider flex-shrink-0 ml-3"
-                    style={{ background: 'var(--color-primary)', color: 'white' }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-[10.5px] uppercase tracking-wider flex-shrink-0 text-white bg-primary shadow-md hover:bg-primary-hover active:scale-95 transition-all"
                     onClick={e => { e.stopPropagation(); addPromoToCart(promo); }}
                   >
-                    <ShoppingCart size={11} /> Agregar
+                    <ShoppingCart size={13} /> Agregar
                   </button>
                 </div>
               </div>
@@ -171,33 +177,35 @@ export function PromosView({ onNavigate }: PromosViewProps) {
           </>
         )}
 
-        <p className="px-1 pt-1 text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>
-          {promotionsOpen ? 'Promociones vigentes' : `Promociones disponibles de ${formatPromotionHour(startHour)} a ${formatPromotionHour(endHour)} h`}
+        <p className="px-1 pt-1 text-[10.5px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>
+          {promotionsOpen ? 'Promociones del día' : `Promociones disponibles de ${formatPromotionHour(startHour)} a ${formatPromotionHour(endHour)} h`}
         </p>
         {dailyPromoCards.map(promo => (
           <div
             key={promo.id}
-            className={`rounded-xl overflow-hidden bg-black ${promotionsOpen ? 'cursor-pointer' : 'cursor-not-allowed opacity-45 grayscale'}`}
-            style={{ border: '1px solid var(--color-outline)' }}
+            className={`rounded-2xl overflow-hidden bg-[#141414] border border-white/10 shadow-lg transition-all ${promotionsOpen ? 'cursor-pointer active:scale-[0.985] hover:border-primary/40' : 'cursor-not-allowed opacity-45 grayscale'}`}
             onClick={() => addDailyPromoToCart(promo)}
           >
-            <img src={promo.img} alt={promo.label} className="w-full object-contain" style={{ aspectRatio: '3 / 2' }} />
+            <div className="relative bg-black" style={{ aspectRatio: '16 / 9' }}>
+              <img src={promo.img} alt={promo.label} className="w-full h-full object-cover" />
+            </div>
             <div
-              className="p-2.5 flex items-center justify-between"
-              style={{ background: 'var(--color-surface)' }}
+              className="p-3.5 flex items-center justify-between gap-3"
+              style={{ background: 'linear-gradient(145deg, #1c1c1c 0%, #131313 100%)' }}
             >
-              <div>
-                <h3 className="font-black text-[12.5px] text-white mb-0.5">{promo.label}</h3>
-                <p className="text-[9.5px] text-[#777] leading-snug">{promo.desc}</p>
-                <p className="font-bold text-[12px] mt-1" style={{ color: 'var(--color-primary)' }}>${promo.price}.00</p>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-[14px] text-white uppercase tracking-wide leading-snug mb-1">{promo.label}</h3>
+                {promo.desc && (
+                  <p className="text-[11.5px] text-gray-300 leading-snug line-clamp-2">{promo.desc}</p>
+                )}
+                <p className="font-black text-[16px] text-gold mt-1.5">${Number(promo.price).toFixed(2)}</p>
               </div>
               <button
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[9.5px] uppercase tracking-wider flex-shrink-0 ml-3"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-[10.5px] uppercase tracking-wider flex-shrink-0 text-white shadow-md transition-all ${promotionsOpen ? 'bg-primary hover:bg-primary-hover active:scale-95' : 'bg-gray-700'}`}
                 disabled={!promotionsOpen}
-                style={{ background: promotionsOpen ? 'var(--color-primary)' : '#374151', color: 'white' }}
                 onClick={e => { e.stopPropagation(); addDailyPromoToCart(promo); }}
               >
-                <ShoppingCart size={11} /> {promotionsOpen ? 'Agregar' : 'No disponible'}
+                <ShoppingCart size={13} /> {promotionsOpen ? 'Agregar' : 'No disponible'}
               </button>
             </div>
           </div>

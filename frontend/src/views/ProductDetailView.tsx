@@ -87,19 +87,32 @@ export function ProductDetailView({ onNavigate, product }: ProductDetailViewProp
       </div>
 
       <div className="px-5 -mt-6 relative z-10 w-full animate-fade-in-up stagger-1">
-        {product.isPromotion && (
-          <span className="inline-block bg-primary text-white text-[9px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider mb-1.5 shadow-md">
-            PROMO
-          </span>
-        )}
-        
-        <div className="flex justify-between items-start mb-1 gap-2 group">
-          <h1 className="font-display text-2xl tracking-wide flex-1 leading-tight group-hover:text-gray-200 transition-colors">{product.name}</h1>
-          <span className="font-display text-2xl text-accent tracking-wide drop-shadow-sm group-hover:drop-shadow-[0_0_10px_rgba(250,189,0,0.5)] transition-all shrink-0">${productPrice}</span>
+        <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+          {product.isPromotion && (
+            <span className="inline-block bg-primary text-white text-[9.5px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-md">
+              PROMO
+            </span>
+          )}
+          {product.promotionTag && (
+            <span
+              className="inline-block text-[9.5px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-md"
+              style={{
+                backgroundColor: product.promotionTagColor || 'var(--color-gold)',
+                color: '#111',
+              }}
+            >
+              {product.promotionTag}
+            </span>
+          )}
         </div>
         
-        <p className="text-gray-400 text-[11px] leading-snug mb-5">
-          {(product.description || product.shortDescription || 'Producto Fatboy').replace('carne queso acompañada', 'carne y queso, acompañada')}
+        <div className="flex justify-between items-start mb-2 gap-2 group">
+          <h1 className="font-display text-2xl tracking-wide flex-1 leading-tight text-white group-hover:text-gray-100 transition-colors">{product.name}</h1>
+          <span className="font-display text-2xl text-gold tracking-wide drop-shadow-sm font-bold shrink-0">${Number(productPrice).toFixed(2)}</span>
+        </div>
+        
+        <p className="text-gray-200 text-[13px] leading-relaxed mb-5 font-normal">
+          {(product.description || product.shortDescription || 'Especialidad preparada al momento con los mejores ingredientes.').replace('carne queso acompañada', 'carne y queso, acompañada')}
         </p>
 
         {/* Removals */}
