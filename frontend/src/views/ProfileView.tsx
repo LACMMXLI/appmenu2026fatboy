@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Star, Flame, Phone, ChevronRight, Lock, CreditCard, LogOut, Store, Gift, Zap, ShieldCheck, History, ShoppingBag } from 'lucide-react';
+import { Star, Flame, Phone, ChevronRight, Lock, Banknote, LogOut, Store, Gift, Zap, ShieldCheck, History, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { Button } from '@/components/ui/Button';
@@ -222,7 +222,7 @@ export function ProfileView({ onNavigate }: ProfileViewProps) {
             <div className="bg-surface border border-outline/60 rounded-xl overflow-hidden divide-y divide-outline/50">
               {[
                 { icon: Lock, label: 'Cambiar Contraseña', action: () => onNavigate('change-password') },
-                { icon: CreditCard, label: 'Métodos de Pago', action: () => onNavigate('payment-methods') },
+                { icon: Banknote, label: 'Método de Pago (Efectivo)', action: () => onNavigate('payment-methods') },
               ].map((item, i) => (
                 <button key={i} onClick={item.action} className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface-hover transition-colors">
                   <div className="flex items-center gap-2">
