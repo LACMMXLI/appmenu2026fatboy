@@ -10,3 +10,6 @@ frontend-pedidos/release*/
 .env*
 !.env.example
 .playwright-cli/
+logs/
+output/
+
