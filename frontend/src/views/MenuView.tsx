@@ -244,61 +244,64 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
               No se encontraron productos que coincidan con tu búsqueda.
             </div>
           ) : (
-            searchResults.map(product => (
-              <div
-                key={product.id}
-                className="product-card group"
-                onClick={() => onNavigate('product-detail', product)}
-              >
-                <div className="product-card-body">
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                      <h3 className="product-name">{product.name}</h3>
-                      {product.isPromotion && (
-                        <span className="product-badge bg-primary text-white">
-                          PROMO
-                        </span>
-                      )}
-                      {product.promotionTag && (
-                        <span
-                          className="product-badge"
-                          style={{
-                            backgroundColor: product.promotionTagColor || 'var(--color-gold)',
-                            color: '#111',
-                          }}
-                        >
-                          {product.promotionTag}
-                        </span>
-                      )}
+            searchResults.map((product, pIndex) => {
+              const isReversed = pIndex % 2 === 1;
+              return (
+                <div
+                  key={product.id}
+                  className={cn('product-card group', isReversed && 'reversed')}
+                  onClick={() => onNavigate('product-detail', product)}
+                >
+                  <div className="product-card-body">
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <h3 className="product-name">{product.name}</h3>
+                        {product.isPromotion && (
+                          <span className="product-badge bg-primary text-white">
+                            PROMO
+                          </span>
+                        )}
+                        {product.promotionTag && (
+                          <span
+                            className="product-badge"
+                            style={{
+                              backgroundColor: product.promotionTagColor || 'var(--color-gold)',
+                              color: '#111',
+                            }}
+                          >
+                            {product.promotionTag}
+                          </span>
+                        )}
+                      </div>
+                      <p className="product-desc">
+                        {product.description || product.shortDescription || 'Especialidad preparada al momento con ingredientes frescos.'}
+                      </p>
                     </div>
-                    <p className="product-desc">
-                      {product.description || product.shortDescription || 'Especialidad preparada al momento con ingredientes frescos.'}
-                    </p>
+                    <div className="product-footer">
+                      <span className="product-price">
+                        ${Number(product.price).toFixed(2)}
+                      </span>
+                      <button
+                        type="button"
+                        className="product-add-btn"
+                        onClick={e => handleAdd(e, product)}
+                        aria-label={`Agregar ${product.name}`}
+                      >
+                        <Plus size={16} strokeWidth={3} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="product-footer">
-                    <span className="product-price">
-                      ${Number(product.price).toFixed(2)}
-                    </span>
-                    <button
-                      type="button"
-                      className="product-add-btn"
-                      onClick={e => handleAdd(e, product)}
-                      aria-label={`Agregar ${product.name}`}
-                    >
-                      <Plus size={16} strokeWidth={3} />
-                    </button>
+                  <div className="product-image-container">
+                    <img
+                      src={resolveMediaUrl(product.imageUrl) || defaultProductImage}
+                      alt={product.name}
+                      loading="lazy"
+                      className="product-thumb"
+                    />
                   </div>
                 </div>
-                <div className="product-image-container">
-                  <img
-                    src={resolveMediaUrl(product.imageUrl) || defaultProductImage}
-                    alt={product.name}
-                    loading="lazy"
-                    className="product-thumb"
-                  />
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -336,61 +339,65 @@ export function MenuView({ onNavigate, initialCategoryId }: MenuViewProps) {
                   </h3>
                 )}
 
-                {group.products.map(product => (
-                  <div
-                    key={product.id}
-                    className="product-card group"
-                    onClick={() => onNavigate('product-detail', product)}
-                  >
-                    <div className="product-card-body">
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                          <h3 className="product-name">{product.name}</h3>
-                          {product.isPromotion && (
-                            <span className="product-badge bg-primary text-white">
-                              PROMO
-                            </span>
-                          )}
-                          {product.promotionTag && (
-                            <span
-                              className="product-badge"
-                              style={{
-                                backgroundColor: product.promotionTagColor || 'var(--color-gold)',
-                                color: '#111',
-                              }}
-                            >
-                              {product.promotionTag}
-                            </span>
-                          )}
+                {group.products.map(product => {
+                  const globalIndex = visible.findIndex(p => p.id === product.id);
+                  const isReversed = (globalIndex >= 0 ? globalIndex : 0) % 2 === 1;
+                  return (
+                    <div
+                      key={product.id}
+                      className={cn('product-card group', isReversed && 'reversed')}
+                      onClick={() => onNavigate('product-detail', product)}
+                    >
+                      <div className="product-card-body">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <h3 className="product-name">{product.name}</h3>
+                            {product.isPromotion && (
+                              <span className="product-badge bg-primary text-white">
+                                PROMO
+                              </span>
+                            )}
+                            {product.promotionTag && (
+                              <span
+                                className="product-badge"
+                                style={{
+                                  backgroundColor: product.promotionTagColor || 'var(--color-gold)',
+                                  color: '#111',
+                                }}
+                              >
+                                {product.promotionTag}
+                              </span>
+                            )}
+                          </div>
+                          <p className="product-desc">
+                            {product.description || product.shortDescription || 'Especialidad preparada al momento con ingredientes frescos.'}
+                          </p>
                         </div>
-                        <p className="product-desc">
-                          {product.description || product.shortDescription || 'Especialidad preparada al momento con ingredientes frescos.'}
-                        </p>
+                        <div className="product-footer">
+                          <span className="product-price">
+                            ${Number(product.price).toFixed(2)}
+                          </span>
+                          <button
+                            type="button"
+                            className="product-add-btn"
+                            onClick={e => handleAdd(e, product)}
+                            aria-label={`Agregar ${product.name}`}
+                          >
+                            <Plus size={16} strokeWidth={3} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="product-footer">
-                        <span className="product-price">
-                          ${Number(product.price).toFixed(2)}
-                        </span>
-                        <button
-                          type="button"
-                          className="product-add-btn"
-                          onClick={e => handleAdd(e, product)}
-                          aria-label={`Agregar ${product.name}`}
-                        >
-                          <Plus size={16} strokeWidth={3} />
-                        </button>
+                      <div className="product-image-container">
+                        <img
+                          src={resolveMediaUrl(product.imageUrl) || defaultProductImage}
+                          alt={product.name}
+                          loading="lazy"
+                          className="product-thumb"
+                        />
                       </div>
                     </div>
-                    <div className="product-image-container">
-                      <img
-                        src={resolveMediaUrl(product.imageUrl) || defaultProductImage}
-                        alt={product.name}
-                        loading="lazy"
-                        className="product-thumb"
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </section>
             ))}
           </div>
