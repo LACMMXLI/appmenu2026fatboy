@@ -21,6 +21,7 @@ const SETTINGS_VERSION = 2;
 const MICRONS_PER_CSS_PIXEL = 25_400 / 96;
 const MIN_TICKET_HEIGHT_MICRONS = 50_000;
 const MAX_TICKET_HEIGHT_MICRONS = 3_000_000;
+const PAGE_HEIGHT_ROUNDING_MICRONS = 2_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 interface StationIdentity {
@@ -185,12 +186,18 @@ async function printHtml(
   try {
     await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     const contentHeightPx = await printWindow.webContents.executeJavaScript(
-      'Math.ceil(Math.max(document.body.scrollHeight, document.documentElement.scrollHeight))',
+      // scrollHeight toma como mínimo la altura (600 px) de la ventana
+      // oculta y producía una cola de papel artificial. El rectángulo del
+      // body mide únicamente el ticket, incluido el avance para el corte.
+      'Math.ceil(document.body.getBoundingClientRect().height)',
       true,
     ) as number;
     const height = Math.min(
       MAX_TICKET_HEIGHT_MICRONS,
-      Math.max(MIN_TICKET_HEIGHT_MICRONS, Math.ceil(contentHeightPx * MICRONS_PER_CSS_PIXEL) + 8_000),
+      Math.max(
+        MIN_TICKET_HEIGHT_MICRONS,
+        Math.ceil(contentHeightPx * MICRONS_PER_CSS_PIXEL) + PAGE_HEIGHT_ROUNDING_MICRONS,
+      ),
     );
 
     const result = await new Promise<{ success: boolean; reason: string }>((resolve) => {

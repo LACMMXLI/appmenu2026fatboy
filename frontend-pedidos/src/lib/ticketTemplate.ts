@@ -47,7 +47,13 @@ export function buildTicketHtml(
   const production = documentType === 'PRODUCTION';
   const isDelivery = order.deliveryType === 'delivery';
   const compact = paperWidthMm === 58;
-  const bodyWidthMm = paperWidthMm - (compact ? 5 : 7);
+  // Un roll de 80 mm no ofrece necesariamente 80 mm imprimibles: los
+  // cabezales y drivers térmicos suelen reservar una franja a cada lado.
+  // Este ancho seguro evita que Windows recorte cantidades, nombres o
+  // importes aunque el papel esté configurado correctamente como 80 mm.
+  const contentWidthMm = compact ? 48 : 68;
+  const startFeedMm = compact ? 5 : 7;
+  const cutFeedMm = compact ? 12 : 16;
   const fontSizePx = production ? (compact ? 13 : 15) : (compact ? 11 : 12);
   const titleSizePx = production ? (compact ? 25 : 30) : (compact ? 21 : 24);
   const createdAt = new Date(order.createdAt);
@@ -87,49 +93,56 @@ export function buildTicketHtml(
       @page { margin: 0; }
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; width: ${paperWidthMm}mm; background: #fff; color: #000; }
-      body { width: ${bodyWidthMm}mm; margin: 0 auto; padding: 2.5mm 0 4mm; font-family: Arial, Helvetica, sans-serif; font-size: ${fontSizePx}px; line-height: 1.28; }
+      body { font-family: Arial, Helvetica, sans-serif; font-size: ${fontSizePx}px; line-height: 1.28; overflow-wrap: anywhere; word-break: break-word; }
+      .ticket { width: ${contentWidthMm}mm; margin: 0 auto; padding-top: ${startFeedMm}mm; }
       h1 { margin: 0; text-align: center; font-size: ${titleSizePx}px; line-height: 1; }
       .center { text-align: center; }
       .muted { margin-top: 1.5mm; font-size: ${compact ? 9 : 10}px; }
       .divider { border-top: 1px dashed #000; margin: 2mm 0; }
-      .row, .item-main { display: flex; justify-content: space-between; gap: 2mm; margin: 1mm 0; }
-      .row span:last-child, .item-main span:last-child { text-align: right; }
+      .row, .item-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 2mm; margin: 1mm 0; max-width: 100%; }
+      .row strong { flex: 0 0 auto; }
+      .row span:last-child { min-width: 0; max-width: 70%; text-align: right; overflow-wrap: anywhere; }
+      .item-main span:last-child { flex: 0 0 auto; text-align: right; white-space: nowrap; }
       .document-label { margin-top: 1.5mm; text-align: center; font-size: ${compact ? 13 : 15}px; font-weight: 900; letter-spacing: .08em; }
       .folio { margin-top: 1.5mm; text-align: center; font-size: ${production ? (compact ? 28 : 34) : (compact ? 18 : 21)}px; font-weight: 900; }
       .delivery-box { margin-top: 2mm; border: 1.5px solid #000; padding: 1.5mm 2mm; font-size: ${compact ? 11 : 13}px; }
       .delivery-box strong { display: block; font-size: ${compact ? 12 : 14}px; margin-bottom: 1mm; }
       .item { border-top: ${production ? '2px solid' : '1px dashed'} #000; padding: ${production ? '3mm' : '2mm'} 0; break-inside: avoid; }
-      .item-main strong { flex: 1; }
+      .item-main strong { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
       .modifiers { margin-top: 1mm; padding-left: 2mm; font-size: ${production ? (compact ? 12 : 14) : fontSizePx}px; font-weight: 800; }
       .note { margin-top: 2mm; border: 1.5px solid #000; padding: 2mm; font-weight: 700; white-space: pre-wrap; }
       .total { margin-top: 2mm; padding-top: 2mm; border-top: 2px solid #000; font-size: ${compact ? 16 : 18}px; font-weight: 900; }
       .footer { margin-top: 3mm; text-align: center; font-size: 9px; }
+      .cut-feed { width: 100%; height: ${cutFeedMm}mm; }
     </style>
   </head>
   <body>
-    <h1>FATBOY</h1>
-    <div class="document-label">${production ? 'COMANDA DE COCINA' : 'TICKET DEL CLIENTE'}</div>
-    <div class="folio">${escapeHtml(order.folio)}</div>
-    <div class="center muted">${escapeHtml(order.branchName)} · ${escapeHtml(createdLabel)}</div>
-    <div class="divider"></div>
-    <div class="row"><strong>Cliente</strong><span>${escapeHtml(order.customerName)}</span></div>
-    ${production && !isDelivery ? '' : `<div class="row"><strong>Teléfono</strong><span>${escapeHtml(order.customerPhone)}</span></div>`}
-    <div class="row"><strong>Tipo</strong><span>${isDelivery ? 'A DOMICILIO' : 'Para recoger'}</span></div>
-    ${production ? '' : `<div class="row"><strong>Pago</strong><span>${order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span></div>`}
-    ${isDelivery && order.deliveryAddress ? `
-      <div class="delivery-box">
-        <strong>ENTREGA A DOMICILIO:</strong>
-        <div>${escapeHtml(order.deliveryAddress)}</div>
-        ${order.deliveryReference ? `<div style="margin-top: 1mm; font-size: ${compact ? 10 : 11}px;"><em>Ref: ${escapeHtml(order.deliveryReference)}</em></div>` : ''}
-      </div>
-    ` : ''}
-    <div class="divider"></div>
-    ${itemLines}
-    ${order.notes ? `<div class="note">NOTA: ${escapeHtml(order.notes)}</div>` : ''}
-    ${!production && order.deliveryFee > 0 ? `<div class="row"><strong>Envío a domicilio</strong><span>${escapeHtml(currency(order.deliveryFee))}</span></div>` : ''}
-    ${!production && order.pointsRedeemed > 0 ? `<div class="row"><strong>Puntos usados</strong><span>${escapeHtml(order.pointsRedeemed)}</span></div>` : ''}
-    ${production ? '' : `<div class="row total"><strong>Total</strong><span>${escapeHtml(currency(order.total))}</span></div>`}
-    <div class="footer">${production ? 'PRODUCCIÓN · NO ENTREGAR AL CLIENTE' : 'Gracias por tu compra'}</div>
+    <main class="ticket">
+      <h1>FATBOY</h1>
+      <div class="document-label">${production ? 'COMANDA DE COCINA' : 'TICKET DEL CLIENTE'}</div>
+      <div class="folio">${escapeHtml(order.folio)}</div>
+      <div class="center muted">${escapeHtml(order.branchName)} · ${escapeHtml(createdLabel)}</div>
+      <div class="divider"></div>
+      <div class="row"><strong>Cliente</strong><span>${escapeHtml(order.customerName)}</span></div>
+      ${production && !isDelivery ? '' : `<div class="row"><strong>Teléfono</strong><span>${escapeHtml(order.customerPhone)}</span></div>`}
+      <div class="row"><strong>Tipo</strong><span>${isDelivery ? 'A DOMICILIO' : 'PARA RECOGER'}</span></div>
+      ${production ? '' : `<div class="row"><strong>Pago</strong><span>${order.paymentMethod === 'card' ? 'Tarjeta' : 'Efectivo'}</span></div>`}
+      ${isDelivery && order.deliveryAddress ? `
+        <div class="delivery-box">
+          <strong>ENTREGA A DOMICILIO:</strong>
+          <div>${escapeHtml(order.deliveryAddress)}</div>
+          ${order.deliveryReference ? `<div style="margin-top: 1mm; font-size: ${compact ? 10 : 11}px;"><em>Ref: ${escapeHtml(order.deliveryReference)}</em></div>` : ''}
+        </div>
+      ` : ''}
+      <div class="divider"></div>
+      ${itemLines}
+      ${order.notes ? `<div class="note">NOTA: ${escapeHtml(order.notes)}</div>` : ''}
+      ${!production && order.deliveryFee > 0 ? `<div class="row"><strong>Envío a domicilio</strong><span>${escapeHtml(currency(order.deliveryFee))}</span></div>` : ''}
+      ${!production && order.pointsRedeemed > 0 ? `<div class="row"><strong>Puntos usados</strong><span>${escapeHtml(order.pointsRedeemed)}</span></div>` : ''}
+      ${production ? '' : `<div class="row total"><strong>Total</strong><span>${escapeHtml(currency(order.total))}</span></div>`}
+      <div class="footer">${production ? 'PRODUCCIÓN · NO ENTREGAR AL CLIENTE' : 'Gracias por tu compra'}</div>
+    </main>
+    <div class="cut-feed" aria-hidden="true"></div>
   </body>
 </html>`;
 }

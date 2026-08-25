@@ -254,6 +254,9 @@ export function PrinterSettingsDialog({
                     </button>
                   ))}
                 </div>
+                <p className="mt-2 text-[11px] font-semibold leading-relaxed text-gray-500">
+                  El perfil de 80 mm usa un área segura centrada y agrega avance al inicio y al final para que el texto no se recorte antes del corte automático.
+                </p>
               </fieldset>
 
               <div className={`rounded-xl border p-4 ${autoAcceptEnabled ? 'border-emerald-400/30 bg-emerald-400/10' : 'border-white/10 bg-[#101010]'}`}>

@@ -46,6 +46,16 @@ describe('ticketTemplate', () => {
     expect(html).toContain(`width: ${width}mm`);
   });
 
+  it('mantiene el contenido de 80 mm dentro del área imprimible y deja avance para el corte', () => {
+    const html = buildTicketHtml(order, 80, 'CUSTOMER');
+
+    expect(html).toContain('.ticket { width: 68mm;');
+    expect(html).toContain('padding-top: 7mm;');
+    expect(html).toContain('.cut-feed { width: 100%; height: 16mm; }');
+    expect(html).toContain('overflow-wrap: anywhere;');
+    expect(html).toContain('<div class="cut-feed" aria-hidden="true"></div>');
+  });
+
   it('genera una comanda de cocina sin precios ni datos de cobro', () => {
     const html = buildTicketHtml(order, 80, 'PRODUCTION');
     expect(html).toContain('data-document-type="PRODUCTION"');
