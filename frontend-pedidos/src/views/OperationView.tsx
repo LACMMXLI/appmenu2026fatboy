@@ -216,6 +216,7 @@ export function OperationView() {
               branchName={selectedBranch?.name ?? 'Sucursal'}
               settings={printerSettings}
               onSettingsChange={setPrinterSettings}
+              canChangeUpdateChannel={staff?.role === 'ADMIN'}
             />
             <Button type="button" size="sm" variant="outline" onClick={() => refetch(true)} isLoading={syncing} title="Actualizar pedidos" aria-label="Actualizar pedidos" className="w-9 px-0 xl:w-auto xl:px-3">
               <RefreshCw size={15} className="xl:mr-1" /> <span className="hidden xl:inline">Actualizar</span>

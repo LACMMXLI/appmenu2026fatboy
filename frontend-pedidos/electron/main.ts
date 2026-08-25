@@ -15,7 +15,9 @@ import {
   type DesktopResponse,
   type PrinterSettings,
   type PrintResult,
+  type UpdateChannel,
 } from '../src/desktop/desktop-types';
+import { validCriticalOperationId } from '../src/desktop/update-utils';
 import {
   listPrinters,
   loadPrinterSettings,
@@ -29,9 +31,11 @@ import {
   parsePrinterBranchId,
   parsePrinterSettingsInput,
 } from './printing/validation';
+import { UpdateManager } from './updater/update-manager';
 
 const RENDERER_SCHEME = 'fatboy';
 let mainWindow: BrowserWindow | null = null;
+let updateManager: UpdateManager | null = null;
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -58,6 +62,11 @@ function trustedSender(event: IpcMainInvokeEvent): boolean {
 function requireTrustedSender(event: IpcMainInvokeEvent): BrowserWindow {
   if (!trustedSender(event) || !mainWindow) throw new Error('Solicitud de escritorio no autorizada.');
   return mainWindow;
+}
+
+function requireUpdateManager(): UpdateManager {
+  if (!updateManager) throw new Error('El sistema de actualización todavía no está disponible.');
+  return updateManager;
 }
 
 async function configuredPrinter(window: BrowserWindow, branchId: string): Promise<PrinterSettings> {
@@ -106,7 +115,9 @@ function registerIpcHandlers() {
       const window = requireTrustedSender(event);
       const order = parsePrintableOrder(value);
       const documentType = parsePrintDocumentType(documentTypeValue);
-      return await printOrderTicket(order, documentType, await configuredPrinter(window, order.branchId));
+      return await requireUpdateManager().runCriticalOperation('print-order', async () => (
+        printOrderTicket(order, documentType, await configuredPrinter(window, order.branchId))
+      ));
     } catch (error) {
       return { ok: false, message: errorMessage(error) };
     }
@@ -116,10 +127,53 @@ function registerIpcHandlers() {
     try {
       const window = requireTrustedSender(event);
       const branchId = parsePrinterBranchId(value);
-      return await printTestTicket(await configuredPrinter(window, branchId));
+      return await requireUpdateManager().runCriticalOperation('print-test', async () => (
+        printTestTicket(await configuredPrinter(window, branchId))
+      ));
     } catch (error) {
       return { ok: false, message: errorMessage(error) };
     }
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.getUpdateState, (event) => {
+    requireTrustedSender(event);
+    return requireUpdateManager().getState();
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.checkForUpdates, async (event) => {
+    try {
+      requireTrustedSender(event);
+      return { ok: true, data: await requireUpdateManager().checkForUpdates('manual') };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.installUpdate, async (event) => {
+    try {
+      requireTrustedSender(event);
+      return { ok: true, data: await requireUpdateManager().requestInstall() };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.setUpdateChannel, async (event, value) => {
+    try {
+      requireTrustedSender(event);
+      if (value !== 'stable' && value !== 'pilot') throw new Error('Canal de actualización inválido.');
+      return { ok: true, data: await requireUpdateManager().setChannel(value as UpdateChannel) };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.setCriticalOperation, (event, operationId, active) => {
+    requireTrustedSender(event);
+    if (!validCriticalOperationId(operationId) || typeof active !== 'boolean') {
+      throw new Error('Estado de operación inválido.');
+    }
+    requireUpdateManager().setCriticalOperation(`renderer:${operationId}`, active);
   });
 }
 
@@ -163,6 +217,11 @@ async function createMainWindow() {
     if (!allowed) event.preventDefault();
   });
   mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.webContents.once('did-finish-load', () => {
+    updateManager?.notifyRenderer();
+    updateManager?.scheduleAutomaticChecks();
+  });
+  mainWindow.webContents.on('render-process-gone', () => updateManager?.clearRendererCriticalOperations());
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -177,6 +236,13 @@ async function createMainWindow() {
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
+  updateManager = new UpdateManager(() => mainWindow);
+  try {
+    await updateManager.initialize();
+  } catch (error) {
+    // Una falla inicializando actualizaciones nunca debe bloquear el POS.
+    console.error('No se pudo inicializar el sistema de actualización:', errorMessage(error));
+  }
   registerIpcHandlers();
   if (!process.env.ELECTRON_RENDERER_URL) await registerRendererProtocol();
   await createMainWindow();

@@ -1,4 +1,5 @@
 import type { PrintDocumentType } from '../desktop/desktop-types';
+import { getDesktopApi } from '../desktop/desktop-bridge';
 
 // Cliente HTTP del backend NestJS existente — mismo backend que `frontend/`
 // (Sección Cinco del plan: reutilizar todo lo construido, no duplicar
@@ -337,23 +338,47 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function requestWithAuth<T>(path: string, token: string, method = 'GET', body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    cache: NO_STORE,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const desktopApi = getDesktopApi();
+  const mutatesData = method.toUpperCase() !== 'GET';
+  const operationId = `api:${method.toUpperCase()}:${crypto.randomUUID()}`;
+  let criticalOperationRegistered = false;
 
-  if (!response.ok) {
-    const message = await readApiMessage(response);
-    throw new Error(message || `API ${response.status}: ${response.statusText}`);
+  if (desktopApi && mutatesData) {
+    try {
+      await desktopApi.setCriticalOperation(operationId, true);
+      criticalOperationRegistered = true;
+    } catch {
+      // El backend debe seguir disponible aunque el puente de Electron falle.
+    }
   }
 
-  return response.json() as Promise<T>;
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      cache: NO_STORE,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const message = await readApiMessage(response);
+      throw new Error(message || `API ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json() as Promise<T>;
+  } finally {
+    if (desktopApi && criticalOperationRegistered) {
+      try {
+        await desktopApi.setCriticalOperation(operationId, false);
+      } catch {
+        // La operación remota ya terminó; no se altera su resultado por una falla IPC.
+      }
+    }
+  }
 }
 
 async function readApiMessage(response: Response): Promise<string> {

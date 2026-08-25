@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, CheckCircle2, Power, Printer, RefreshCw, RotateCcw, X } from 'lucide-react';
 import { Button } from './ui/Button';
+import { UpdateSettingsPanel } from './UpdateStatus';
 import { getDesktopApi } from '../desktop/desktop-bridge';
 import type { DesktopPrinter, PaperWidthMm, PrinterSettings } from '../desktop/desktop-types';
 import { listPrintJobs, retryPrintJob, type PrintJob, type PrintJobStatus } from '../lib/api';
@@ -26,6 +27,7 @@ interface PrinterSettingsDialogProps {
   branchName: string;
   settings: PrinterSettings | null;
   onSettingsChange: (settings: PrinterSettings) => void;
+  canChangeUpdateChannel: boolean;
 }
 
 export function PrinterSettingsDialog({
@@ -34,6 +36,7 @@ export function PrinterSettingsDialog({
   branchName,
   settings,
   onSettingsChange,
+  canChangeUpdateChannel,
 }: PrinterSettingsDialogProps) {
   const desktopApi = getDesktopApi();
   const [open, setOpen] = useState(false);
@@ -347,6 +350,8 @@ export function PrinterSettingsDialog({
                   </p>
                 )}
               </section>
+
+              <UpdateSettingsPanel canChangeChannel={canChangeUpdateChannel} />
 
               {error && (
                 <p className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/10 p-3 text-xs font-bold text-primary">

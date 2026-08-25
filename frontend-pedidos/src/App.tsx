@@ -1,5 +1,6 @@
 import { StaffSessionProvider, useStaffSession } from '@/context/StaffSessionContext';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { UpdateStatusBanner } from '@/components/UpdateStatus';
 import { isDesktopApp } from '@/desktop/desktop-bridge';
 import { LoginView } from '@/views/LoginView';
 import { OperationView } from '@/views/OperationView';
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <StaffSessionProvider>
       <AppRoutes />
+      <UpdateStatusBanner />
       {!isDesktopApp() && <InstallPrompt />}
     </StaffSessionProvider>
   );
