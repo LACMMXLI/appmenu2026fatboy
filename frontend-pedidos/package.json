@@ -1,9 +1,9 @@
 {
   "name": "@fatboy-pos/frontend-pedidos",
   "private": true,
-  "version": "0.2.6-pilot.1",
-  "description": "Aplicación de escritorio para recepción e impresión de pedidos Fatboy.",
-  "author": "Fatboy",
+  "version": "0.2.6-pilot.2",
+  "description": "Sistema de administración y gestión de pedidos de Fat Boy en Mexicali, Baja California.",
+  "author": "Luis Salón Cardona",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
@@ -48,6 +48,7 @@
   "build": {
     "appId": "com.fatboymexicali.pedidos",
     "productName": "Fatboy Pedidos",
+    "copyright": "Copyright © 2026 Luis Salón Cardona. Todos los derechos reservados.",
     "artifactName": "Fatboy-Pedidos-${version}-${arch}.${ext}",
     "asar": true,
     "electronDist": "../node_modules/electron/dist",
@@ -72,6 +73,7 @@
     },
     "nsis": {
       "oneClick": false,
+      "license": "resources/license_es.txt",
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,

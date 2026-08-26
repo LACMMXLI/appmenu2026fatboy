@@ -1,0 +1,53 @@
+TÉRMINOS Y CONDICIONES DE USO
+FATBOY PEDIDOS
+
+Última actualización: 26 de agosto de 2026
+
+1. IDENTIDAD Y FINALIDAD
+
+Fatboy Pedidos es un sistema creado para la administración y gestión de pedidos del restaurante Fat Boy en Mexicali, Baja California, México.
+
+El sistema fue desarrollado por Luis Salón Cardona, quien se identifica como titular de los derechos sobre el código original, diseño funcional, documentación y archivos compilados propios del sistema, salvo los componentes de terceros que conservan sus licencias correspondientes.
+
+2. RESERVA DE DERECHOS
+
+Copyright © 2026 Luis Salón Cardona. Todos los derechos reservados.
+
+Luis Salón Cardona conserva de manera exclusiva la facultad de autorizar la edición, modificación, adaptación, reproducción, distribución, comercialización, sublicencia, publicación o creación de obras derivadas de los elementos originales del sistema.
+
+La instalación o utilización de Fatboy Pedidos no transfiere la propiedad intelectual ni concede derechos distintos del uso interno expresamente autorizado.
+
+3. LICENCIA LIMITADA DE USO
+
+Se autoriza el uso interno de esta copia únicamente para la operación y administración de pedidos de Fat Boy y por las personas expresamente autorizadas por el titular.
+
+Esta autorización es limitada, revocable, no exclusiva, no transferible y no permite entregar copias del sistema o de su código a terceros.
+
+4. CONDUCTAS NO AUTORIZADAS
+
+Sin autorización previa y por escrito de Luis Salón Cardona queda prohibido:
+
+- Copiar, reproducir o distribuir total o parcialmente el sistema.
+- Editar, modificar, adaptar o crear versiones derivadas.
+- Descompilar, desensamblar o realizar ingeniería inversa, salvo los casos que la legislación aplicable permita expresamente.
+- Vender, rentar, sublicenciar, publicar, compartir o poner el sistema a disposición de terceros.
+- Eliminar, ocultar o alterar avisos de autoría, versión, propiedad o reserva de derechos.
+- Utilizar el sistema, su código o sus elementos originales para crear o explotar otro producto sin autorización escrita.
+
+5. USO NO AUTORIZADO
+
+La reproducción, modificación, distribución, apropiación o explotación no autorizada puede constituir una infracción de derechos de autor y dar lugar a las acciones y responsabilidades civiles, administrativas o penales que resulten aplicables. La determinación jurídica concreta corresponderá a las autoridades competentes.
+
+6. COMPONENTES DE TERCEROS
+
+Este sistema utiliza bibliotecas y componentes de terceros sujetos a sus propias licencias. Estos términos no eliminan ni restringen los derechos concedidos por dichas licencias sobre esos componentes. La reserva de derechos aquí indicada se refiere a los elementos originales desarrollados para Fatboy Pedidos.
+
+7. ACEPTACIÓN
+
+Al seleccionar la opción de aceptación y continuar con la instalación, la persona usuaria declara haber leído y aceptado estos términos. Si no está de acuerdo, debe cancelar la instalación y no utilizar esta copia del sistema.
+
+TITULAR Y DESARROLLADOR
+Luis Salón Cardona
+Mexicali, Baja California, México
+
+TODOS LOS DERECHOS RESERVADOS.
