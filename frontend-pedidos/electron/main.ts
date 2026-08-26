@@ -192,12 +192,16 @@ async function registerRendererProtocol() {
 }
 
 async function createMainWindow() {
+  const windowTitle = `Fatboy Pedidos v${app.getVersion()}`;
+
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1024,
     minHeight: 700,
     show: false,
+    title: windowTitle,
+    closable: false,
     autoHideMenuBar: true,
     backgroundColor: '#101010',
     webPreferences: {
@@ -208,6 +212,26 @@ async function createMainWindow() {
     },
   });
 
+  mainWindow.on('page-title-updated', (event) => {
+    event.preventDefault();
+    mainWindow?.setTitle(windowTitle);
+  });
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const isAltF4 =
+      input.type === 'keyDown' &&
+      input.alt &&
+      !input.control &&
+      !input.meta &&
+      (input.key === 'F4' || input.code === 'F4');
+
+    if (!isAltF4 || !mainWindow || mainWindow.isDestroyed()) return;
+
+    event.preventDefault();
+    const windowToClose = mainWindow;
+    windowToClose.setClosable(true);
+    windowToClose.close();
+    if (!windowToClose.isDestroyed()) windowToClose.setClosable(false);
+  });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
     const devUrl = process.env.ELECTRON_RENDERER_URL;

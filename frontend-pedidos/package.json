@@ -1,7 +1,7 @@
 {
   "name": "@fatboy-pos/frontend-pedidos",
   "private": true,
-  "version": "0.2.6-pilot.2",
+  "version": "0.2.6-pilot.3",
   "description": "Sistema de administración y gestión de pedidos de Fat Boy en Mexicali, Baja California.",
   "author": "Luis Salón Cardona",
   "type": "module",

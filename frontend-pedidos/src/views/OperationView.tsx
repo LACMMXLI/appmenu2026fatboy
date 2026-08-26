@@ -175,9 +175,6 @@ export function OperationView() {
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
                 <h1 className="shrink-0 font-display text-xl leading-none tracking-wide md:text-lg">FATBOY PEDIDOS</h1>
-                <span className="shrink-0 rounded border border-white/10 bg-black/20 px-1.5 py-0.5 text-[9px] font-black tracking-wide text-gray-400">
-                  v{__APP_VERSION__}
-                </span>
                 <span className="hidden truncate text-[10px] font-bold text-gray-500 sm:inline">
                   {staff?.name} · {staff?.role}
                 </span>

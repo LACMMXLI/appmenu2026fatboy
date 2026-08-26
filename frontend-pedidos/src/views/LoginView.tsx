@@ -34,12 +34,7 @@ export function LoginView() {
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">Acceso operativo</p>
-            <div className="flex flex-wrap items-baseline gap-2">
-              <h1 className="font-display text-3xl leading-none">FATBOY PEDIDOS</h1>
-              <span className="rounded border border-white/10 bg-black/20 px-1.5 py-0.5 text-[10px] font-black tracking-wide text-gray-400">
-                v{__APP_VERSION__}
-              </span>
-            </div>
+            <h1 className="font-display text-3xl leading-none">FATBOY PEDIDOS</h1>
             <p className="mt-1 text-xs font-medium leading-relaxed text-gray-400">
               Recepción, aceptación, preparación y entrega — con tu cuenta de personal.
             </p>

@@ -1,12 +1,7 @@
 import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
-
-const { version: appVersion } = JSON.parse(
-  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
-) as { version: string };
 
 // Fatboy Pedidos — app operativa interna, hermana de `frontend/` (menú
 // público). Mismo backend NestJS, mismo puerto de API en dev (8372); solo
@@ -29,14 +24,13 @@ export function createPedidosRendererConfig(base = '/'): UserConfig {
           this.emitFile({
             type: 'asset',
             fileName: 'app-version.json',
-            source: JSON.stringify({ buildId: appBuildId, version: appVersion }, null, 2),
+            source: JSON.stringify({ buildId: appBuildId }, null, 2),
           });
         },
       },
     ],
     define: {
       __APP_BUILD_ID__: JSON.stringify(appBuildId),
-      __APP_VERSION__: JSON.stringify(appVersion),
     },
     resolve: {
       alias: {
