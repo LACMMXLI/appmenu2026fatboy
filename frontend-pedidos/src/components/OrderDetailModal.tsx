@@ -1,8 +1,9 @@
-import { Bike, Check, Clock3, MapPin, Phone, Printer, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bike, Check, Clock3, MapPin, Phone, Printer, UserRoundCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { currency, orderAge, orderClockTime, parseJsonList } from '@/lib/orderHelpers';
-import { ORDER_STATUS_LABELS_ES, type Order, type OrderStatus } from '@/lib/api';
+import { ORDER_STATUS_LABELS_ES, type DeliveryDriver, type Order, type OrderStatus } from '@/lib/api';
 import type { PrintDocumentType } from '@/desktop/desktop-types';
 
 const statusTone: Record<OrderStatus, string> = {
@@ -21,6 +22,8 @@ const statusTone: Record<OrderStatus, string> = {
 export function OrderDetailModal({
   order,
   canCancel,
+  deliveryDrivers = [],
+  deliveryAssigning = false,
   onClose,
   onAccept,
   onReject,
@@ -28,9 +31,12 @@ export function OrderDetailModal({
   onPrint,
   onApproveCancellation,
   onRejectCancellation,
+  onAssignDelivery,
 }: {
   order: Order;
   canCancel: boolean;
+  deliveryDrivers?: DeliveryDriver[];
+  deliveryAssigning?: boolean;
   onClose: () => void;
   onPrint: (documentType: PrintDocumentType) => void | Promise<void>;
   // Un pedido terminal (Historial) nunca renderiza los botones que
@@ -41,7 +47,12 @@ export function OrderDetailModal({
   onAdvance?: (status: Exclude<OrderStatus, 'PENDING_APPROVAL' | 'ACCEPTED' | 'REJECTED'>) => void;
   onApproveCancellation?: () => void;
   onRejectCancellation?: () => void;
+  onAssignDelivery?: (driverId: string) => void;
 }) {
+  const [selectedDriverId, setSelectedDriverId] = useState(order.deliveryTask?.driverId ?? '');
+  useEffect(() => {
+    setSelectedDriverId(order.deliveryTask?.driverId ?? '');
+  }, [order.id, order.deliveryTask?.driverId]);
   const isTerminal = order.status === 'COMPLETED' || order.status === 'REJECTED' || order.status === 'CANCELLED';
   const canPrintProduction = order.status === 'ACCEPTED'
     || order.status === 'PREPARING'
@@ -103,6 +114,32 @@ export function OrderDetailModal({
                     <strong>Referencia:</strong> {order.deliveryReference}
                   </p>
                 )}
+              </div>
+            )}
+
+            {isDelivery && order.status === 'READY' && (
+              <div className="mt-3 rounded-lg border border-amber-400/25 bg-amber-400/[0.07] p-3">
+                <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                  <UserRoundCheck size={14} /> Reparto de Américas
+                </p>
+                {order.deliveryTask && (
+                  <p className="mt-2 text-xs font-bold text-white">
+                    Asignado a {order.deliveryTask.driver.name} · {order.deliveryTask.status === 'EN_ROUTE' ? 'En camino' : order.deliveryTask.status === 'INCIDENT' ? 'Incidencia reportada' : 'Esperando salida'}
+                  </p>
+                )}
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <label>
+                    <span className="sr-only">Repartidor</span>
+                    <select value={selectedDriverId} onChange={(event) => setSelectedDriverId(event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#101010] px-3 text-xs font-bold text-white outline-none focus:border-amber-300">
+                      <option value="">Selecciona repartidor</option>
+                      {deliveryDrivers.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}
+                    </select>
+                  </label>
+                  <Button type="button" size="sm" disabled={!selectedDriverId} isLoading={deliveryAssigning} onClick={() => onAssignDelivery?.(selectedDriverId)} className="bg-amber-300 text-black hover:bg-amber-200">
+                    {order.deliveryTask ? 'Reasignar' : 'Asignar'}
+                  </Button>
+                </div>
+                {deliveryDrivers.length === 0 && <p className="mt-2 text-[11px] font-semibold text-amber-200/70">Crea una cuenta con rol Repartidor para esta sucursal.</p>}
               </div>
             )}
           </div>
@@ -224,10 +261,15 @@ export function OrderDetailModal({
                 <Check size={16} className="mr-2" /> Marcar listo
               </Button>
             )}
-            {order.status === 'READY' && (
+            {order.status === 'READY' && !isDelivery && (
               <Button type="button" onClick={() => onAdvance?.('COMPLETED')} size="lg" className="col-span-2 bg-emerald-600 hover:bg-emerald-700">
                 <Check size={16} className="mr-2" /> Marcar entregado
               </Button>
+            )}
+            {order.status === 'READY' && isDelivery && (
+              <div className="col-span-2 rounded-lg border border-sky-400/20 bg-sky-400/10 px-3 py-2 text-center text-xs font-bold text-sky-200">
+                El repartidor finalizará este pedido desde su ruta.
+              </div>
             )}
             {(order.status === 'ACCEPTED' || order.status === 'PREPARING') && canCancel && (
               <Button type="button" variant="outline" onClick={() => onAdvance?.('CANCELLED')} size="lg" className="border-primary/25 text-primary hover:bg-primary/10">

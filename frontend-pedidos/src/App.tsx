@@ -4,6 +4,7 @@ import { UpdateStatusBanner } from '@/components/UpdateStatus';
 import { isDesktopApp } from '@/desktop/desktop-bridge';
 import { LoginView } from '@/views/LoginView';
 import { OperationView } from '@/views/OperationView';
+import { DriverDeliveryView } from '@/views/DriverDeliveryView';
 
 function AppRoutes() {
   const { staff, isRestoring } = useStaffSession();
@@ -16,7 +17,8 @@ function AppRoutes() {
     );
   }
 
-  return staff ? <OperationView /> : <LoginView />;
+  if (!staff) return <LoginView />;
+  return staff.role === 'DRIVER' ? <DriverDeliveryView /> : <OperationView />;
 }
 
 export default function App() {

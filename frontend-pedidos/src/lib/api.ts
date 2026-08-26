@@ -37,7 +37,7 @@ export interface Staff {
   id: string;
   name: string;
   username: string;
-  role: 'STAFF' | 'MANAGER' | 'ADMIN';
+  role: 'STAFF' | 'MANAGER' | 'DRIVER' | 'ADMIN';
   branchId: string | null;
   active: boolean;
   createdAt: string;
@@ -103,6 +103,21 @@ export type OrderStatus =
   | 'REJECTED'
   | 'CANCELLED';
 
+export type DeliveryTaskStatus = 'ASSIGNED' | 'EN_ROUTE' | 'INCIDENT' | 'DELIVERED';
+
+export interface DeliveryTaskSummary {
+  id: string;
+  orderId: string;
+  branchId: string;
+  driverId: string;
+  status: DeliveryTaskStatus;
+  incidentReason: string | null;
+  assignedAt: string;
+  startedAt: string | null;
+  deliveredAt: string | null;
+  driver: { id: string; name: string; username: string };
+}
+
 // Nunca mostrar el enum crudo al operador (Diez) — siempre pasar por esto.
 export const ORDER_STATUS_LABELS_ES: Record<OrderStatus, string> = {
   PENDING_APPROVAL: 'Pendiente de aceptación',
@@ -136,6 +151,7 @@ export interface Order {
   paymentMethod: string;
   notes: string | null;
   createdAt: string;
+  deliveryTask?: DeliveryTaskSummary | null;
   items: {
     id: string;
     productId: string;
@@ -146,6 +162,24 @@ export interface Order {
     extras: string | null;
     removals: string | null;
   }[];
+}
+
+export interface DeliveryTask extends DeliveryTaskSummary {
+  order: Order;
+  events: {
+    id: string;
+    fromStatus: DeliveryTaskStatus | null;
+    toStatus: DeliveryTaskStatus;
+    note: string | null;
+    createdAt: string;
+  }[];
+}
+
+export interface DeliveryDriver {
+  id: string;
+  name: string;
+  username: string;
+  branchId: string | null;
 }
 
 export interface OrderStatusHistoryEntry {
@@ -259,6 +293,33 @@ export async function approveCancellation(token: string, id: string, note?: stri
 
 export async function rejectCancellation(token: string, id: string, note?: string): Promise<Order> {
   return requestWithAuth<Order>(`/orders/${id}/cancellation/reject`, token, 'POST', { note });
+}
+
+// ── Reparto a domicilio (Sucursal Américas) ─────────────────────────────
+
+export async function listDeliveryDrivers(token: string, branchId: string): Promise<DeliveryDriver[]> {
+  const search = new URLSearchParams({ branchId });
+  return requestWithAuth<DeliveryDriver[]>(`/deliveries/drivers?${search.toString()}`, token);
+}
+
+export async function assignDelivery(token: string, orderId: string, driverId: string): Promise<DeliveryTask> {
+  return requestWithAuth<DeliveryTask>(`/orders/${orderId}/delivery/assign`, token, 'POST', { driverId });
+}
+
+export async function listMyDeliveries(token: string): Promise<DeliveryTask[]> {
+  return requestWithAuth<DeliveryTask[]>('/deliveries/mine', token);
+}
+
+export async function startDelivery(token: string, id: string): Promise<DeliveryTask> {
+  return requestWithAuth<DeliveryTask>(`/deliveries/${id}/start`, token, 'POST');
+}
+
+export async function reportDeliveryIncident(token: string, id: string, reason: string): Promise<DeliveryTask> {
+  return requestWithAuth<DeliveryTask>(`/deliveries/${id}/incident`, token, 'POST', { reason });
+}
+
+export async function completeDelivery(token: string, id: string): Promise<DeliveryTask> {
+  return requestWithAuth<DeliveryTask>(`/deliveries/${id}/complete`, token, 'POST');
 }
 
 // ── Cola durable de impresión ────────────────────────────────────────────

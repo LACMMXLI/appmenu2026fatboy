@@ -59,7 +59,7 @@ export class OrderController {
     }
 
     const staff = await this.staffAuthService.tryValidateSession(token);
-    if (staff && (staff.role === StaffRole.ADMIN || staff.branchId === order.branchId)) {
+    if (staff && staff.role !== StaffRole.DRIVER && (staff.role === StaffRole.ADMIN || staff.branchId === order.branchId)) {
       return order;
     }
 
@@ -78,7 +78,8 @@ export class OrderController {
     const customer = await this.authService.validateSession(token).catch(() => null);
     const staff = customer ? null : await this.staffAuthService.tryValidateSession(token);
     const isOwner = customer && order.customerId === customer.id;
-    const isBranchStaff = staff && (staff.role === StaffRole.ADMIN || staff.branchId === order.branchId);
+    const isBranchStaff = staff && staff.role !== StaffRole.DRIVER
+      && (staff.role === StaffRole.ADMIN || staff.branchId === order.branchId);
 
     if (!isOwner && !isBranchStaff) {
       throw new NotFoundException('Pedido no encontrado.');
@@ -106,6 +107,7 @@ export class OrderController {
     let scopedBranchId = branchId;
     if (!adminKey || !this.isValidAdminKey(adminKey)) {
       const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
+      this.assertOperationalRole(staff);
       scopedBranchId = this.resolveBranchScope(staff, branchId);
     }
     return this.orderService.listOrders({
@@ -193,6 +195,9 @@ export class OrderController {
     const staff = await this.staffAuthService.validateSession(requireBearerToken(authHeader));
     const order = await this.orderService.getOrder(id);
     this.assertBranchAccess(staff, order.branchId);
+    if (status === OrderStatus.COMPLETED && order.deliveryType === 'delivery') {
+      throw new ForbiddenException('La entrega a domicilio debe finalizarla el repartidor desde su ruta.');
+    }
     return this.orderService.transitionOrder(id, status, { staffId: staff.id, reason });
   }
 
@@ -258,9 +263,16 @@ export class OrderController {
   }
 
   private assertBranchAccess(staff: { role: StaffRole; branchId: string | null }, orderBranchId: string): void {
+    this.assertOperationalRole(staff);
     if (staff.role === StaffRole.ADMIN) return;
     if (staff.branchId !== orderBranchId) {
       throw new ForbiddenException('No tienes permiso para administrar pedidos de otra sucursal.');
+    }
+  }
+
+  private assertOperationalRole(staff: { role: StaffRole }): void {
+    if (staff.role === StaffRole.DRIVER) {
+      throw new ForbiddenException('La cuenta de repartidor sólo puede administrar sus entregas asignadas.');
     }
   }
 

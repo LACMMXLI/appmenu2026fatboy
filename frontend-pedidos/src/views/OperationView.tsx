@@ -17,12 +17,15 @@ import { getDesktopApi } from '@/desktop/desktop-bridge';
 import type { PrinterSettings, PrintDocumentType } from '@/desktop/desktop-types';
 import {
   acceptOrder,
+  assignDelivery,
   approveCancellation,
+  listDeliveryDrivers,
   rejectCancellation,
   rejectOrder,
   updateOrderStatus,
   type Order,
   type OrderStatus,
+  type DeliveryDriver,
 } from '@/lib/api';
 
 type Tab = 'active' | 'completed' | 'admin';
@@ -49,6 +52,8 @@ export function OperationView() {
   const [rejectTarget, setRejectTarget] = useState<Order | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [printerSettings, setPrinterSettings] = useState<PrinterSettings | null>(null);
+  const [deliveryDrivers, setDeliveryDrivers] = useState<DeliveryDriver[]>([]);
+  const [deliveryAssigning, setDeliveryAssigning] = useState(false);
 
   const canCancel = staff?.role === 'MANAGER' || staff?.role === 'ADMIN';
   const selectedBranch = branches.find((b) => b.id === effectiveBranchId);
@@ -71,6 +76,14 @@ export function OperationView() {
       active = false;
     };
   }, [effectiveBranchId, setError]);
+
+  useEffect(() => {
+    setDeliveryDrivers([]);
+    if (!effectiveBranchId) return;
+    void listDeliveryDrivers(token, effectiveBranchId)
+      .then(setDeliveryDrivers)
+      .catch((err) => setError(err instanceof Error ? err.message : 'No se pudieron cargar los repartidores.'));
+  }, [effectiveBranchId, token, setError]);
 
   const showAutomaticMessage = useCallback((value: string) => {
     setMessage(value);
@@ -157,6 +170,22 @@ export function OperationView() {
     }
     setMessage(`Pedido ${order.folio}: ${result.message}`);
     window.setTimeout(() => setMessage(''), 3500);
+  }
+
+  async function handleAssignDelivery(order: Order, driverId: string) {
+    setDeliveryAssigning(true);
+    setError('');
+    try {
+      const task = await assignDelivery(token, order.id, driverId);
+      await refetch(false);
+      setMessage(`Pedido ${order.folio}: asignado a ${task.driver.name}.`);
+      window.setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo asignar el repartidor.');
+      await refetch(false);
+    } finally {
+      setDeliveryAssigning(false);
+    }
   }
 
   function openReject(order: Order) {
@@ -291,6 +320,8 @@ export function OperationView() {
         <OrderDetailModal
           order={selectedOrder}
           canCancel={canCancel}
+          deliveryDrivers={deliveryDrivers}
+          deliveryAssigning={deliveryAssigning}
           onClose={() => setSelectedOrderId(null)}
           onAccept={() => handleAccept(selectedOrder)}
           onReject={() => openReject(selectedOrder)}
@@ -298,6 +329,7 @@ export function OperationView() {
           onRejectCancellation={() => handleRejectCancellation(selectedOrder)}
           onAdvance={(status) => handleAdvance(selectedOrder, status)}
           onPrint={(documentType) => handlePrint(selectedOrder, documentType)}
+          onAssignDelivery={(driverId) => handleAssignDelivery(selectedOrder, driverId)}
         />
       )}
 

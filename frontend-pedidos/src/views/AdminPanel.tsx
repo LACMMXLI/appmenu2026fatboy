@@ -166,6 +166,7 @@ export function AdminPanel({ token, currentStaff, branches, onOrdersDeleted }: A
                 <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as Staff['role'], branchId: e.target.value === 'ADMIN' ? '' : createForm.branchId })} className="h-14 rounded-lg border border-outline bg-surface px-4 text-sm text-white outline-none focus:border-primary">
                   <option value="STAFF">Personal operativo</option>
                   <option value="MANAGER">Encargado de sucursal</option>
+                  <option value="DRIVER">Repartidor</option>
                   <option value="ADMIN">Administrador global</option>
                 </select>
               </label>
@@ -351,6 +352,7 @@ function StaffRow({ member, branches, token, onUpdated, onMessage, onError }: { 
         <select value={role} onChange={(e) => { const nextRole = e.target.value as Staff['role']; setRole(nextRole); if (nextRole === 'ADMIN') setBranchId(''); }} className="h-10 rounded-md border border-outline bg-surface px-3 text-xs text-white outline-none focus:border-primary">
           <option value="STAFF">Personal operativo</option>
           <option value="MANAGER">Encargado</option>
+          <option value="DRIVER">Repartidor</option>
           <option value="ADMIN">Administrador</option>
         </select>
         <select value={branchId} disabled={role === 'ADMIN'} onChange={(e) => setBranchId(e.target.value)} className="h-10 rounded-md border border-outline bg-surface px-3 text-xs text-white outline-none focus:border-primary disabled:opacity-40">

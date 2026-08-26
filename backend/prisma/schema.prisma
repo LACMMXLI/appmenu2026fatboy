@@ -46,7 +46,15 @@ enum PrintDocumentType {
 enum StaffRole {
   STAFF
   MANAGER
+  DRIVER
   ADMIN
+}
+
+enum DeliveryTaskStatus {
+  ASSIGNED
+  EN_ROUTE
+  INCIDENT
+  DELIVERED
 }
 
 model Branch {
@@ -152,39 +160,40 @@ model Session {
 }
 
 model Order {
-  id               String              @id @db.Uuid
-  folio            String              @unique
-  customerId       String?             @map("customer_id") @db.Uuid
-  customer         Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  customerName     String              @map("customer_name")
-  customerPhone    String              @map("customer_phone")
-  branchId         String              @map("branch_id") @db.Uuid
-  branchName       String              @map("branch_name")
-  status           OrderStatus         @default(PENDING_APPROVAL)
-  rejectionReason  String?             @map("rejection_reason")
+  id                        String               @id @db.Uuid
+  folio                     String               @unique
+  customerId                String?              @map("customer_id") @db.Uuid
+  customer                  Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName              String               @map("customer_name")
+  customerPhone             String               @map("customer_phone")
+  branchId                  String               @map("branch_id") @db.Uuid
+  branchName                String               @map("branch_name")
+  status                    OrderStatus          @default(PENDING_APPROVAL)
+  rejectionReason           String?              @map("rejection_reason")
   // Customer-initiated cancellation request while ACCEPTED/PREPARING — the
   // branch must approve or reject it (status itself doesn't change until
   // then). Never set together with a terminal status.
-  cancellationRequestedAt    DateTime? @map("cancellation_requested_at")
-  cancellationRequestReason  String?   @map("cancellation_request_reason")
-  total            Decimal             @db.Decimal(10, 2)
+  cancellationRequestedAt   DateTime?            @map("cancellation_requested_at")
+  cancellationRequestReason String?              @map("cancellation_request_reason")
+  total                     Decimal              @db.Decimal(10, 2)
   // pointsEarned is calculated (and frozen) at creation time, but only
   // credited to the customer's balance when the order reaches COMPLETED
   // (delivered) — never on creation/acceptance/preparation. pointsCredited
   // guards against crediting the same order twice.
-  pointsEarned     Int                 @default(0) @map("points_earned")
-  pointsCredited   Boolean             @default(false) @map("points_credited")
-  pointsRedeemed   Int                 @default(0) @map("points_redeemed")
-  deliveryType     String              @map("delivery_type") // delivery, pickup
-  deliveryAddress  String?             @map("delivery_address")
-  deliveryReference String?            @map("delivery_reference")
-  deliveryFee      Decimal             @default(0) @db.Decimal(10, 2) @map("delivery_fee")
-  paymentMethod    String              @map("payment_method") // cash, card
-  notes            String?
-  createdAt        DateTime            @default(now()) @map("created_at")
-  items            OrderItem[]
-  statusHistory    OrderStatusHistory[]
-  printJobs        OrderPrintJob[]
+  pointsEarned              Int                  @default(0) @map("points_earned")
+  pointsCredited            Boolean              @default(false) @map("points_credited")
+  pointsRedeemed            Int                  @default(0) @map("points_redeemed")
+  deliveryType              String               @map("delivery_type") // delivery, pickup
+  deliveryAddress           String?              @map("delivery_address")
+  deliveryReference         String?              @map("delivery_reference")
+  deliveryFee               Decimal              @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  paymentMethod             String               @map("payment_method") // cash, card
+  notes                     String?
+  createdAt                 DateTime             @default(now()) @map("created_at")
+  items                     OrderItem[]
+  statusHistory             OrderStatusHistory[]
+  printJobs                 OrderPrintJob[]
+  deliveryTask              DeliveryTask?
 
   @@index([status])
   @@index([branchId, status])
@@ -210,25 +219,25 @@ model OrderStatusHistory {
 }
 
 model OrderPrintJob {
-  id                     String            @id @db.Uuid
-  orderId                String            @map("order_id") @db.Uuid
-  order                  Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  branchId               String            @map("branch_id") @db.Uuid
-  documentType           PrintDocumentType @default(PRODUCTION) @map("document_type")
-  status                 PrintJobStatus    @default(PENDING)
-  attempts               Int               @default(0)
-  claimedByStationId     String?           @map("claimed_by_station_id") @db.Uuid
-  claimedByStationName   String?           @map("claimed_by_station_name")
-  claimedAt              DateTime?         @map("claimed_at")
-  leaseExpiresAt         DateTime?         @map("lease_expires_at")
-  nextAttemptAt          DateTime?         @map("next_attempt_at")
-  printingStartedAt      DateTime?         @map("printing_started_at")
-  printedAt              DateTime?         @map("printed_at")
-  uncertainAt            DateTime?         @map("uncertain_at")
-  lastError              String?           @map("last_error")
-  lastResult             String?           @map("last_result")
-  createdAt              DateTime          @default(now()) @map("created_at")
-  updatedAt              DateTime          @updatedAt @map("updated_at")
+  id                   String            @id @db.Uuid
+  orderId              String            @map("order_id") @db.Uuid
+  order                Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branchId             String            @map("branch_id") @db.Uuid
+  documentType         PrintDocumentType @default(PRODUCTION) @map("document_type")
+  status               PrintJobStatus    @default(PENDING)
+  attempts             Int               @default(0)
+  claimedByStationId   String?           @map("claimed_by_station_id") @db.Uuid
+  claimedByStationName String?           @map("claimed_by_station_name")
+  claimedAt            DateTime?         @map("claimed_at")
+  leaseExpiresAt       DateTime?         @map("lease_expires_at")
+  nextAttemptAt        DateTime?         @map("next_attempt_at")
+  printingStartedAt    DateTime?         @map("printing_started_at")
+  printedAt            DateTime?         @map("printed_at")
+  uncertainAt          DateTime?         @map("uncertain_at")
+  lastError            String?           @map("last_error")
+  lastResult           String?           @map("last_result")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
 
   @@unique([orderId, documentType])
   @@index([branchId, status, createdAt])
@@ -237,19 +246,59 @@ model OrderPrintJob {
 }
 
 model Staff {
-  id            String               @id @db.Uuid
-  name          String
-  username      String               @unique
-  password      String
-  role          StaffRole            @default(STAFF)
-  branchId      String?              @map("branch_id") @db.Uuid
-  active        Boolean              @default(true)
-  createdAt     DateTime             @default(now()) @map("created_at")
-  sessions      StaffSession[]
-  statusChanges OrderStatusHistory[]
+  id             String               @id @db.Uuid
+  name           String
+  username       String               @unique
+  password       String
+  role           StaffRole            @default(STAFF)
+  branchId       String?              @map("branch_id") @db.Uuid
+  active         Boolean              @default(true)
+  createdAt      DateTime             @default(now()) @map("created_at")
+  sessions       StaffSession[]
+  statusChanges  OrderStatusHistory[]
+  deliveries     DeliveryTask[]       @relation("DeliveryDriver")
+  assignments    DeliveryTask[]       @relation("DeliveryAssignedBy")
+  deliveryEvents DeliveryTaskEvent[]
 
   @@index([branchId])
   @@map("staff")
+}
+
+model DeliveryTask {
+  id                String              @id @db.Uuid
+  orderId           String              @unique @map("order_id") @db.Uuid
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branchId          String              @map("branch_id") @db.Uuid
+  driverId          String              @map("driver_id") @db.Uuid
+  driver            Staff               @relation("DeliveryDriver", fields: [driverId], references: [id], onDelete: Restrict)
+  assignedByStaffId String?             @map("assigned_by_staff_id") @db.Uuid
+  assignedByStaff   Staff?              @relation("DeliveryAssignedBy", fields: [assignedByStaffId], references: [id], onDelete: SetNull)
+  status            DeliveryTaskStatus  @default(ASSIGNED)
+  incidentReason    String?             @map("incident_reason")
+  assignedAt        DateTime            @default(now()) @map("assigned_at")
+  startedAt         DateTime?           @map("started_at")
+  deliveredAt       DateTime?           @map("delivered_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  events            DeliveryTaskEvent[]
+
+  @@index([branchId, status])
+  @@index([driverId, status])
+  @@map("delivery_tasks")
+}
+
+model DeliveryTaskEvent {
+  id         String              @id @db.Uuid
+  taskId     String              @map("task_id") @db.Uuid
+  task       DeliveryTask        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fromStatus DeliveryTaskStatus? @map("from_status")
+  toStatus   DeliveryTaskStatus  @map("to_status")
+  staffId    String?             @map("staff_id") @db.Uuid
+  staff      Staff?              @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  note       String?
+  createdAt  DateTime            @default(now()) @map("created_at")
+
+  @@index([taskId, createdAt])
+  @@map("delivery_task_events")
 }
 
 model StaffSession {

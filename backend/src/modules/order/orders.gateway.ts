@@ -102,6 +102,9 @@ export class OrdersGateway implements OnGatewayInit, OnGatewayConnection {
     if (auth.staffId && auth.staffBranchId) {
       client.join(`branch:${auth.staffBranchId}`);
     }
+    if (auth.staffId) {
+      client.join(`driver:${auth.staffId}`);
+    }
   }
 
   // Lets an ADMIN (who has no fixed branchId) opt into a specific branch's
@@ -134,6 +137,17 @@ export class OrdersGateway implements OnGatewayInit, OnGatewayConnection {
     if (order.customerId) {
       this.server.to(`user:${order.customerId}`).emit('order.status_changed', payload);
     }
+  }
+
+  notifyDeliveryChanged(delivery: { id: string; orderId: string; branchId: string; driverId: string; status: string }) {
+    const payload = {
+      deliveryId: delivery.id,
+      orderId: delivery.orderId,
+      branchId: delivery.branchId,
+      status: delivery.status,
+    };
+    this.server.to(`branch:${delivery.branchId}`).emit('delivery.changed', payload);
+    this.server.to(`driver:${delivery.driverId}`).emit('delivery.changed', payload);
   }
 
   private extractToken(client: AuthedSocket): string {
