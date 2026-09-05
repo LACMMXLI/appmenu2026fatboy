@@ -37,28 +37,6 @@ interface HomeViewProps {
   onNavigate: (view: any, product?: Product) => void;
 }
 
-/* ── Static fallback data ─────────────────────── */
-const FALLBACK_BANNERS: HomeBanner[] = [
-  {
-    id: 'promo-mariscos-1',
-    imageUrl: '/images/promo_mariscos_1.png',
-    title: null,
-    subtitle: null,
-    buttonText: null,
-    linkView: 'menu',
-    order: 0,
-  },
-  {
-    id: 'promo-mariscos-2',
-    imageUrl: '/images/promo_mariscos_2.png',
-    title: null,
-    subtitle: null,
-    buttonText: null,
-    linkView: 'menu',
-    order: 1,
-  },
-];
-
 type CategoryVisual = {
   Icon: typeof UtensilsCrossed;
   accent: string;
@@ -98,42 +76,6 @@ function getCategoryVisual(name: string): CategoryVisual {
   return { Icon: UtensilsCrossed, accent: '#fabd00', bg: 'rgba(250,189,0,0.14)' };
 }
 
-// Fallback shown only if the catalog has no products marked as "Es promoción"
-// yet, or while that request is still loading — the admin panel is the real
-// source of truth for these cards (Producto → Es promoción).
-const FALLBACK_DAILY_PROMOS = [
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
-    img: '/images/promo_charola_futbolera.png',
-    label: 'CHAROLA LA FUTBOLERA',
-    price: 380,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4102',
-    img: '/images/promo_charola_fatgool.png',
-    label: 'CHAROLA FATGOOL',
-    price: 499,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4103',
-    img: '/images/promo_rollos_empanizados.png',
-    label: '2 ROLLOS CIELO, MAR Y TIERRA EMPANIZADOS',
-    price: 150,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4104',
-    img: '/images/promo_rollos_naturales.png',
-    label: '2 ROLLOS CIELO, MAR Y TIERRA NATURALES',
-    price: 100,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4105',
-    img: '/images/promo_urban_fatboy_charola.png',
-    label: 'CHAROLA URBAN FATBOY',
-    price: 350,
-  },
-];
-
 const FALLBACK_PRODUCTS = [
   { id: 'fp1', name: 'FATBOY CLÁSICA',  price: 139, description: 'Doble carne smash, queso americano, lechuga, tomate, cebolla, pepinillos y nuestra salsa Fatboy.', imageUrl: '/images/product_fatboy_clasica_1781279420825.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
   { id: 'fp2', name: 'FATBOY BACON',    price: 159, description: 'Doble carne smash, queso americano, bacon crujiente, cebolla caramelizada y salsa Fatboy.', imageUrl: '/images/product_fatboy_bacon_1781279428950.png', categoryId: 'cat-burger', status: 'active' as const, isPromotion: false, shortDescription: null, promotionTag: null, promotionTagColor: null, category: { id: 'cat-burger', name: 'HAMBURGUESAS', order: 0, status: 'active' as const, imageUrl: null } },
@@ -158,7 +100,8 @@ function HeroSlider({ banners, onNavigate }: { banners: HomeBanner[], onNavigate
     return () => clearInterval(t);
   }, [banners.length]);
 
-  const b = banners[idx];
+  const b = banners[idx] ?? banners[0];
+  if (!b) return null;
   const isImageOnly = !b.title && !b.subtitle && !b.buttonText;
 
   return (
@@ -302,7 +245,7 @@ function PromotionHeroSlider({ promotions, onPromoClick }: { promotions: Promoti
 ───────────────────────────────────────────────── */
 export function HomeView({ onNavigate }: HomeViewProps) {
   const { addItem } = useCart();
-  const [banners, setBanners]     = useState<HomeBanner[]>(FALLBACK_BANNERS);
+  const [banners, setBanners]     = useState<HomeBanner[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [dailyPromoProducts, setDailyPromoProducts] = useState<Product[]>([]);
@@ -318,12 +261,14 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     Promise.allSettled([getCategories(), getSystemSettings(), getPromotions(), getBranches(), getProducts(), getHomeBanners()])
       .then(([cRes, sRes, pRes, bRes, prodRes, banRes]) => {
         if (!m) return;
-        if (cRes.status === 'fulfilled') setCategories(cRes.value);
+        if (cRes.status === 'fulfilled') setCategories(cRes.value.filter((category) => category.status === 'active'));
         if (sRes.status === 'fulfilled') setSettings(sRes.value);
         if (pRes.status === 'fulfilled') setPromotions(pRes.value);
         if (bRes.status === 'fulfilled') setBranches(bRes.value);
-        if (prodRes.status === 'fulfilled') setDailyPromoProducts(prodRes.value.filter((product) => product.isPromotion));
-        if (banRes.status === 'fulfilled' && banRes.value.length > 0) setBanners(banRes.value);
+        if (prodRes.status === 'fulfilled') setDailyPromoProducts(prodRes.value.filter((product) =>
+          product.isPromotion && product.status === 'active' && product.category?.status === 'active'
+        ));
+        if (banRes.status === 'fulfilled') setBanners(banRes.value);
       })
       .finally(() => { if (m) setLoading(false); });
     return () => { m = false; };
@@ -346,14 +291,12 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     onNavigate('cart');
   };
 
-  const dailyPromoCards = dailyPromoProducts.length > 0
-    ? dailyPromoProducts.map((product) => ({
+  const dailyPromoCards = dailyPromoProducts.map((product) => ({
         id: product.id,
         img: resolveMediaUrl(product.imageUrl) || defaultProductImage,
         label: product.name,
         price: product.price,
-      }))
-    : FALLBACK_DAILY_PROMOS;
+      }));
 
   const addDailyPromoToCart = (promo: (typeof dailyPromoCards)[number]) => {
     if (!promotionsOpen) return;
@@ -418,7 +361,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       </div>
 
       {/* ── PROMOS DEL DÍA ───────────────────────── */}
-      <div>
+      {dailyPromoCards.length > 0 && <div>
         <div className="section-heading">
           <h2 className="section-title">
             <Zap size={13} className="text-gold" fill="currentColor" style={{ color: 'var(--color-gold)' }} />
@@ -455,7 +398,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* ── UBICACIONES Y REDES SOCIALES ───────────────────────── */}
       <div className="px-3 mt-4 mb-2 space-y-2.5">
