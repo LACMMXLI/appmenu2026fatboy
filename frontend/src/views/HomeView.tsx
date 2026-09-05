@@ -343,10 +343,18 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingTop: 44, paddingBottom: 60 }}>
 
       {/* ── HERO SLIDER ──────────────────────────── */}
-      {promotions.length > 0 ? (
-        <PromotionHeroSlider promotions={promotions} onPromoClick={addPromoToCart} />
-      ) : (
-        <HeroSlider banners={banners} onNavigate={onNavigate} />
+      <HeroSlider banners={banners} onNavigate={onNavigate} />
+
+      {promotions.length > 0 && (
+        <section className="mt-3" aria-label="Promociones activas">
+          <div className="section-heading">
+            <h2 className="section-title">PROMOCIONES</h2>
+            <button className="section-link" onClick={() => onNavigate('promos')}>
+              VER TODAS <ChevronRight size={11} strokeWidth={2.5} />
+            </button>
+          </div>
+          <PromotionHeroSlider promotions={promotions} onPromoClick={addPromoToCart} />
+        </section>
       )}
 
       {/* ── CATEGORY SHORTCUTS ───────────────────── */}
