@@ -8,47 +8,6 @@ interface PromosViewProps {
   onNavigate: (view: any, product?: Product) => void;
 }
 
-// Fallback shown only if the catalog has no products marked as "Es promoción"
-// yet, or while that request is still loading — the admin panel is the real
-// source of truth for these cards (Producto → Es promoción).
-const FALLBACK_DAILY_PROMOS = [
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4101',
-    img: '/images/promo_charola_futbolera.png',
-    label: 'CHAROLA LA FUTBOLERA',
-    desc: 'Boneless, alitas, papas sazonadas, aros de cebolla, palitos de queso, apio, zanahoria y aderezo ranch.',
-    price: 380,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4102',
-    img: '/images/promo_charola_fatgool.png',
-    label: 'CHAROLA FATGOOL',
-    desc: 'Hamburguesa guacamole, hamburguesa bacon, burrito de asada, burrito de pastor, boneless, papas, apio, zanahoria, aderezo ranch y bebida.',
-    price: 499,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4103',
-    img: '/images/promo_rollos_empanizados.png',
-    label: '2 ROLLOS CIELO, MAR Y TIERRA EMPANIZADOS',
-    desc: '2 rollos empanizados de cielo, mar y tierra. Válido hasta las 10:00 PM.',
-    price: 150,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4104',
-    img: '/images/promo_rollos_naturales.png',
-    label: '2 ROLLOS CIELO, MAR Y TIERRA NATURALES',
-    desc: '2 rollos naturales de cielo, mar y tierra. Válido hasta las 10:00 PM.',
-    price: 100,
-  },
-  {
-    id: '7b5d7621-9c2e-4e40-9821-12fb3d2e4105',
-    img: '/images/promo_urban_fatboy_charola.png',
-    label: 'CHAROLA URBAN FATBOY',
-    desc: '4 hamburguesas, boneless, papas, apio y zanahoria, pepsi 1.5 L.',
-    price: 350,
-  },
-];
-
 export function PromosView({ onNavigate }: PromosViewProps) {
   const { addItem } = useCart();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -65,7 +24,7 @@ export function PromosView({ onNavigate }: PromosViewProps) {
       .then(([promoRes, prodRes, settingsRes]) => {
         if (!mounted) return;
         setPromotions(promoRes.status === 'fulfilled' ? promoRes.value : []);
-        setDailyPromoProducts(prodRes.status === 'fulfilled' ? prodRes.value.filter((product) => product.isPromotion) : []);
+        setDailyPromoProducts(prodRes.status === 'fulfilled' ? prodRes.value.filter((product) => product.isPromotion && product.status === 'active' && product.category?.status === 'active') : []);
         if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value);
       })
       .finally(() => {
@@ -77,15 +36,13 @@ export function PromosView({ onNavigate }: PromosViewProps) {
     };
   }, []);
 
-  const dailyPromoCards = dailyPromoProducts.length > 0
-    ? dailyPromoProducts.map((product) => ({
+  const dailyPromoCards = dailyPromoProducts.map((product) => ({
         id: product.id,
         img: resolveMediaUrl(product.imageUrl) || defaultProductImage,
         label: product.name,
         desc: product.shortDescription || product.description || '',
         price: product.price,
-      }))
-    : FALLBACK_DAILY_PROMOS;
+      }));
 
   const addPromoToCart = (promo: Promotion) => {
     if (!promotionsOpen) return;
@@ -177,9 +134,12 @@ export function PromosView({ onNavigate }: PromosViewProps) {
           </>
         )}
 
-        <p className="px-1 pt-1 text-[10.5px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>
+        {!isLoading && promotions.length === 0 && dailyPromoCards.length === 0 && (
+          <p className="py-6 text-center text-sm text-gray-400">No hay promociones activas por el momento.</p>
+        )}
+        {dailyPromoCards.length > 0 && <p className="px-1 pt-1 text-[10.5px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-gold)' }}>
           {promotionsOpen ? 'Promociones del día' : `Promociones disponibles de ${formatPromotionHour(startHour)} a ${formatPromotionHour(endHour)} h`}
-        </p>
+        </p>}
         {dailyPromoCards.map(promo => (
           <div
             key={promo.id}

@@ -37,6 +37,28 @@ interface HomeViewProps {
   onNavigate: (view: any, product?: Product) => void;
 }
 
+/* ── Static fallback data ─────────────────────── */
+const FALLBACK_BANNERS: HomeBanner[] = [
+  {
+    id: 'promo-mariscos-1',
+    imageUrl: '/images/promo_mariscos_1.png',
+    title: null,
+    subtitle: null,
+    buttonText: null,
+    linkView: 'menu',
+    order: 0,
+  },
+  {
+    id: 'promo-mariscos-2',
+    imageUrl: '/images/promo_mariscos_2.png',
+    title: null,
+    subtitle: null,
+    buttonText: null,
+    linkView: 'menu',
+    order: 1,
+  },
+];
+
 type CategoryVisual = {
   Icon: typeof UtensilsCrossed;
   accent: string;
@@ -245,7 +267,7 @@ function PromotionHeroSlider({ promotions, onPromoClick }: { promotions: Promoti
 ───────────────────────────────────────────────── */
 export function HomeView({ onNavigate }: HomeViewProps) {
   const { addItem } = useCart();
-  const [banners, setBanners]     = useState<HomeBanner[]>([]);
+  const [banners, setBanners]     = useState<HomeBanner[]>(FALLBACK_BANNERS);
   const [categories, setCategories] = useState<Category[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [dailyPromoProducts, setDailyPromoProducts] = useState<Product[]>([]);
@@ -268,7 +290,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
         if (prodRes.status === 'fulfilled') setDailyPromoProducts(prodRes.value.filter((product) =>
           product.isPromotion && product.status === 'active' && product.category?.status === 'active'
         ));
-        if (banRes.status === 'fulfilled') setBanners(banRes.value);
+        if (banRes.status === 'fulfilled' && banRes.value.length > 0) setBanners(banRes.value);
       })
       .finally(() => { if (m) setLoading(false); });
     return () => { m = false; };
